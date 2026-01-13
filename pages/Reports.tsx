@@ -841,18 +841,19 @@ const Reports = () => {
       // Share Function
       const handleNPASummaryShare = async () => {
         try {
+          const shareUrl = 'https://society-ilada1425.vercel.app' + window.location.hash;
           if (Capacitor.isNativePlatform()) {
             await Share.share({
               title: 'Society Ilada - NPA Summary',
-              text: 'Here is the NPA Summary Report.',
-              url: window.location.href,
+              text: 'Check out the NPA Summary report.',
+              url: shareUrl,
               dialogTitle: 'Share NPA Summary'
             });
           } else if (navigator.share) {
             await navigator.share({
               title: 'Society Ilada - NPA Summary',
-              text: 'Here is the NPA Summary Report.',
-              url: window.location.href,
+              text: 'Check out the NPA Summary report.',
+              url: shareUrl,
             });
           } else {
             alert('Sharing is not supported on this device/browser.');

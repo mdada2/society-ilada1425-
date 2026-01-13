@@ -97,12 +97,14 @@ function ReportTable<T extends { id?: string | number }>({
             const { Share } = await import('@capacitor/share');
             const { Capacitor } = await import('@capacitor/core');
 
+            const shareUrl = 'https://society-ilada1425.vercel.app' + window.location.hash;
+
             if (Capacitor.isNativePlatform()) {
                 // Android/iOS: Use Capacitor Share
                 await Share.share({
                     title: `Society Ilada - ${title}`,
                     text: `Check out the ${title} report.`,
-                    url: window.location.href,
+                    url: shareUrl,
                     dialogTitle: 'Share Report'
                 });
             } else {
@@ -111,7 +113,7 @@ function ReportTable<T extends { id?: string | number }>({
                     await navigator.share({
                         title: `Society Ilada - ${title}`,
                         text: `Check out the ${title} report.`,
-                        url: window.location.href,
+                        url: shareUrl,
                     });
                 } else {
                     alert('Sharing is not supported on this device/browser.');
