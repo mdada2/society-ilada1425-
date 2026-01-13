@@ -513,7 +513,7 @@ const Members = () => {
         const idxFD = findCol(['fdbalance', 'fd']);
 
         // Create map of existing members by Member Number for quick lookup
-        const existingMembersMap = new Map(members.map(m => [m.memberNo, m]));
+        const existingMembersMap = new Map<string, Member>(members.map(m => [m.memberNo, m]));
 
         // Track CSV internal duplicates
         const csvMemberNumbers = new Map<string, number>();
@@ -558,8 +558,8 @@ const Members = () => {
           const existingMember = existingMembersMap.get(memberNo);
 
           if (existingMember) {
-            // TypeScript type assertion - we know existingMember is Member here
-            const existing: Member = existingMember;
+            // Use type assertion since we've already checked that existingMember is truthy
+            const existing = existingMember as Member;
 
             // Update only empty fields - preserve existing data
             const mergeField = (existingVal: any, newVal: any) => {
