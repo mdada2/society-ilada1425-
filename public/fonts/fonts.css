@@ -1,0 +1,14 @@
+/* DVOT SurekhMR Font */
+@font-face {
+    font-family: 'DVOT SurekhMR';
+    src: url('/fonts/DVOT-SurekhMR.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Noto Sans Devanagari - Fallback */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@100..900&display=swap');
+
+/* Mukta - Alternative Marathi Font */
+@import url('https://fonts.googleapis.com/css2?family=Mukta:wght@200;300;400;500;600;700;800&display=swap');

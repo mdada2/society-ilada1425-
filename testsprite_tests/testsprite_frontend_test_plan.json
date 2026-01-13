@@ -1,0 +1,558 @@
+[
+  {
+    "id": "TC001",
+    "title": "Valid PIN Login",
+    "description": "Verify that a user can successfully log in using a valid 4-digit PIN.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid 4-digit PIN."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the system authenticates the PIN and navigates to the Dashboard."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Invalid PIN Login",
+    "description": "Verify system response when logging in with an invalid PIN (non-4-digit or incorrect PIN).",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid PIN (e.g., less than or more than 4 digits or an incorrect 4-digit combination)."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the system rejects login and displays a user-friendly error message."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Master Code Reset Functionality",
+    "description": "Verify that the administrative master code reset functionality works correctly.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access the master reset screen via admin controls."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid credentials or master key to authorize reset."
+      },
+      {
+        "type": "action",
+        "description": "Perform PIN reset operation."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the PIN resets successfully and notifications confirm reset."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Member Registration with Valid Data",
+    "description": "Verify complete lifecycle member registration with valid data including mandatory fields, unique member number, and uploads.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to member registration page."
+      },
+      {
+        "type": "action",
+        "description": "Fill in all required fields with valid data, ensuring member number is unique."
+      },
+      {
+        "type": "action",
+        "description": "Upload valid photo and signature files."
+      },
+      {
+        "type": "action",
+        "description": "Submit the member registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm member is created, visible in member list, and profile data is correct."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Member Registration with Missing Mandatory Fields",
+    "description": "Verify appropriate error messages are shown when required profile fields are missing or empty.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to member registration page."
+      },
+      {
+        "type": "action",
+        "description": "Leave one or more mandatory fields empty."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that validation errors are displayed and the form is not submitted."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Member Number Uniqueness Enforcement",
+    "description": "Validate that member number uniqueness is enforced on registration and edits.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to register a new member with an existing member number."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the system prevents duplicate member number registration with an error message."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to update an existing member to a member number already in use."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the system rejects the update and displays an appropriate validation message."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Daily Transaction Entry Valid Data",
+    "description": "Validate daily transaction entry with credit/debit operations, multiple account types, and transaction history update.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to transaction entry page."
+      },
+      {
+        "type": "action",
+        "description": "Select a valid member and account type (Savings, Loan, Shares, FD)."
+      },
+      {
+        "type": "action",
+        "description": "Enter a positive transaction amount and current or past date."
+      },
+      {
+        "type": "action",
+        "description": "Submit the transaction."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transaction appears in history and balances update accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Daily Transaction Entry with Invalid Amount and Date",
+    "description": "Verify system prevents transaction with zero or negative amounts and future transaction dates.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to transaction entry page."
+      },
+      {
+        "type": "action",
+        "description": "Enter negative or zero transaction amount."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit transaction."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message disallows transaction submission."
+      },
+      {
+        "type": "action",
+        "description": "Enter a future date for transaction."
+      },
+      {
+        "type": "action",
+        "description": "Attempt submission again."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message indicates invalid future date and prevents submission."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Loan Interest Calculation Accuracy",
+    "description": "Verify loan calculator correctly computes interest for various schemes, amounts, and durations.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Loan Calculator page."
+      },
+      {
+        "type": "action",
+        "description": "Select different loan schemes and input varying principals and durations."
+      },
+      {
+        "type": "action",
+        "description": "Calculate interest."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify calculated interest matches expected results based on scheme formula and rates."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Paddy Purchase Entry Valid Data",
+    "description": "Verify entry of paddy purchase with correct member counts, bag types, weights, and storage allocation including cumulative storage update.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Paddy Purchase page."
+      },
+      {
+        "type": "action",
+        "description": "Input tribal and non-tribal member counts."
+      },
+      {
+        "type": "action",
+        "description": "Enter quantities for new, old, and used once bags."
+      },
+      {
+        "type": "action",
+        "description": "Specify weights and select storage location (godown, shed, open)."
+      },
+      {
+        "type": "action",
+        "description": "Submit purchase entry."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify storage allocation is updated cumulatively and purchase details appear correctly."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Meeting Record and Notice Generation",
+    "description": "Verify recording society meetings with required data, attendee tracking, Marathi notice generation, and printing/sharing functionality.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Meetings page."
+      },
+      {
+        "type": "action",
+        "description": "Create a new meeting record with mandatory fields and meeting type (AGM, monthly, emergency, committee)."
+      },
+      {
+        "type": "action",
+        "description": "Add attendees and resolutions."
+      },
+      {
+        "type": "action",
+        "description": "Generate meeting notice in Marathi."
+      },
+      {
+        "type": "action",
+        "description": "Print or share the meeting notice."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify meeting data is saved, attendee list is recorded, notices are properly formatted in Marathi, and print/share actions work as intended."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Report Generation and Export with Marathi Unicode Support",
+    "description": "Validate various reports generate correctly and export in CSV and PDF formats with Marathi language characters properly rendered.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Reports page."
+      },
+      {
+        "type": "action",
+        "description": "Select different report types including loan reports, NPA summary, bank incentives, member statements."
+      },
+      {
+        "type": "action",
+        "description": "Apply filters and generate reports."
+      },
+      {
+        "type": "action",
+        "description": "Export reports in CSV and PDF formats with filenames containing Marathi characters."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure report data is accurate, exports succeed, Marathi text renders correctly, and filenames preserve Unicode characters."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Expense Entry with Receipt Upload",
+    "description": "Verify user can enter expenses with categories, upload receipts, and view expense reporting.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Expenses page."
+      },
+      {
+        "type": "action",
+        "description": "Enter expense details including category and amount."
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid receipt image or document."
+      },
+      {
+        "type": "action",
+        "description": "Submit expense entry."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify expense is listed with receipt preview available and category filtering works."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Bank Audit Note Management",
+    "description": "Validate functionality for adding, editing, and tracking audit notes and bank balances across multiple accounts.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Bank Audit page."
+      },
+      {
+        "type": "action",
+        "description": "Add a new bank account with opening balance."
+      },
+      {
+        "type": "action",
+        "description": "Insert audit notes related to transactions."
+      },
+      {
+        "type": "action",
+        "description": "Edit existing bank accounts and audit entries."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify bank accounts and notes appear correctly, balances update properly, and audit entries are editable and searchable."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "AI Chat Assistant Interaction",
+    "description": "Verify the AI chat assistant activates, accepts user queries, and provides relevant responses to guide users through app features.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open the AI Chat Assistant widget."
+      },
+      {
+        "type": "action",
+        "description": "Enter common queries about member registration, transaction entry, and report generation."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the AI assistant responds with coherent, relevant, and helpful guidance."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Google Drive Backup and Restore",
+    "description": "Verify data backup and restore functionality using Google Drive integration performs reliably without data loss.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to settings and initiate a backup to Google Drive."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm backup completes successfully and file is created on Google Drive."
+      },
+      {
+        "type": "action",
+        "description": "Delete or alter some data in the app."
+      },
+      {
+        "type": "action",
+        "description": "Perform a restore operation from the Google Drive backup."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that data is restored fully and matches backup state exactly."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Responsive UI and Dark Mode Toggle",
+    "description": "Verify that the application UI adapts correctly to different screen sizes and toggling dark mode changes UI theme consistently.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Resize the browser window to various dimensions including mobile widths."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sidebar navigation and content layout adjusts responsively."
+      },
+      {
+        "type": "action",
+        "description": "Toggle Dark Mode from settings or UI controls."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the UI theme switches to dark colors across all pages and components consistently."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Transaction Filtering and Export",
+    "description": "Verify that users can filter transactions by date, member, and account type and export filtered data correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Transactions page."
+      },
+      {
+        "type": "action",
+        "description": "Apply filters by date range, specific member, and account type."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify displayed transactions match filter criteria."
+      },
+      {
+        "type": "action",
+        "description": "Export filtered transactions to CSV and PDF."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify exported files contain only filtered data with correct formatting."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Security PIN Modal for Sensitive Operations",
+    "description": "Verify that sensitive operations prompt for security PIN modal and block unauthorized access if PIN is incorrect.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt a sensitive operation such as changing financial year configuration or deleting member data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify security PIN modal prompts for PIN entry."
+      },
+      {
+        "type": "action",
+        "description": "Enter incorrect PIN."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify operation is blocked with error message."
+      },
+      {
+        "type": "action",
+        "description": "Enter correct PIN."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify operation proceeds successfully."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Data Persistence and Synchronization with Firebase",
+    "description": "Verify that data is correctly saved to Firebase Firestore and synced in real-time across devices.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform data changes such as member addition or transaction entry on one device."
+      },
+      {
+        "type": "action",
+        "description": "Simultaneously access the application from another device or browser session."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes reflect without refresh or delay due to real-time sync."
+      }
+    ]
+  }
+]

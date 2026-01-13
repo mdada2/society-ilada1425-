@@ -1,0 +1,9 @@
+{
+    "resources": [
+        {
+            "src": "icon-512.png",
+            "type": "png",
+            "density": "xxxhdpi"
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "2 copy Society Ilada R. N. 1425",
+  "description": "A comprehensive management system for Cooperative Societies handling members, loans, daily transactions, and reporting.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

@@ -1,0 +1,853 @@
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { useApp } from '../context/AppContext';
+import { format } from 'date-fns';
+import { ShoppingBag, Save, Copy, Share2, Trash2, Edit, Plus, Settings, X, Archive, AlertCircle, Check, Calculator, IndianRupee, ArrowRight, ShieldCheck, Warehouse, Lock, Unlock, ChevronUp, ChevronDown } from 'lucide-react';
+import { PaddyPurchaseRecord } from '../types';
+
+const PaddyPurchase = () => {
+    const { paddyPurchases, addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase, settings, updateSettings } = useApp();
+
+    // Settings & Calculator UI State
+    const [showSettings, setShowSettings] = useState(false);
+    const [showCalculator, setShowCalculator] = useState(false);
+
+    // Storage Capacities (Synced from Global Settings)
+    const godownCapacity = settings.paddySettings?.godownCapacity || 10000;
+    const shedCapacity = settings.paddySettings?.shedCapacity || 5000;
+
+    // Smart Calculator States
+    const [calcArea, setCalcArea] = useState<string>('1.00');
+    const [calcRate, setCalcRate] = useState<string>('40');
+    const [calcPrice, setCalcPrice] = useState<string>('2300');
+
+    // Delete Security State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+    const [deletePin, setDeletePin] = useState('');
+    const [deleteError, setDeleteError] = useState('');
+
+    // Edit Settings State
+    const [isEditingCapacities, setIsEditingCapacities] = useState(false);
+    const [tempGodownCap, setTempGodownCap] = useState<number | ''>(0);
+    const [tempShedCap, setTempShedCap] = useState<number | ''>(0);
+
+    // Edit Mode State
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [expandedTextId, setExpandedTextId] = useState<string | null>(null);
+
+    const toggleTextFormat = (id: string) => {
+        setExpandedTextId(prev => prev === id ? null : id);
+    };
+
+    // Form State
+    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [centerName, setCenterName] = useState('ईळदा');
+
+    const [tribalMembers, setTribalMembers] = useState(0);
+    const [nonTribalMembers, setNonTribalMembers] = useState(0);
+
+    const [newBags, setNewBags] = useState<number | ''>(0);
+    const [newWeight, setNewWeight] = useState<number | ''>(0);
+    const [oldBags, setOldBags] = useState<number | ''>(0);
+    const [oldWeight, setOldWeight] = useState<number | ''>(0);
+    const [usedOnceBags, setUsedOnceBags] = useState<number | ''>(0);
+    const [usedOnceWeight, setUsedOnceWeight] = useState<number | ''>(0);
+
+    // Lock States
+    const [isNewLocked, setIsNewLocked] = useState(false);
+    const [isOldLocked, setIsOldLocked] = useState(false);
+    const [isUsedOnceLocked, setIsUsedOnceLocked] = useState(true);
+
+    const [godownBags, setGodownBags] = useState(0);
+    const [godownWeight, setGodownWeight] = useState(0);
+    const [shedBags, setShedBags] = useState(0);
+    const [shedWeight, setShedWeight] = useState(0);
+    const [openBags, setOpenBags] = useState(0);
+    const [openWeight, setOpenWeight] = useState(0);
+
+    const formTotalMembers = tribalMembers + nonTribalMembers;
+    const formTotalBags = (Number(newBags) || 0) + (Number(oldBags) || 0) + (Number(usedOnceBags) || 0);
+    const formTotalWeight = (Number(newWeight) || 0) + (Number(oldWeight) || 0) + (Number(usedOnceWeight) || 0);
+
+    const formatDateDisplay = (dateStr: string) => {
+        try { return format(new Date(dateStr), 'dd-MM-yyyy'); } catch (e) { return dateStr; }
+    };
+
+    const handleCopy = (r: PaddyPurchaseRecord) => {
+        const text = generateShareText(r);
+        navigator.clipboard.writeText(text);
+        alert("Copied to clipboard! (माहिती कॉपी झाली)");
+    };
+
+    const handleShare = async (r: PaddyPurchaseRecord) => {
+        const text = generateShareText(r);
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Paddy Purchase Record',
+                    text: text
+                });
+            } catch (e) { console.error(e); }
+        } else {
+            handleCopy(r);
+        }
+    };
+
+    // --- CALCULATOR LOGIC ---
+    const calculatedStats = useMemo(() => {
+        const area = parseFloat(calcArea) || 0;
+        const rate = parseFloat(calcRate) || 0;
+        const price = parseFloat(calcPrice) || 0;
+
+        const weight = area * rate;
+        const bags = weight > 0 ? Math.ceil(weight / 0.40) : 0;
+        const amount = weight * price;
+
+        return {
+            weight,
+            bags,
+            amount,
+            hasInput: calcArea !== '' && calcRate !== '' && calcPrice !== ''
+        };
+    }, [calcArea, calcRate, calcPrice]);
+
+
+
+    const handleSaveCapacities = () => {
+        updateSettings({
+            paddySettings: {
+                godownCapacity: Number(tempGodownCap) || 0,
+                shedCapacity: Number(tempShedCap) || 0
+            }
+        });
+        setIsEditingCapacities(false);
+    };
+
+    // Logic to calculate stocks excluding current editing record
+    const currentStocks = useMemo(() => {
+        return paddyPurchases
+            .filter(p => p.id !== editingId)
+            .reduce((acc, p) => ({
+                godown: acc.godown + (p.godownBags || 0),
+                godownWeight: acc.godownWeight + (p.godownWeight || 0),
+                shed: acc.shed + (p.shedBags || 0),
+                shedWeight: acc.shedWeight + (p.shedWeight || 0),
+                // Accumulate Bag Types
+                newBags: acc.newBags + (p.newBags || 0),
+                newWeight: acc.newWeight + (p.newWeight || 0),
+                oldBags: acc.oldBags + (p.oldBags || 0),
+                oldWeight: acc.oldWeight + (p.oldWeight || 0),
+                usedOnceBags: acc.usedOnceBags + (p.usedOnceBags || 0),
+                usedOnceWeight: acc.usedOnceWeight + (p.usedOnceWeight || 0),
+                // Accumulate Open Storage
+                open: acc.open + (p.openBags || 0),
+                openWeight: acc.openWeight + (p.openWeight || 0),
+            }), {
+                godown: 0, godownWeight: 0, shed: 0, shedWeight: 0,
+                newBags: 0, newWeight: 0, oldBags: 0, oldWeight: 0, usedOnceBags: 0, usedOnceWeight: 0,
+                open: 0, openWeight: 0
+            });
+    }, [paddyPurchases, editingId]);
+
+    const remainingGodown = Math.max(0, godownCapacity - currentStocks.godown);
+    const remainingShed = Math.max(0, shedCapacity - currentStocks.shed);
+
+    // Auto-allocate storage logic: Godown -> Shed -> Open
+    useEffect(() => {
+        const totalInputBags = formTotalBags;
+
+        // 1. Fill Godown
+        let toGodown = Math.min(totalInputBags, remainingGodown);
+        let leftAfterGodown = totalInputBags - toGodown;
+
+        // 2. Fill Shed
+        let toShed = Math.min(leftAfterGodown, remainingShed);
+        let leftAfterShed = leftAfterGodown - toShed;
+
+        // 3. Fill Open
+        let toOpen = leftAfterShed;
+
+        setGodownBags(toGodown);
+        setGodownWeight(toGodown * 0.40);
+        setShedBags(toShed);
+        setShedWeight(toShed * 0.40);
+        setOpenBags(toOpen);
+        setOpenWeight(toOpen * 0.40);
+    }, [newBags, oldBags, usedOnceBags, remainingGodown, remainingShed, formTotalBags]);
+
+    const resetForm = () => {
+        setEditingId(null);
+        setDate(format(new Date(), 'yyyy-MM-dd'));
+        setCenterName('ईळदा');
+        setTribalMembers(0);
+        setNonTribalMembers(0);
+
+        // Always reset bag inputs to prevent accidental double-counting in next entry
+        setNewBags(0);
+        setNewWeight(0);
+        setOldBags(0);
+        setOldWeight(0);
+        setUsedOnceBags(0);
+        setUsedOnceWeight(0);
+    };
+
+    const handleEdit = (record: PaddyPurchaseRecord) => {
+        setEditingId(record.id);
+        setDate(record.date);
+        setCenterName(record.centerName);
+        setTribalMembers(record.tribalMembers);
+        setNonTribalMembers(record.nonTribalMembers);
+        setNewBags(record.newBags);
+        setNewWeight(record.newWeight);
+        setOldBags(record.oldBags);
+        setOldWeight(record.oldWeight);
+        setUsedOnceBags(record.usedOnceBags);
+        setUsedOnceWeight(record.usedOnceWeight);
+
+        // Auto-unlock fields when editing so user can easily fix mistakes
+        setIsNewLocked(false);
+        setIsOldLocked(false);
+        setIsUsedOnceLocked(false);
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const initiateDelete = (id: string) => {
+        setRecordToDelete(id);
+        setDeletePin('');
+        setDeleteError('');
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = () => {
+        if (deletePin === settings.securityPin && recordToDelete) {
+            deletePaddyPurchase(recordToDelete);
+            setShowDeleteModal(false);
+            setRecordToDelete(null);
+        } else {
+            setDeleteError("चुकीचा पिन! (Incorrect PIN)");
+        }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const record: PaddyPurchaseRecord = {
+            id: editingId || Date.now().toString(),
+            date, centerName, tribalMembers, nonTribalMembers,
+            newBags: Number(newBags) || 0,
+            newWeight: Number(newWeight) || 0,
+            oldBags: Number(oldBags) || 0,
+            oldWeight: Number(oldWeight) || 0,
+            usedOnceBags: Number(usedOnceBags) || 0,
+            usedOnceWeight: Number(usedOnceWeight) || 0,
+            godownBags, godownWeight, shedBags, shedWeight, openBags, openWeight,
+
+            // Storage Cumulative
+            cumulativeGodownBags: (currentStocks.godown || 0) + godownBags,
+            cumulativeGodownWeight: (currentStocks.godownWeight || 0) + godownWeight,
+            cumulativeShedBags: (currentStocks.shed || 0) + shedBags,
+            cumulativeShedWeight: (currentStocks.shedWeight || 0) + shedWeight,
+            cumulativeOpenBags: openBags, // Open is reset every time typically? Or does it accumulate? Assuming accumulates for "Total Stock" logic
+            cumulativeOpenWeight: openWeight,
+
+            // Bag Type Cumulative
+            cumulativeNewBags: (currentStocks.newBags || 0) + (Number(newBags) || 0),
+            cumulativeNewWeight: (currentStocks.newWeight || 0) + (Number(newWeight) || 0),
+            cumulativeOldBags: (currentStocks.oldBags || 0) + (Number(oldBags) || 0),
+            cumulativeOldWeight: (currentStocks.oldWeight || 0) + (Number(oldWeight) || 0),
+            cumulativeUsedOnceBags: (currentStocks.usedOnceBags || 0) + (Number(usedOnceBags) || 0),
+            cumulativeUsedOnceWeight: (currentStocks.usedOnceWeight || 0) + (Number(usedOnceWeight) || 0),
+
+            timestamp: editingId ? (paddyPurchases.find(p => p.id === editingId)?.timestamp || Date.now()) : Date.now()
+        };
+
+        if (editingId) updatePaddyPurchase(record);
+        else addPaddyPurchase(record);
+        resetForm();
+        alert("Record Saved Successfully");
+    };
+
+    const generateShareText = (r: PaddyPurchaseRecord, allRecords: PaddyPurchaseRecord[] = []) => {
+        const totalMembers = r.tribalMembers + r.nonTribalMembers;
+        const formattedDate = format(new Date(r.date), 'dd/MM/yyyy');
+        const pad = (num: number) => num < 10 && num >= 0 ? `0${num}` : num;
+
+        // Dynamic Calculation: Filter records up to this one (inclusive) based on timestamp
+        // If allRecords is not provided, fall back to just this record (initial behavior)
+        const relevantRecords = allRecords.length > 0
+            ? allRecords.filter(rec => rec.timestamp <= r.timestamp)
+            : [r];
+
+        // Calculate Cumulative Allocations
+        const totalGodown = relevantRecords.reduce((sum, rec) => sum + (rec.godownBags || 0), 0);
+        const totalGodownWeight = relevantRecords.reduce((sum, rec) => sum + (rec.godownWeight || 0), 0);
+
+        const totalShed = relevantRecords.reduce((sum, rec) => sum + (rec.shedBags || 0), 0);
+        const totalShedWeight = relevantRecords.reduce((sum, rec) => sum + (rec.shedWeight || 0), 0);
+
+        // Open storage might be treated differently depending on business logic, 
+        // but for consistency with "Total Stock", we accumulate it unless user specifies otherwise.
+        // Based on previous code, Open seemed to be per-transaction in some places, but Total = G+S+O.
+        // Let's accumulate Open too for correct "Total Storage"
+        const totalOpen = relevantRecords.reduce((sum, rec) => sum + (rec.openBags || 0), 0);
+        const totalOpenWeight = relevantRecords.reduce((sum, rec) => sum + (rec.openWeight || 0), 0);
+
+        const totalStorageBags = totalGodown + totalShed + totalOpen;
+        const totalStorageWeight = (totalGodownWeight + totalShedWeight + totalOpenWeight).toFixed(2);
+
+        // Calculate Cumulative Bag Types
+        const totalNew = relevantRecords.reduce((sum, rec) => sum + (rec.newBags || 0), 0);
+        const totalNewWeight = relevantRecords.reduce((sum, rec) => sum + (rec.newWeight || 0), 0);
+
+        const totalUsed = relevantRecords.reduce((sum, rec) => sum + (rec.usedOnceBags || 0), 0);
+        const totalUsedWeight = relevantRecords.reduce((sum, rec) => sum + (rec.usedOnceWeight || 0), 0);
+
+        // Derive Old as Balancing Figure
+        const derivedOldBags = totalStorageBags - totalNew - totalUsed;
+        const derivedOldWeight = (parseFloat(totalStorageWeight) - totalNewWeight - totalUsedWeight).toFixed(2);
+
+        return `_*Online खरेदी*_
+\`खरेदी केंद्राचे नाव:-${r.centerName}\`
+दिनांक:- ${formattedDate}
+> *आदि सभासद*  :- *${pad(r.tribalMembers)}*
+> *गैर आदि सभा*  :- *${pad(r.nonTribalMembers)}*
+> *एकूण सभासद* :- *${pad(totalMembers)}*
+
+* नविन पोते  :- ${pad(totalNew)}
+* वजन        :- ${totalNewWeight.toFixed(2)}
+* जुने पोते    :- ${pad(derivedOldBags)}
+* वजन        :- ${derivedOldWeight}
+* एकदा वापरलेला :- ${pad(totalUsed)}
+* वजन               :- ${totalUsedWeight.toFixed(2)}
+
+> *एकुण पोते:-*   *${pad(totalStorageBags)}*
+> *एकुण वजन:-* *${totalStorageWeight}*
+
+> *गोदामात खरेदी*
+* पोते   :- ${pad(totalGodown)}
+* वजन :- ${totalGodownWeight.toFixed(2)}
+> *शेडमध्ये खरेदी*
+* पोते   :- ${pad(totalShed)}
+* वजन :- ${totalShedWeight.toFixed(2)}
+> *उघडयावर खरेदी*
+* पोते    :- ${pad(totalOpen)}
+* वजन  :- ${totalOpenWeight.toFixed(2)}`;
+    };
+
+    return (
+        <div className="p-4 md:p-6 pb-24 relative">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <ShoppingBag className="text-amber-600" /> Paddy Purchase (धान खरेदी)
+                </h2>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => { setShowCalculator(!showCalculator); setShowSettings(false); }}
+                        className={`p-2 rounded-full transition-all ${showCalculator ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                        title="खरेदी गणकयंत्र"
+                    >
+                        <Calculator size={20} />
+                    </button>
+                    <button
+                        onClick={() => { setShowSettings(!showSettings); setShowCalculator(false); }}
+                        className={`p-2 rounded-full transition-all ${showSettings ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                        title="Storage Settings"
+                    >
+                        <Settings size={20} />
+                    </button>
+                </div>
+            </div>
+
+            {/* QUICK CALCULATOR PANEL */}
+            {showCalculator && (
+                <div className="mb-6 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-blue-200 dark:border-blue-900 animate-fade-in ring-4 ring-blue-500/5">
+                    <div className="flex justify-between items-center mb-5">
+                        <h3 className="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                            <Calculator size={20} /> खरेदी गणकयंत्र (Smart Calculator)
+                        </h3>
+                        <button onClick={() => setShowCalculator(false)} className="text-slate-400 hover:text-red-500 transition">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Inputs Section */}
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1 ml-1">आराजी (Area in Hectare)</label>
+                                <input
+                                    type="number" step="0.01" placeholder="आराजी टाका"
+                                    value={calcArea} onChange={(e) => setCalcArea(e.target.value)}
+                                    className="w-full p-3 border dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1 ml-1">वजन दर (Weight Rate)</label>
+                                <input
+                                    type="number" placeholder="दर टाका"
+                                    value={calcRate} onChange={(e) => setCalcRate(e.target.value)}
+                                    className="w-full p-3 border dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1 ml-1">भाव / रक्कम दर (Price per Qtl)</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                    <input
+                                        type="number" placeholder="भाव टाका"
+                                        value={calcPrice} onChange={(e) => setCalcPrice(e.target.value)}
+                                        className="w-full p-3 pl-8 border dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Results Section */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-blue-950 p-6 rounded-2xl border border-blue-100 dark:border-blue-900 flex flex-col justify-center gap-6 shadow-inner">
+                            <div className="text-center">
+                                <span className="text-xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">एकूण वजन (Total Weight)</span>
+                                <p className={`text-3xl font-black transition-all duration-300 ${calculatedStats.hasInput ? 'text-blue-800 dark:text-white scale-100' : 'text-slate-300 dark:text-slate-700 opacity-30'}`}>
+                                    {calculatedStats.weight.toFixed(2)} <span className="text-sm font-normal">Qtl</span>
+                                </p>
+                            </div>
+
+                            <div className="h-px bg-blue-200 dark:bg-blue-800 w-1/2 mx-auto"></div>
+
+                            <div className="text-center">
+                                <span className="text-xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">अपेक्षित पोते (Expected Bags)</span>
+                                <p className={`text-3xl font-black transition-all duration-300 ${calculatedStats.hasInput ? 'text-blue-800 dark:text-white scale-100' : 'text-slate-300 dark:text-slate-700 opacity-30'}`}>
+                                    {calculatedStats.bags} <span className="text-sm font-normal">Bags</span>
+                                </p>
+                            </div>
+
+                            <div className="h-px bg-blue-200 dark:bg-blue-800 w-1/2 mx-auto"></div>
+
+                            <div className="text-center">
+                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">एकूण रक्कम (Total Amount)</span>
+                                <p className={`text-3xl font-black transition-all duration-300 ${calculatedStats.hasInput ? 'text-emerald-700 dark:text-emerald-400 scale-105' : 'text-slate-300 dark:text-slate-700 opacity-30'}`}>
+                                    <span className="text-sm font-normal mr-1">₹</span>
+                                    {calculatedStats.amount.toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <div className="mb-6 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 animate-fade-in">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <Archive size={18} className="text-amber-600" /> Storage Capacity Configuration (साठवणूक क्षमता)
+                        </h3>
+                        <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-red-500 transition">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Godown Setting */}
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900">
+                            <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+                                <Archive size={16} /> Max Godown Capacity (Bags)
+                            </label>
+                            <div className="flex items-center gap-2">
+                                {isEditingCapacities ? (
+                                    <input
+                                        type="number" value={tempGodownCap}
+                                        onChange={(e) => setTempGodownCap(e.target.value === '' ? '' : Number(e.target.value))}
+                                        placeholder="Enter Capacity"
+                                        className="flex-1 p-2 border border-blue-500 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                                    />
+                                ) : (
+                                    <div className="flex-1 p-2 border dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                                        {godownCapacity} Bags
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-2 text-[10px] text-slate-500 uppercase font-bold flex justify-between">
+                                <span>Stock: {currentStocks.godown}</span>
+                                <span className="text-green-600">Free: {Math.max(0, (isEditingCapacities ? (Number(tempGodownCap) || 0) : godownCapacity) - currentStocks.godown)}</span>
+                            </div>
+                        </div>
+
+                        {/* Shed Setting */}
+                        <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-100 dark:border-purple-900">
+                            <label className="block text-sm font-bold text-purple-800 dark:text-purple-300 mb-2 flex items-center gap-2">
+                                <Warehouse size={16} /> Max Shed Capacity (Bags)
+                            </label>
+                            <div className="flex items-center gap-2">
+                                {isEditingCapacities ? (
+                                    <input
+                                        type="number" value={tempShedCap}
+                                        onChange={(e) => setTempShedCap(e.target.value === '' ? '' : Number(e.target.value))}
+                                        placeholder="Enter Capacity"
+                                        className="flex-1 p-2 border border-purple-500 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                                    />
+                                ) : (
+                                    <div className="flex-1 p-2 border dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                                        {shedCapacity} Bags
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-2 text-[10px] text-slate-500 uppercase font-bold flex justify-between">
+                                <span>Stock: {currentStocks.shed}</span>
+                                <span className="text-green-600">Free: {Math.max(0, (isEditingCapacities ? (Number(tempShedCap) || 0) : shedCapacity) - currentStocks.shed)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        {isEditingCapacities ? (
+                            <>
+                                <button onClick={() => setIsEditingCapacities(false)} className="px-4 py-2 text-sm text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition">Cancel</button>
+                                <button onClick={handleSaveCapacities} className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md transition">Save Capacities</button>
+                            </>
+                        ) : (
+                            <button onClick={() => { setTempGodownCap(godownCapacity); setTempShedCap(shedCapacity); setIsEditingCapacities(true); }} className="px-6 py-2 bg-slate-800 dark:bg-blue-600 text-white font-bold rounded-lg hover:bg-slate-700 dark:hover:bg-blue-700 transition flex items-center gap-2">
+                                <Edit size={16} /> Edit Capacities
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Input Form */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-8">
+                <div className="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-700">
+                    <h3 className="font-bold text-lg text-slate-700 dark:text-white">
+                        {editingId ? "Edit Record (माहिती बदला)" : "New Entry (नवीन नोंद)"}
+                    </h3>
+                    {editingId && (
+                        <button onClick={resetForm} className="text-sm text-red-500 hover:underline flex items-center gap-1 font-bold">
+                            <X size={14} /> Cancel Edit
+                        </button>
+                    )}
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">खरेदी केंद्राचे नाव</label>
+                            <input type="text" required value={centerName} onChange={e => setCenterName(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">दिनांक</label>
+                            <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border dark:border-slate-700">
+                        <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-3">Members (सभासद)</h4>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">आदि सभा (Tribal)</label>
+                                <input type="number" min="0" placeholder="0" value={tribalMembers || ''} onChange={e => setTribalMembers(Number(e.target.value))} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">गैर सभा (Non-Tribal)</label>
+                                <input type="number" min="0" placeholder="0" value={nonTribalMembers || ''} onChange={e => setNonTribalMembers(Number(e.target.value))} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">एकूण सभा (Total)</label>
+                                <div className="w-full p-2 bg-slate-200 dark:bg-slate-700 rounded font-bold text-center text-slate-800 dark:text-white">{formTotalMembers}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <div className="flex justify-between items-center mb-3 text-sm font-bold text-amber-800 dark:text-amber-400 uppercase">
+                            <h4>Bag Details (पोते तपशील)</h4>
+                            <span className="text-[10px] bg-amber-200 dark:bg-amber-800 px-2 py-0.5 rounded font-bold">1 Bag = 0.40 Qtl</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                            {/* New Bags */}
+                            <div className="flex flex-col gap-1">
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-xs font-bold text-slate-600">नविन पोते (New)</label>
+                                    <button type="button" onClick={() => setIsNewLocked(!isNewLocked)} className={`p-1 rounded transition ${isNewLocked ? 'text-red-600 bg-red-100' : 'text-blue-600 bg-blue-100'}`}>
+                                        {isNewLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                                    </button>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <input
+                                            type="number" min="0" placeholder="Bags"
+                                            readOnly={isNewLocked}
+                                            value={newBags}
+                                            onChange={e => {
+                                                const v = e.target.value === '' ? '' : Number(e.target.value);
+                                                setNewBags(v);
+                                                if (!isNewLocked) setNewWeight(v === '' ? 0 : v * 0.40);
+                                            }}
+                                            className={`w-full p-2 border dark:border-slate-600 rounded transition ${isNewLocked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-75' : 'bg-white dark:bg-slate-800'}`}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="number" step="0.01" placeholder="Weight"
+                                            readOnly={isNewLocked}
+                                            value={newWeight}
+                                            onChange={e => setNewWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                                            className={`w-full p-2 border dark:border-slate-600 rounded transition ${isNewLocked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-75' : 'bg-white dark:bg-slate-800'}`}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Old Bags */}
+                            <div className="flex flex-col gap-1">
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-xs font-bold text-slate-600">जुने पोते (Old)</label>
+                                    <button type="button" onClick={() => setIsOldLocked(!isOldLocked)} className={`p-1 rounded transition ${isOldLocked ? 'text-red-600 bg-red-100' : 'text-blue-600 bg-blue-100'}`}>
+                                        {isOldLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                                    </button>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <input
+                                            type="number" min="0" placeholder="Bags"
+                                            readOnly={isOldLocked}
+                                            value={oldBags}
+                                            onChange={e => {
+                                                const v = e.target.value === '' ? '' : Number(e.target.value);
+                                                setOldBags(v);
+                                                if (!isOldLocked) setOldWeight(v === '' ? 0 : v * 0.40);
+                                            }}
+                                            className={`w-full p-2 border dark:border-slate-600 rounded transition ${isOldLocked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-75' : 'bg-white dark:bg-slate-800'}`}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="number" step="0.01" placeholder="Weight"
+                                            readOnly={isOldLocked}
+                                            value={oldWeight}
+                                            onChange={e => setOldWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                                            className={`w-full p-2 border dark:border-slate-600 rounded transition ${isOldLocked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-75' : 'bg-white dark:bg-slate-800'}`}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Used Once Bags */}
+                            <div className="flex flex-col gap-1">
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-xs font-bold text-slate-600">एकदा वापरलेला (Used Once)</label>
+                                    <button type="button" onClick={() => setIsUsedOnceLocked(!isUsedOnceLocked)} className={`p-1 rounded transition ${isUsedOnceLocked ? 'text-red-600 bg-red-100' : 'text-blue-600 bg-blue-100'}`}>
+                                        {isUsedOnceLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                                    </button>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <input
+                                            type="number" min="0" placeholder="Bags"
+                                            readOnly={isUsedOnceLocked}
+                                            value={usedOnceBags}
+                                            onChange={e => {
+                                                const v = e.target.value === '' ? '' : Number(e.target.value);
+                                                setUsedOnceBags(v);
+                                                if (!isUsedOnceLocked) setUsedOnceWeight(v === '' ? 0 : v * 0.40);
+                                            }}
+                                            className={`w-full p-2 border dark:border-slate-600 rounded transition ${isUsedOnceLocked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-75' : 'bg-white dark:bg-slate-800'}`}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="number" step="0.01" placeholder="Weight"
+                                            readOnly={isUsedOnceLocked}
+                                            value={usedOnceWeight}
+                                            onChange={e => setUsedOnceWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                                            className={`w-full p-2 border dark:border-slate-600 rounded transition ${isUsedOnceLocked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-75' : 'bg-white dark:bg-slate-800'}`}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col justify-end">
+                                <div className="flex gap-4 bg-amber-100 dark:bg-amber-900/40 p-2 rounded-lg items-center font-bold">
+                                    <div className="flex-1"><label className="block text-xs text-amber-800">Total Bags: {formTotalBags}</label></div>
+                                    <div className="flex-1 text-right"><label className="block text-xs text-amber-800">Total Qtl: {formTotalWeight.toFixed(2)}</label></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200">
+                        <h4 className="text-sm font-bold text-indigo-800 dark:text-indigo-400 uppercase mb-3 flex items-center gap-2">
+                            <Archive size={16} /> Storage Allocation (साठवणूक विभागणी)
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1 uppercase tracking-tight">गोदामात खरेदी (Godown)</label>
+                                <div className="flex gap-1">
+                                    <div className="flex-1 bg-slate-100 dark:bg-slate-700 p-2 rounded text-center text-sm font-bold text-blue-600">{currentStocks.godown + godownBags} <span className="text-[9px] font-normal block text-slate-500">Total Bags</span></div>
+                                    <div className="flex-1 bg-slate-100 dark:bg-slate-700 p-2 rounded text-center text-sm font-bold text-blue-600">{(currentStocks.godownWeight + godownWeight).toFixed(2)} <span className="text-[9px] font-normal block text-slate-500">Total Qtl</span></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1 uppercase tracking-tight">शेडमध्ये खरेदी (Shed)</label>
+                                <div className="flex gap-1">
+                                    <div className="flex-1 bg-slate-100 dark:bg-slate-700 p-2 rounded text-center text-sm font-bold text-purple-600">{currentStocks.shed + shedBags} <span className="text-[9px] font-normal block text-slate-500">Total Bags</span></div>
+                                    <div className="flex-1 bg-slate-100 dark:bg-slate-700 p-2 rounded text-center text-sm font-bold text-purple-600">{(currentStocks.shedWeight + shedWeight).toFixed(2)} <span className="text-[9px] font-normal block text-slate-500">Total Qtl</span></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1 uppercase tracking-tight">उघड्यावर खरेदी (Open)</label>
+                                <div className="flex gap-1">
+                                    <div className="flex-1 bg-slate-100 dark:bg-slate-700 p-2 rounded text-center text-sm font-bold text-amber-600">{(currentStocks.open || 0) + openBags} <span className="text-[9px] font-normal block text-slate-500">Total Bags</span></div>
+                                    <div className="flex-1 bg-slate-100 dark:bg-slate-700 p-2 rounded text-center text-sm font-bold text-amber-600">{((currentStocks.openWeight || 0) + openWeight).toFixed(2)} <span className="text-[9px] font-normal block text-slate-500">Total Qtl</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg">
+                        <Save size={20} /> {editingId ? "Update Record" : "Save Record"}
+                    </button>
+                </form>
+            </div >
+
+            <div className="space-y-4">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white border-b dark:border-slate-700 pb-2">Recent Records</h3>
+                {paddyPurchases.length === 0 ? <p className="text-slate-500 text-center py-8">No records found.</p> : [...paddyPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 50).map(record => {
+                    // Dynamic Calculation Context for this record
+                    const relevantRecords = paddyPurchases.filter(r => r.timestamp <= record.timestamp);
+
+                    const totalGodown = relevantRecords.reduce((sum, r) => sum + (r.godownBags || 0), 0);
+                    const totalShed = relevantRecords.reduce((sum, r) => sum + (r.shedBags || 0), 0);
+                    const totalOpen = relevantRecords.reduce((sum, r) => sum + (r.openBags || 0), 0);
+                    const totalRecBags = totalGodown + totalShed + totalOpen;
+
+                    const totalGodownW = relevantRecords.reduce((sum, r) => sum + (r.godownWeight || 0), 0);
+                    const totalShedW = relevantRecords.reduce((sum, r) => sum + (r.shedWeight || 0), 0);
+                    const totalOpenW = relevantRecords.reduce((sum, r) => sum + (r.openWeight || 0), 0);
+                    const totalRecWeight = totalGodownW + totalShedW + totalOpenW;
+
+                    const totalNew = relevantRecords.reduce((sum, r) => sum + (r.newBags || 0), 0);
+                    const totalNewW = relevantRecords.reduce((sum, r) => sum + (r.newWeight || 0), 0);
+
+                    const totalUsed = relevantRecords.reduce((sum, r) => sum + (r.usedOnceBags || 0), 0);
+                    const totalUsedW = relevantRecords.reduce((sum, r) => sum + (r.usedOnceWeight || 0), 0);
+
+                    const derivedOldBags = totalRecBags - totalNew - totalUsed;
+                    const derivedOldWeight = totalRecWeight - totalNewW - totalUsedW;
+
+                    return (
+                        <div key={record.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 overflow-hidden">
+                            <div className="p-4 flex justify-between items-start border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                                <div><h4 className="font-bold text-slate-800 dark:text-white">{record.centerName}</h4><p className="text-sm text-slate-500">{formatDateDisplay(record.date)}</p></div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => {
+                                        navigator.clipboard.writeText(generateShareText(record, paddyPurchases));
+                                        alert("Copied to clipboard!");
+                                    }} className="p-2 text-slate-500 hover:text-blue-600 transition" title="Copy Info"><Copy size={18} /></button>
+                                    <button onClick={() => {
+                                        if (navigator.share) {
+                                            navigator.share({
+                                                title: `Paddy Purchase - ${record.centerName}`,
+                                                text: generateShareText(record, paddyPurchases)
+                                            }).catch(console.error);
+                                        } else {
+                                            navigator.clipboard.writeText(generateShareText(record, paddyPurchases));
+                                            alert("Sharing not supported, copied to clipboard instead.");
+                                        }
+                                    }} className="p-2 text-slate-500 hover:text-green-600 transition" title="Share Info"><Share2 size={18} /></button>
+                                    <button onClick={() => handleEdit(record)} className="p-2 text-slate-500 hover:text-amber-600 transition" title="Edit Entry"><Edit size={18} /></button>
+                                    <button onClick={() => initiateDelete(record.id)} className="p-2 text-slate-500 hover:text-red-600 transition" title="Delete Entry"><Trash2 size={18} /></button>
+                                </div>
+                            </div>
+                            <div className="p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                <div>
+                                    <span className="block text-[10px] text-slate-400 uppercase">Members</span>
+                                    {record.tribalMembers + record.nonTribalMembers}
+                                </div>
+
+                                <div>
+                                    <span className="block text-[10px] text-slate-400 uppercase">Total (एकूण)</span>
+                                    {totalRecBags} Bags <span className="text-[10px] text-slate-400">/ {totalRecWeight.toFixed(2)} Qtl</span>
+                                </div>
+                                <div>
+                                    <span className="block text-[10px] text-blue-500 uppercase">New (नवीन)</span>
+                                    {totalNew} <span className="text-[10px] text-slate-400">/ {totalNewW.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-[10px] text-blue-500 uppercase">Old (जुने)</span>
+                                    {derivedOldBags} <span className="text-[10px] text-slate-400">/ {derivedOldWeight.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-[10px] text-blue-500 uppercase">Used (एकदा)</span>
+                                    {totalUsed} <span className="text-[10px] text-slate-400">/ {totalUsedW.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {/* View Text Format */}
+                            <div className="relative group">
+                                <button onClick={() => toggleTextFormat(record.id)} className="w-full text-left p-2 bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1">
+                                    {expandedTextId === record.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />} View Text Format
+                                </button>
+                                {expandedTextId === record.id && (
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t dark:border-slate-700">
+                                        <pre className="whitespace-pre-wrap font-mono text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed select-all">
+                                            {generateShareText(record, paddyPurchases)}
+                                        </pre>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Delete Confirmation Modal */}
+            {
+                showDeleteModal && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-sm p-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                                    <ShieldCheck size={32} />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Security Check</h3>
+                                <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Enter Security PIN to delete this record.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <input
+                                    type="password"
+                                    autoFocus
+                                    className="w-full p-3 text-center text-2xl tracking-widest border dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                                    placeholder="PIN"
+                                    maxLength={4}
+                                    value={deletePin}
+                                    onChange={e => setDeletePin(e.target.value)}
+                                />
+
+                                {deleteError && <p className="text-red-500 text-center text-sm font-medium">{deleteError}</p>}
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowDeleteModal(false)}
+                                        className="flex-1 py-2 border dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmDelete}
+                                        className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
+    );
+};
+
+export default PaddyPurchase;

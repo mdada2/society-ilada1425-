@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">सोसायटी ईलदा</string>
+    <string name="title_activity_main">Society Ilada Manager</string>
+    <string name="package_name">com.societyilada.manager</string>
+    <string name="custom_url_scheme">com.societyilada.manager</string>
+    
+    <!-- Widget Descriptions -->
+    <string name="widget_query_description">Society Mitra AI - प्रश्न विचारा</string>
+    <string name="widget_search_description">सभासद शोधा</string>
+    <string name="widget_launch_description">Society Mitra Quick Launch</string>
+</resources>

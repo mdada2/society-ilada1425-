@@ -1,0 +1,16 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "society-ilada",
+    "projectPath": "c:\\Users\\Elada\\Desktop\\society-ilada",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-NcNGTSOK9ijOOlQdOMXRvlG9RfqSGubT9IBR1ygxFSxZHu2QoGv0BtQx8IHSFI5ucyq5EFCkSRhFpehBfsvmFxbwf4WzQj1_BmVz6ho2ro50LBZ_oYK37VSSpvxC_A_oyaA"
+    }
+  },
+  "proxy": "http://fb74c130-8b4d-4b24-b92a-75bfb1e612b2:lsdoI1r41A0NhxsXUVAcdIvlN3AcCu4f@tun.testsprite.com:8080"
+}

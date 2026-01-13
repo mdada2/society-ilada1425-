@@ -1,0 +1,157 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "React 19",
+        "Vite 6",
+        "Firebase (Firestore, Auth)",
+        "TailwindCSS",
+        "React Router DOM",
+        "Recharts",
+        "jsPDF",
+        "html2canvas",
+        "Google Generative AI",
+        "Lucide React Icons"
+    ],
+    "features": [
+        {
+            "name": "Authentication & Security",
+            "description": "PIN-based login system with master code reset functionality. Secure access control to the application.",
+            "files": [
+                "App.tsx",
+                "context/AppContext.tsx"
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "description": "Main overview page displaying key metrics, statistics, and summary information about the society's operations including member counts, financial summaries, and quick access to recent activities.",
+            "files": [
+                "pages/Dashboard.tsx"
+            ]
+        },
+        {
+            "name": "Member Management",
+            "description": "Complete member registration, profile management, and member details viewing. Includes member search, filtering, photo/signature upload, and comprehensive member information tracking.",
+            "files": [
+                "pages/Members.tsx",
+                "pages/MemberDetails.tsx"
+            ]
+        },
+        {
+            "name": "Transaction Management",
+            "description": "Daily transaction entry system for managing credits and debits across different account types (Savings, Loan, Shares, FD). Includes transaction history, filtering, and export capabilities.",
+            "files": [
+                "pages/Transactions.tsx",
+                "types.ts"
+            ]
+        },
+        {
+            "name": "Expense Management",
+            "description": "Track and manage society expenses with categorization, receipt uploads, and expense reporting.",
+            "files": [
+                "pages/Expenses.tsx"
+            ]
+        },
+        {
+            "name": "Bank Audit",
+            "description": "Society bank account management and audit tracking. Manage multiple bank accounts, track balances, and maintain audit notes.",
+            "files": [
+                "pages/BankAudit.tsx"
+            ]
+        },
+        {
+            "name": "Loan Calculator",
+            "description": "Calculate loan interest based on different schemes, principal amounts, and time periods. Supports various interest calculation methods.",
+            "files": [
+                "pages/LoanCalculatorPage.tsx",
+                "utils/loanCalculator.ts"
+            ]
+        },
+        {
+            "name": "Meeting Management",
+            "description": "Record and manage society meetings including AGM, monthly, emergency, and committee meetings. Track attendees, resolutions, and generate meeting notices.",
+            "files": [
+                "pages/Meetings.tsx"
+            ]
+        },
+        {
+            "name": "Paddy Purchase",
+            "description": "Track paddy purchase records including member counts (tribal/non-tribal), bag types (new/old/used once), weights, and storage allocation (godown/shed/open). Includes cumulative storage tracking.",
+            "files": [
+                "pages/PaddyPurchase.tsx"
+            ]
+        },
+        {
+            "name": "Dispatch Management",
+            "description": "Manage paddy dispatch to mills with truck details, DO/TP numbers, storage source tracking, and bag usage.",
+            "files": [
+                "pages/Dispatch.tsx"
+            ]
+        },
+        {
+            "name": "Inventory Management",
+            "description": "Track inventory adjustments for bags and paddy stock including new stock entries, damage records, and corrections.",
+            "files": [
+                "pages/InventoryEntry.tsx"
+            ]
+        },
+        {
+            "name": "Reports & Analytics",
+            "description": "Comprehensive reporting system including loan reports, NPA summary, bank incentive reports, member statements, and various financial reports. Supports CSV and PDF export with Marathi language support.",
+            "files": [
+                "pages/Reports.tsx",
+                "components/ReportTable.tsx"
+            ]
+        },
+        {
+            "name": "Settings & Configuration",
+            "description": "Application settings including society information, financial year configuration, report header customization, board member management, security PIN changes, and backup/restore functionality.",
+            "files": [
+                "pages/Settings.tsx"
+            ]
+        },
+        {
+            "name": "AI Chat Assistant",
+            "description": "Integrated AI chatbot widget powered by Google Generative AI for helping users with application features and queries.",
+            "files": [
+                "components/AIChatWidget.tsx",
+                "services/ai.ts"
+            ]
+        },
+        {
+            "name": "Navigation & Layout",
+            "description": "Responsive sidebar navigation with mobile support, route management, and consistent layout across the application.",
+            "files": [
+                "components/Sidebar.tsx",
+                "App.tsx"
+            ]
+        },
+        {
+            "name": "Firebase Integration",
+            "description": "Cloud data persistence and synchronization using Firebase Firestore and Authentication services.",
+            "files": [
+                "services/firebase.ts"
+            ]
+        },
+        {
+            "name": "Export Utilities",
+            "description": "Utility functions for exporting data to CSV and PDF formats with proper filename handling for Unicode/Marathi characters.",
+            "files": [
+                "utils/downloadUtils.ts"
+            ]
+        },
+        {
+            "name": "Google Drive Backup",
+            "description": "Backup and restore functionality using Google Drive integration for data persistence.",
+            "files": [
+                "utils/googleDrive.ts"
+            ]
+        },
+        {
+            "name": "Security Components",
+            "description": "Security PIN modal for sensitive operations and data protection.",
+            "files": [
+                "components/SecurityPinModal.tsx"
+            ]
+        }
+    ]
+}
