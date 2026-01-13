@@ -607,6 +607,36 @@ const Settings = () => {
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><Smartphone size={20} /> App Information</h3>
+                <div className="space-y-3">
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Web Deployment</p>
+                        <a
+                            href="https://society-ilada1425.vercel.app/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 dark:text-blue-400 font-mono text-sm hover:underline flex items-center gap-2"
+                        >
+                            society-ilada1425.vercel.app
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-700/30 rounded-lg">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Version</p>
+                            <p className="font-bold text-slate-800 dark:text-white">1.0.0</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 dark:bg-slate-700/30 rounded-lg">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Platform</p>
+                            <p className="font-bold text-slate-800 dark:text-white">Web + Android</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><Lock size={20} /> Security</h3>
                 <div className="flex items-end gap-4">
                     <input type="text" className="flex-1 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value)} placeholder="New PIN" />
