@@ -7,6 +7,7 @@ import { Meeting, Member } from '../types';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { downloadBlob } from '../utils/downloadUtils';
+import { loadDVOTFont } from '../utils/fontLoader';
 import { Capacitor } from '@capacitor/core';
 
 const MARATHI_DAYS = ['रविवार', 'सोमवार', 'मंगळवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
@@ -245,7 +246,7 @@ const Meetings = () => {
     el.style.width = '210mm';
     el.style.height = '297mm';
     el.style.padding = '15mm';
-    el.style.fontFamily = 'serif';
+    el.style.fontFamily = "'DVOT SurekhMR', serif";
     el.style.backgroundColor = 'white';
     el.style.color = 'black';
     el.style.display = 'flex';
@@ -339,6 +340,15 @@ const Meetings = () => {
     setIsPrinting(true);
     try {
       const pdf = new jsPDF('l', 'mm', 'a4');
+
+      // Load and embed DVOT SurekhMR font
+      try {
+        await loadDVOTFont(pdf);
+        pdf.setFont('DVOT SurekhMR', 'normal');
+      } catch (fontError) {
+        console.warn('Could not load custom font, using default:', fontError);
+      }
+
       const directors = [...currentDirectors];
       const totalPages = Math.ceil(directors.length / 2) + 1; // +1 for signature page
 
@@ -441,7 +451,7 @@ const Meetings = () => {
     el.style.height = '200mm';
     el.style.border = '1px solid #ccc';
     el.style.padding = '10mm';
-    el.style.fontFamily = "'Mukta', 'Noto Sans Devanagari', serif";
+    el.style.fontFamily = "'DVOT SurekhMR', serif";
     el.style.fontSize = '11px';
     el.style.color = 'black';
     el.style.lineHeight = '1.6';
@@ -507,6 +517,15 @@ const Meetings = () => {
         const canvas = await html2canvas(allowanceRef.current, canvasOptions);
         const imgData = canvas.toDataURL('image/jpeg', 0.7);
         const pdf = new jsPDF('l', 'mm', 'a4');
+
+        // Load and embed DVOT SurekhMR font
+        try {
+          await loadDVOTFont(pdf);
+          pdf.setFont('DVOT SurekhMR', 'normal');
+        } catch (fontError) {
+          console.warn('Could not load custom font for allowance:', fontError);
+        }
+
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const ratio = pdfWidth / canvas.width;
         const imgHeight = canvas.height * ratio;
@@ -662,7 +681,7 @@ const Meetings = () => {
             </div>
 
             <div className={`bg-slate-100 dark:bg-slate-950 p-4 rounded-xl border-2 border-dashed border-slate-300 flex justify-center overflow-x-auto min-h-[600px] ${!showPreview ? 'hidden lg:flex' : ''}`}>
-              <div ref={noticePrintRef} className="bg-white text-black p-8 w-[140mm] shadow-2xl font-serif relative h-fit border border-slate-300">
+              <div ref={noticePrintRef} className="bg-white text-black p-8 w-[140mm] shadow-2xl relative h-fit border border-slate-300" style={{ fontFamily: "'DVOT SurekhMR', serif" }}>
                 <div className="text-center border-b pb-2 mb-3 border-black">
                   <h1 className="text-[13px] font-normal text-black">{SOCIETY_FULL_NAME}</h1>
                   <div className="text-[9px] mt-0.5">E-mail secretaryilada1425@gmail.com</div>

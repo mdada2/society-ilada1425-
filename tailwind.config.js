@@ -9,6 +9,9 @@ export default {
     darkMode: 'class',
     theme: {
         extend: {
+            fontFamily: {
+                sans: ['DVOT SurekhMR', 'serif'],
+            },
             colors: {
                 primary: '#1e40af', // blue-800
                 secondary: '#1e293b', // slate-800

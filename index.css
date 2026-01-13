@@ -2,9 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import Mukta font for Marathi text */
-@import url('https://fonts.googleapis.com/css2?family=Mukta:wght@200;300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@100..900&display=swap');
+/* Import DVOT SurekhMR font for Marathi text */
+@import url('/fonts/fonts.css');
 
 /* Safe Area handled by native fitsSystemWindows */
 /* 

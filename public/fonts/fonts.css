@@ -1,14 +1,26 @@
-/* DVOT SurekhMR Font */
+/* DVOT SurekhMR Font - Normal */
 @font-face {
     font-family: 'DVOT SurekhMR';
-    src: url('/fonts/DVOT-SurekhMR.ttf') format('truetype');
+    src: url('/fonts/DVOTSurekhMR_N_Ship.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
 
-/* Noto Sans Devanagari - Fallback */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@100..900&display=swap');
+/* DVOT SurekhMR Font - Bold */
+@font-face {
+    font-family: 'DVOT SurekhMR';
+    src: url('/fonts/DVOTSurekhMR_B_Ship.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
 
-/* Mukta - Alternative Marathi Font */
-@import url('https://fonts.googleapis.com/css2?family=Mukta:wght@200;300;400;500;600;700;800&display=swap');
+/* DVOT SurekhMR Font - Italic */
+@font-face {
+    font-family: 'DVOT SurekhMR';
+    src: url('/fonts/DVOTSurekhMR_I_Ship.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
