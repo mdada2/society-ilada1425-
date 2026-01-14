@@ -273,41 +273,57 @@ const Meetings = () => {
       return a.name.localeCompare(b.name);
     });
 
+    // Automatic font size adjustment based on number of directors
+    const directorCount = sortedDirectors.length;
+    let tableFontSize = '13px';
+    let headerFontSize = '14px';
+
+    if (directorCount <= 10) {
+      tableFontSize = '13px';
+      headerFontSize = '14px';
+    } else if (directorCount <= 13) {
+      tableFontSize = '12px';
+      headerFontSize = '13px';
+    } else {
+      tableFontSize = '11px';
+      headerFontSize = '12px';
+    }
+
     const tableRows = sortedDirectors.map((d, i) => `
         <tr>
             <td style="border: 1px solid black; padding: 8px; text-align: center;">${toMarathiNumber(i + 1)}</td>
-            <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">${d.name}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold; white-space: nowrap;">${d.gender === 'Female' ? 'श्रीमती.' : 'श्री.'} ${d.name}</td>
             <td style="border: 1px solid black; padding: 8px; text-align: center;">${d.village}</td>
             <td style="border: 1px solid black; padding: 8px; text-align: center;">${getDisplayDesignation(d)}</td>
-            <td style="border: 1px solid black; padding: 8px; height: 40px;"></td>
+            <td style="border: 1px solid black; padding: 8px; height: 40px; text-align: center;"></td>
         </tr>
       `).join('');
 
     el.innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px;">
-            <h1 style="margin: 0; font-size: 20px; font-weight: bold;">${SOCIETY_FULL_NAME}</h1>
-            <p style="margin: 5px 0; font-size: 14px; font-weight: bold;">नोटीस मिळाल्याची स्वाक्षरी यादी (पावती रजिस्टर)</p>
+        <div style="text-align: center; border-bottom: 2px solid #333; margin-bottom: 8px; padding-bottom: 4px;">
+            <h1 style="margin: 0; font-size: 16px; font-weight: bold;">${SOCIETY_FULL_NAME}</h1>
+            <p style="margin: 2px 0; font-size: ${headerFontSize}; font-weight: bold;">नोटीस मिळाल्याची स्वाक्षरी यादी (पावती रजिस्टर)</p>
         </div>
         
-        <div style="margin-bottom: 20px; font-size: 14px; display: flex; justify-content: space-between; font-weight: bold; background: #f3f4f6; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-            <span>सभेचा प्रकार: ${noticeMeetingType}</span>
-            <span>तारीख: ${formatDateMarathi(noticeMeetingDate)}</span>
-            <span>वेळ: ${noticeMeetingTimePeriod} ${formatTimeMarathi(noticeMeetingTime)}</span>
-            <span>वार: ${noticeMeetingDay}</span>
+        <div style="margin-bottom: 8px; font-size: ${headerFontSize}; display: flex; justify-content: space-between; font-weight: bold; background: #f3f4f6; padding: 6px; border-radius: 5px; border: 1px solid #ccc;">
+            <span style="text-align: center; flex: 1;">सभेचा प्रकार: ${noticeMeetingType}</span>
+            <span style="text-align: center; flex: 1;">तारीख: ${formatDateMarathi(noticeMeetingDate)}</span>
+            <span style="text-align: center; flex: 1;">वेळ: ${noticeMeetingTimePeriod} ${formatTimeMarathi(noticeMeetingTime)}</span>
+            <span style="text-align: center; flex: 1;">वार: ${noticeMeetingDay}</span>
         </div>
 
-        <p style="margin-bottom: 20px; font-size: 14px; text-indent: 30px; line-height: 1.6; text-align: justify;">
+        <p style="margin-bottom: 8px; font-size: ${headerFontSize}; text-indent: 30px; line-height: 1.4; text-align: justify;">
             संस्थेच्या संचालक मंडळाची वरील दिवशी व वेळी आयोजित केलेल्या सभेची नोटीस आम्हाला खालीलप्रमाणे प्रत्यक्ष वेळेत व स्वरूपात मिळाली असून आम्ही सभेला उपस्थित राहण्याचे मान्य करीत आहोत.
         </p>
 
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: ${tableFontSize};">
             <thead>
                 <tr style="background-color: #eee;">
-                    <th style="border: 1px solid black; padding: 10px; width: 40px;">अ.क्र.</th>
+                    <th style="border: 1px solid black; padding: 10px; width: 40px; text-align: center;">अ.क्र.</th>
                     <th style="border: 1px solid black; padding: 10px; text-align: left;">संचालकाचे नाव</th>
-                    <th style="border: 1px solid black; padding: 10px; width: 100px;">गाव</th>
-                    <th style="border: 1px solid black; padding: 10px; width: 100px;">पद</th>
-                    <th style="border: 1px solid black; padding: 10px; width: 250px;">स्वाक्षरी</th>
+                    <th style="border: 1px solid black; padding: 10px; width: 100px; text-align: center;">गाव</th>
+                    <th style="border: 1px solid black; padding: 10px; width: 100px; text-align: center;">पद</th>
+                    <th style="border: 1px solid black; padding: 10px; width: 250px; text-align: center;">स्वाक्षरी</th>
                 </tr>
             </thead>
             <tbody>
