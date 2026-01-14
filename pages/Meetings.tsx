@@ -445,6 +445,23 @@ const Meetings = () => {
     }
   };
 
+  // Helper to get recipient designation for notice
+  const getRecipientDesignation = (director: Member) => {
+    const isChairman = director.id === chairmanId;
+    const isViceChairman = currentViceChairmanIds.includes(director.id);
+    const prefix = director.gender === 'Female' ? 'श्रीमती.' : 'श्री.';
+
+    if (isChairman) {
+      return `अध्यक्ष ${prefix} <b>${director.name} मु. ${director.village}</b>`;
+    } else if (isViceChairman) {
+      return `उपाध्यक्ष ${prefix} <b>${director.name} मु. ${director.village}</b>`;
+    } else {
+      // Regular member
+      const memberTitle = director.gender === 'Female' ? 'संचालिका/सदस्या' : 'संचालक/सदस्य';
+      return `${memberTitle} ${prefix} <b>${director.name} मु. ${director.village}</b>`;
+    }
+  };
+
   const renderSingleNoticeTemplate = (director: Member, forLandscape: boolean = false) => {
     const el = document.createElement('div');
     el.style.width = '140mm';
@@ -452,7 +469,7 @@ const Meetings = () => {
     el.style.border = '1px solid #ccc';
     el.style.padding = '10mm';
     el.style.fontFamily = "'DVOT SurekhMR', serif";
-    el.style.fontSize = '11px';
+    el.style.fontSize = '13px';
     el.style.color = 'black';
     el.style.lineHeight = '1.6';
     el.style.backgroundColor = 'white';
@@ -462,40 +479,40 @@ const Meetings = () => {
 
     el.innerHTML = `
       <div style="text-align: center; border-bottom: 2px solid #000; margin-bottom: 12px; padding-bottom: 8px;">
-        <h2 style="margin: 0; font-size: 14px; font-weight: bold; color: #000;">${SOCIETY_FULL_NAME}</h2>
-        <p style="margin: 2px 0; font-size: 10px; color: #000;">E-mail secretaryilada1425@gmail.com</p>
+        <h2 style="margin: 0; font-size: 16px; font-weight: bold; color: #000;">${SOCIETY_FULL_NAME}</h2>
+        <p style="margin: 2px 0; font-size: 11px; color: #000;">E-mail secretaryilada1425@gmail.com</p>
       </div>
-      <div style="display: flex; justify-content: space-between; font-weight: normal; margin-bottom: 12px; font-size: 12px;">
+      <div style="display: flex; justify-content: space-between; font-weight: normal; margin-bottom: 12px; font-size: 13px;">
         <span>जा.क्र. ${noticeOutwardNo}</span>
         <span>दिनांक ${formatDateMarathi(noticeDate)}</span>
       </div>
       <div style="text-align: center; margin-bottom: 12px;">
-        <h1 style="font-size: 20px; font-weight: bold; border-bottom: 2px solid black; display: inline-block; margin-bottom: 2px; padding-bottom: 2px;">सभेचे नोटीस</h1>
-        <div style="font-size: 12px; font-weight: normal; margin-top: 4px; font-style: italic;">साधारण/तातडीची/तहकुब सभा</div>
+        <h1 style="font-size: 22px; font-weight: bold; border-bottom: 2px solid black; display: inline-block; margin-bottom: 2px; padding-bottom: 2px;">सभेचे नोटीस</h1>
+        <div style="font-size: 13px; font-weight: normal; margin-top: 4px; font-style: italic;">साधारण/तातडीची/तहकुब सभा</div>
       </div>
-      <div style="margin-bottom: 12px; font-size: 11px;">
+      <div style="margin-bottom: 12px; font-size: 13px;">
         <p style="font-weight: normal; margin: 0;">प्रति,</p>
-        <p style="font-weight: normal; margin: 0; margin-left: 24px; font-size: 13px;">अध्यक्ष/सदस्य ${director.gender === 'Female' ? 'श्रीमती.' : 'श्री.'} <b>${director.name} मु. ${director.village}</b></p>
+        <p style="font-weight: normal; margin: 0; margin-left: 24px; font-size: 14px;">${getRecipientDesignation(director)}</p>
       </div>
-      <div style="text-align: justify; margin-bottom: 12px; text-indent: 40px; font-size: 13px; line-height: 1.8;">
+      <div style="text-align: justify; margin-bottom: 12px; text-indent: 40px; font-size: 14px; line-height: 1.8;">
         ${getProcessedNoticeBody().replace(/<strong>/g, '<u><b>').replace(/<\/strong>/g, '</b></u>')}
       </div>
       <div style="margin-bottom: 16px;">
-        <h3 style="text-align: center; font-weight: bold; text-decoration: underline; margin-bottom: 8px; font-size: 13px;">-: सभेचे विषय :-</h3>
-        <div style="margin-left: 4px; font-size: 11px; line-height: 1.8;">
-          ${agendaItems.map((item, idx) => `<div style="display: flex; gap: 8px; margin-bottom: 4px;"><span style="font-weight: normal;">${toMarathiNumber(idx + 1)}</span> <span style="font-weight: normal; font-size: 13px;">${item}</span></div>`).join('')}
+        <h3 style="text-align: center; font-weight: bold; text-decoration: underline; margin-bottom: 8px; font-size: 14px;">-: सभेचे विषय :-</h3>
+        <div style="margin-left: 4px; font-size: 13px; line-height: 1.8;">
+          ${agendaItems.map((item, idx) => `<div style="display: flex; gap: 8px; margin-bottom: 4px;"><span style="font-weight: normal;">${toMarathiNumber(idx + 1)}</span> <span style="font-weight: normal; font-size: 14px;">${item}</span></div>`).join('')}
         </div>
       </div>
       <div style="margin-top: 100px;">
         <div style="display: flex; justify-content: space-between; text-align: center; margin-bottom: 4px;">
           <div style="width: 45%;">
-            <p style="font-size: 12px; font-weight: normal; margin: 0;">सचिव</p>
+            <p style="font-size: 13px; font-weight: normal; margin: 0;">सचिव</p>
           </div>
           <div style="width: 45%;">
-            <p style="font-size: 12px; font-weight: normal; margin: 0;">अध्यक्ष</p>
+            <p style="font-size: 13px; font-weight: normal; margin: 0;">अध्यक्ष</p>
           </div>
         </div>
-        <p style="font-size: 14px; font-weight: bold; font-style: italic; text-align: center; margin: 0;">${SOCIETY_FULL_NAME}</p>
+        <p style="font-size: 15px; font-weight: bold; font-style: italic; text-align: center; margin: 0;">${SOCIETY_FULL_NAME}</p>
       </div>
     `;
     return el;
@@ -683,29 +700,27 @@ const Meetings = () => {
             <div className={`bg-slate-100 dark:bg-slate-950 p-4 rounded-xl border-2 border-dashed border-slate-300 flex justify-center overflow-x-auto min-h-[600px] ${!showPreview ? 'hidden lg:flex' : ''}`}>
               <div ref={noticePrintRef} className="bg-white text-black p-8 w-[140mm] shadow-2xl relative h-fit border border-slate-300" style={{ fontFamily: "'DVOT SurekhMR', serif" }}>
                 <div className="text-center border-b pb-2 mb-3 border-black">
-                  <h1 className="text-[13px] font-normal text-black">{SOCIETY_FULL_NAME}</h1>
-                  <div className="text-[9px] mt-0.5">E-mail secretaryilada1425@gmail.com</div>
+                  <h1 className="text-[16px] font-normal text-black">{SOCIETY_FULL_NAME}</h1>
+                  <div className="text-[11px] mt-0.5">E-mail secretaryilada1425@gmail.com</div>
                 </div>
-                <div className="flex justify-between font-normal mb-3 text-[11px]">
+                <div className="flex justify-between font-normal mb-3 text-[13px]">
                   <span>जा.क्र. {noticeOutwardNo}</span>
                   <span>दिनांक {formatDateMarathi(noticeDate)}</span>
                 </div>
                 <div className="text-center mb-3">
-                  <h2 className="text-[20px] font-bold inline-block" style={{ borderBottom: '2px solid black', paddingBottom: '2px' }}>सभेचे नोटीस</h2>
-                  <div className="text-[11px] font-normal mt-1 italic">साधारण/तातडीची/तहकुब सभा</div>
+                  <h2 className="text-[22px] font-bold inline-block" style={{ borderBottom: '2px solid black', paddingBottom: '2px' }}>सभेचे नोटीस</h2>
+                  <div className="text-[13px] font-normal mt-1 italic">साधारण/तातडीची/तहकुब सभा</div>
                 </div>
-                <div className="mb-3 text-[11px]">
+                <div className="mb-3 text-[13px]">
                   <p className="font-normal">प्रति,</p>
-                  <p className="font-normal ml-6">
-                    {selectedRecipient ? `अध्यक्ष/सदस्य ${selectedRecipient.gender === 'Female' ? 'श्रीमती.' : 'श्री.'} ${selectedRecipient.name} मु. ${selectedRecipient.village}` : 'अध्यक्ष/सचिव श्री. _____________________'}
-                  </p>
+                  <p className="font-normal ml-6 text-[14px]" dangerouslySetInnerHTML={{ __html: selectedRecipient ? getRecipientDesignation(selectedRecipient) : 'अध्यक्ष/सचिव श्री. _____________________' }} />
                 </div>
-                <div className="mb-3 text-[11px] leading-relaxed text-justify" style={{ textIndent: '40px' }}>
+                <div className="mb-3 text-[14px] leading-relaxed text-justify" style={{ textIndent: '40px' }}>
                   <p dangerouslySetInnerHTML={{ __html: getProcessedNoticeBody().replace(/<strong>/g, '<u><b>').replace(/<\/strong>/g, '</b></u>') }} />
                 </div>
                 <div className="mb-4">
-                  <h3 className="text-center font-bold text-[11px] mb-2" style={{ textDecoration: 'underline' }}>-: सभेचे विषय :-</h3>
-                  <div className="space-y-1 text-[11px] leading-relaxed">
+                  <h3 className="text-center font-bold text-[14px] mb-2" style={{ textDecoration: 'underline' }}>-: सभेचे विषय :-</h3>
+                  <div className="space-y-1 text-[13px] leading-relaxed">
                     {agendaItems.map((item, idx) => (
                       <div key={idx} className="flex gap-2 ml-1">
                         <span className="font-normal">{toMarathiNumber(idx + 1)})</span>
@@ -717,13 +732,13 @@ const Meetings = () => {
                 <div style={{ marginTop: '100px' }}>
                   <div className="flex justify-between text-center mb-1">
                     <div className="w-[45%]">
-                      <p className="text-[11px] font-normal">सचिव</p>
+                      <p className="text-[13px] font-normal">सचिव</p>
                     </div>
                     <div className="w-[45%]">
-                      <p className="text-[11px] font-normal">अध्यक्ष</p>
+                      <p className="text-[13px] font-normal">अध्यक्ष</p>
                     </div>
                   </div>
-                  <p className="text-[11px] font-normal italic text-center">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५</p>
+                  <p className="text-[15px] font-normal italic text-center">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५</p>
                 </div>
               </div>
             </div>
