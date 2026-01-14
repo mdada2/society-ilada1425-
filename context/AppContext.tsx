@@ -1,8 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment } from '../types';
-import { db } from '../services/firebase';
+import { db, auth, signInWithEmail, signUpWithEmail, signOutUser, sendPasswordResetEmail as sendResetEmail, setupRecaptcha, signInWithPhone, verifyOTP, clearRecaptcha } from '../services/firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged, User, ConfirmationResult, ApplicationVerifier } from 'firebase/auth';
 
 interface AppContextType {
   members: Member[];
@@ -16,11 +17,18 @@ interface AppContextType {
   settings: AppSettings;
   localSettings: LocalSettings;
   isAuthenticated: boolean;
+  currentUser: User | null;
   isCloudSynced: boolean;
   isSyncing: boolean;
   cloudPermissionError: boolean;
-  login: (pin: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  loginWithPhone: (phoneNumber: string, appVerifier: ApplicationVerifier) => Promise<ConfirmationResult>;
+  verifyPhoneOTP: (confirmationResult: ConfirmationResult, otp: string) => Promise<void>;
+  setupPhoneAuth: (containerId: string) => ApplicationVerifier;
+  clearPhoneAuth: () => void;
   addMember: (member: Member) => void;
   deleteMember: (id: string) => void;
   addTransaction: (transaction: Transaction, memberUpdates?: Partial<Member>) => void;
@@ -107,7 +115,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? { ...defaultLocalSettings, ...JSON.parse(saved) } : defaultLocalSettings;
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isCloudSynced, setIsCloudSynced] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [cloudPermissionError, setCloudPermissionError] = useState(false);
@@ -115,6 +124,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const isRestoring = useRef(false);
   const isInitialized = useRef(false);
   const lastCloudTimestamp = useRef<number>(0);
+
+  // Firebase Auth State Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -248,12 +266,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timeout);
   }, [members, transactions, meetings, paddyPurchases, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings]);
 
-  const login = (pin: string) => {
-    if (pin === settings.securityPin) { setIsAuthenticated(true); return true; }
-    return false;
+  const login = async (email: string, password: string): Promise<void> => {
+    await signInWithEmail(email, password);
   };
 
-  const logout = () => setIsAuthenticated(false);
+  const signup = async (email: string, password: string): Promise<void> => {
+    await signUpWithEmail(email, password);
+  };
+
+  const logout = async (): Promise<void> => {
+    await signOutUser();
+  };
+
+  const resetPassword = async (email: string): Promise<void> => {
+    await sendResetEmail(email);
+  };
+
+  // Phone Authentication Methods
+  const setupPhoneAuth = (containerId: string): ApplicationVerifier => {
+    return setupRecaptcha(containerId, false);
+  };
+
+  const loginWithPhone = async (phoneNumber: string, appVerifier: ApplicationVerifier): Promise<ConfirmationResult> => {
+    const confirmationResult = await signInWithPhone(phoneNumber, appVerifier);
+    return confirmationResult;
+  };
+
+  const verifyPhoneOTP = async (confirmationResult: ConfirmationResult, otp: string): Promise<void> => {
+    await verifyOTP(confirmationResult, otp);
+    // User will be automatically set by onAuthStateChanged listener
+  };
+
+  const clearPhoneAuth = (): void => {
+    clearRecaptcha();
+  };
   const addMember = (member: Member) => setMembers(prev => [...prev, member]);
   const updateMember = (updatedMember: Member) => setMembers(prev => prev.map(m => m.id === updatedMember.id ? updatedMember : m));
   const updateMembers = (updatedMembers: Member[]) => {
@@ -389,8 +435,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      members, transactions, meetings, paddyPurchases, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, localSettings, isAuthenticated, isCloudSynced, isSyncing, cloudPermissionError,
-      login, logout, addMember, deleteMember, addTransaction, deleteTransaction,
+      members, transactions, meetings, paddyPurchases, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+      login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,
       addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase,
       addDispatch, updateDispatch, deleteDispatch,
