@@ -1,9 +1,10 @@
+/* Import DVOT SurekhMR font for Marathi text */
+@import url('/fonts/fonts.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import DVOT SurekhMR font for Marathi text */
-@import url('/fonts/fonts.css');
 
 /* Safe Area handled by native fitsSystemWindows */
 /* 
