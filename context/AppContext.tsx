@@ -373,6 +373,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
           if (transaction.accountType === AccountType.LOAN) {
             updatedMember.loanPrincipal -= amt;
+            // Clear original loan date if loan is fully repaid
+            if (updatedMember.loanPrincipal <= 0) {
+              updatedMember.originalLoanDate = undefined;
+            }
             if (transaction.previousLoanCalculationDate) updatedMember.lastLoanCalculationDate = transaction.previousLoanCalculationDate;
           }
         }
