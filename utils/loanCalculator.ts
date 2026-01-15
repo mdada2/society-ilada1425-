@@ -20,73 +20,62 @@ export const calculateLoanInterest = (
   principal: number,
   lastDateStr: string, // YYYY-MM-DD (Loan taken date or last calc date)
   currentDateStr: string, // YYYY-MM-DD
-  fyStartStr: string = '2025-04-01', // Configurable FY Start
-  fyEndStr: string = '2026-03-31'    // Configurable FY End
+  fyStartStr: string = '2025-04-01', // Not used in new logic, kept for compatibility
+  fyEndStr: string = '2026-03-31'    // Not used in new logic, kept for compatibility
 ): { interest: number; breakdown: string[] } => {
-  
+
   if (principal <= 0) return { interest: 0, breakdown: ['No principal pending'] };
 
   const lastDate = parseDate(lastDateStr);
   const currentDate = parseDate(currentDateStr);
-  const policyChangeDate = parseDate('2023-04-01');
-  const fyStart = parseDate(fyStartStr);
-  const fyEnd = parseDate(fyEndStr);
 
   // Safety: If current date is before loan date
   if (getDifferenceInDays(lastDate, currentDate) <= 0) {
     return { interest: 0, breakdown: ['Date not advanced or invalid date range'] };
   }
 
-  // --- NEW RULE: Zero Interest for Current Financial Year Loans ---
-  // If the loan was taken (or last calculated) ON or AFTER the FY Start Date
-  // AND the loan date is BEFORE or ON the FY End Date
-  // AND the current calculation date is also BEFORE or ON the FY End Date
-  if (lastDate.getTime() >= fyStart.getTime() && lastDate.getTime() <= fyEnd.getTime()) {
-      if (currentDate.getTime() <= fyEnd.getTime()) {
-          const days = getDifferenceInDays(lastDate, currentDate);
-          return {
-              interest: 0,
-              breakdown: [`No Interest (Current FY Scheme): ${days} days (${lastDateStr} to ${currentDateStr})`]
-          };
-      }
-      // Note: If currentDate > fyEnd, we would technically calculate interest starting from fyEnd + 1 day.
-      // For now, the prompt focuses on "upto 31-3-2026", so this block handles the zero interest part.
-  }
+  // NEW LOGIC: First Financial Year gets 6%, Subsequent years get 12%
+  // Determine the end of first FY based on loan date
+  const loanYear = lastDate.getFullYear();
+  const loanMonth = lastDate.getMonth(); // 0-indexed (0 = Jan, 3 = Apr)
+
+  // If loan is in Jan-Mar (months 0-2), first FY ends on 31-Mar of same year
+  // If loan is in Apr-Dec (months 3-11), first FY ends on 31-Mar of next year
+  const firstFYEnd = loanMonth < 3
+    ? parseDate(`${loanYear}-03-31`)      // End is same year March 31
+    : parseDate(`${loanYear + 1}-03-31`); // End is next year March 31
 
   let interest = 0;
   const breakdown: string[] = [];
-  
-  // LOGIC:
-  // Period 1: Up to 31-03-2023 (6%)
-  // Period 2: From 01-04-2023 (12%)
 
-  // --- Period 1 Calculation ---
-  if (lastDate.getTime() < policyChangeDate.getTime()) {
-      // End of Period 1 is either Policy Change Date OR Current Date (whichever is earlier)
-      let endP1 = currentDate.getTime() < policyChangeDate.getTime() ? currentDate : policyChangeDate;
-      
-      const daysP1 = getDifferenceInDays(lastDate, endP1);
-      
-      if (daysP1 > 0) {
-          const intP1 = Math.round((principal * daysP1 * 6) / 36500);
-          interest += intP1;
-          breakdown.push(`P1 (6%): ${daysP1} days (${lastDateStr} to ${endP1.toISOString().split('T')[0]}) = ₹${intP1}`);
-      }
-  }
+  // Check if we're still in the first FY or have crossed into subsequent FYs
+  if (currentDate.getTime() <= firstFYEnd.getTime()) {
+    // Still in first FY - apply 6% for entire period
+    const days = getDifferenceInDays(lastDate, currentDate);
+    const int = Math.round((principal * days * 6) / 36500);
+    interest += int;
+    breakdown.push(`First FY (6%): ${days} days (${lastDateStr} to ${currentDateStr}) = ₹${int}`);
+  } else {
+    // Crossed into subsequent FYs - split into two periods
 
-  // --- Period 2 Calculation ---
-  // Start of Period 2 is either Policy Change Date OR Last Date (whichever is later)
-  let startP2 = lastDate.getTime() > policyChangeDate.getTime() ? lastDate : policyChangeDate;
-  
-  if (currentDate.getTime() > startP2.getTime()) {
-      const daysP2 = getDifferenceInDays(startP2, currentDate);
-      
-      if (daysP2 > 0) {
-          const intP2 = Math.round((principal * daysP2 * 12) / 36500);
-          interest += intP2;
-          const startStr = startP2.toISOString().split('T')[0];
-          breakdown.push(`P2 (12%): ${daysP2} days (${startStr} to ${currentDateStr}) = ₹${intP2}`);
-      }
+    // Period 1: Loan date to end of first FY @ 6%
+    const daysP1 = getDifferenceInDays(lastDate, firstFYEnd);
+    if (daysP1 > 0) {
+      const intP1 = Math.round((principal * daysP1 * 6) / 36500);
+      interest += intP1;
+      breakdown.push(`First FY (6%): ${daysP1} days (${lastDateStr} to ${firstFYEnd.toISOString().split('T')[0]}) = ₹${intP1}`);
+    }
+
+    // Period 2: Start of next FY to current date @ 12%
+    const nextFYStart = new Date(firstFYEnd);
+    nextFYStart.setDate(nextFYStart.getDate() + 1); // Day after first FY end
+
+    const daysP2 = getDifferenceInDays(nextFYStart, currentDate);
+    if (daysP2 > 0) {
+      const intP2 = Math.round((principal * daysP2 * 12) / 36500);
+      interest += intP2;
+      breakdown.push(`Subsequent FYs (12%): ${daysP2} days (${nextFYStart.toISOString().split('T')[0]} to ${currentDateStr}) = ₹${intP2}`);
+    }
   }
 
   return { interest, breakdown };

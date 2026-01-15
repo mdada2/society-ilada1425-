@@ -209,7 +209,8 @@ const Transactions = () => {
                 const memberUpdates: any = {};
 
                 if (type === TransactionType.DEBIT && accountType === AccountType.LOAN) {
-                    memberUpdates.loanPrincipal = selectedMember.loanPrincipal + amount;
+                    // Don't update loanPrincipal here - AppContext.tsx handles it in addTransaction (line 334)
+                    // memberUpdates.loanPrincipal = selectedMember.loanPrincipal + amount; // REMOVED: This was causing double addition
                     memberUpdates.lastLoanCalculationDate = date;
                     transaction.details = `${details} (Loan Disbursed)`.trim();
                 }
