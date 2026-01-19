@@ -115,6 +115,7 @@ export interface PaddyPurchaseRecord {
 export interface DispatchRecord {
   id: string;
   date: string;
+  season: string;        // Season code (e.g., "25K", "26R")
   millName: string;
   doNumber?: string;
   tpNumber?: string;

@@ -1,13 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { format } from 'date-fns';
-import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck } from 'lucide-react';
+import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck, Calendar, Filter } from 'lucide-react';
 import { DispatchRecord } from '../types';
 import { downloadBlob } from '../utils/downloadUtils';
 
 const Dispatch = () => {
-    const { dispatches, addDispatch, updateDispatch, deleteDispatch, settings } = useApp();
+    const { dispatches, addDispatch, updateDispatch, deleteDispatch, paddySeasons, getActiveSeason, settings } = useApp();
+
+    // Season state
+    const [seasonFilter, setSeasonFilter] = useState<string>('all');
+    const activeSeason = getActiveSeason();
+    const currentSeasonCode = activeSeason?.code || '';
 
     // Delete Security State
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -59,6 +64,7 @@ const Dispatch = () => {
         const record: DispatchRecord = {
             id: editingId || Date.now().toString(),
             date,
+            season: currentSeasonCode,
             millName,
             doNumber,
             tpNumber,
@@ -137,11 +143,12 @@ const Dispatch = () => {
     };
 
     const exportToCSV = () => {
-        const headers = ['Date', 'Mill Name', 'D.O. No', 'T.P. No', 'Truck No', 'Storage', 'Bags', 'Weight', 'New Bags', 'Old Bags', 'Used Once'];
+        const headers = ['Date', 'Season', 'Mill Name', 'D.O. No', 'T.P. No', 'Truck No', 'Storage', 'Bags', 'Weight', 'New Bags', 'Old Bags', 'Used Once'];
         const csvContent = [
             headers.join(','),
-            ...dispatches.map(d => [
+            ...filteredDispatches.map(d => [
                 d.date,
+                `"${d.season || ''}"`,
                 `"${d.millName}"`,
                 `"${d.doNumber || ''}"`,
                 `"${d.tpNumber || ''}"`,
@@ -159,11 +166,33 @@ const Dispatch = () => {
         downloadBlob(blob, `dispatches_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     };
 
+    // Filter dispatches by season
+    const filteredDispatches = useMemo(() => {
+        if (seasonFilter === 'all') return dispatches;
+        return dispatches.filter(d => d.season === seasonFilter);
+    }, [seasonFilter, dispatches]);
+
     return (
         <div className="p-4 md:p-6 pb-24">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                 <Truck className="text-blue-600" /> Dispatch (मिलला माल पाठवणे)
             </h2>
+
+            {/* SEASON INDICATOR */}
+            {activeSeason && (
+                <div className="mb-4 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2">
+                        <Calendar className="text-emerald-600 dark:text-emerald-400" size={18} />
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">सध्याचा हंगाम:</span>
+                        <span className="px-2 py-0.5 bg-emerald-600 text-white rounded text-sm font-bold">
+                            {activeSeason.code}
+                        </span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400">
+                            {activeSeason.name}
+                        </span>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-8">
                 <div className="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-700">
@@ -266,26 +295,52 @@ const Dispatch = () => {
             <div className="space-y-4">
                 <div className="flex justify-between items-center border-b dark:border-slate-700 pb-2">
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white">Recent Dispatches</h3>
-                    {dispatches.length > 0 && (
-                        <button onClick={exportToCSV} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition font-bold shadow-sm">
-                            <Download size={16} /> Export to CSV
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {paddySeasons.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <Filter size={16} className="text-slate-500" />
+                                <select
+                                    value={seasonFilter}
+                                    onChange={(e) => setSeasonFilter(e.target.value)}
+                                    className="px-3 py-1 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="all">सर्व हंगाम (All Seasons)</option>
+                                    {paddySeasons.map(s => (
+                                        <option key={s.id} value={s.code}>
+                                            {s.code} - {s.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {filteredDispatches.length > 0 && (
+                            <button onClick={exportToCSV} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition font-bold shadow-sm">
+                                <Download size={16} /> Export to CSV
+                            </button>
+                        )}
+                    </div>
                 </div>
-                {dispatches.length === 0 ? (
+                {filteredDispatches.length === 0 ? (
                     <div className="bg-white dark:bg-slate-800 p-8 rounded-xl text-center text-slate-500 border border-dashed dark:border-slate-700">
                         No dispatch records found.
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4">
-                        {[...dispatches].sort((a, b) => b.timestamp - a.timestamp).map(d => (
+                        {[...filteredDispatches].sort((a, b) => b.timestamp - a.timestamp).map(d => (
                             <div key={d.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex justify-between items-center group">
                                 <div className="flex gap-4 items-center">
                                     <div className="bg-blue-100 dark:bg-blue-900/40 p-3 rounded-full text-blue-600 dark:text-blue-400">
                                         <Truck size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-slate-800 dark:text-white">{d.millName} <span className="text-sm font-normal text-slate-400">({d.truckNumber})</span></h4>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-bold text-slate-800 dark:text-white">{d.millName} <span className="text-sm font-normal text-slate-400">({d.truckNumber})</span></h4>
+                                            {d.season && (
+                                                <span className="px-2 py-0.5 bg-emerald-600 text-white rounded text-xs font-bold">
+                                                    {d.season}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 mt-1 uppercase font-medium">
                                             <span className="text-blue-500 font-bold">{format(new Date(d.date), 'dd/MM/yyyy')}</span>
                                             {d.doNumber && <span>DO: {d.doNumber}</span>}
