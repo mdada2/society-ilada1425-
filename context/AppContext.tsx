@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment } from '../types';
+import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, PaddySeason, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment } from '../types';
 import { db, auth, signInWithEmail, signUpWithEmail, signOutUser, sendPasswordResetEmail as sendResetEmail, setupRecaptcha, signInWithPhone, verifyOTP, clearRecaptcha } from '../services/firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged, User, ConfirmationResult, ApplicationVerifier } from 'firebase/auth';
@@ -10,6 +10,7 @@ interface AppContextType {
   transactions: Transaction[];
   meetings: Meeting[];
   paddyPurchases: PaddyPurchaseRecord[];
+  paddySeasons: PaddySeason[];
   dispatches: DispatchRecord[];
   inventoryAdjustments: InventoryAdjustment[];
   societyBanks: SocietyBank[];
@@ -39,6 +40,13 @@ interface AppContextType {
   addPaddyPurchase: (record: PaddyPurchaseRecord) => void;
   updatePaddyPurchase: (record: PaddyPurchaseRecord) => void;
   deletePaddyPurchase: (id: string) => void;
+  addPaddySeason: (season: PaddySeason) => void;
+  updatePaddySeason: (season: PaddySeason) => void;
+  deletePaddySeason: (id: string) => void;
+  setActiveSeason: (seasonCode: string) => void;
+  getActiveSeason: () => PaddySeason | undefined;
+  getPurchasesBySeason: (seasonCode: string) => PaddyPurchaseRecord[];
+  getSuggestedSeason: () => { code: string; name: string; type: 'kharif' | 'rabi'; startDate: string; endDate: string } | null;
   addDispatch: (record: DispatchRecord) => void;
   updateDispatch: (record: DispatchRecord) => void;
   deleteDispatch: (id: string) => void;
@@ -101,6 +109,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [paddyPurchases, setPaddyPurchases] = useState<PaddyPurchaseRecord[]>([]);
+  const [paddySeasons, setPaddySeasons] = useState<PaddySeason[]>([]);
   const [dispatches, setDispatches] = useState<DispatchRecord[]>([]);
   const [inventoryAdjustments, setInventoryAdjustments] = useState<InventoryAdjustment[]>([]);
   const [societyBanks, setSocietyBanks] = useState<SocietyBank[]>([]);
@@ -164,6 +173,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (data.transactions) setTransactions(data.transactions);
             if (data.meetings) setMeetings(data.meetings);
             if (data.paddyPurchases) setPaddyPurchases(data.paddyPurchases);
+            if (data.paddySeasons) setPaddySeasons(data.paddySeasons);
             if (data.dispatches) setDispatches(data.dispatches);
             if (data.inventoryAdjustments) setInventoryAdjustments(data.inventoryAdjustments);
             if (data.societyBanks) setSocietyBanks(data.societyBanks);
@@ -212,7 +222,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const timestamp = Date.now();
       const sanitizedData = JSON.parse(JSON.stringify({
-        members, transactions, meetings, paddyPurchases, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, lastUpdated: timestamp
+        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, lastUpdated: timestamp
       }));
       await setDoc(doc(db, "societies", "ilada_main"), sanitizedData);
       lastCloudTimestamp.current = timestamp;
@@ -237,6 +247,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setTransactions(data.transactions || []);
         setMeetings(data.meetings || []);
         setPaddyPurchases(data.paddyPurchases || []);
+        setPaddySeasons(data.paddySeasons || []);
         setDispatches(data.dispatches || []);
         setInventoryAdjustments(data.inventoryAdjustments || []);
         setSocietyBanks(data.societyBanks || []);
@@ -256,6 +267,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('transactions', JSON.stringify(transactions));
     localStorage.setItem('meetings', JSON.stringify(meetings));
     localStorage.setItem('paddyPurchases', JSON.stringify(paddyPurchases));
+    localStorage.setItem('paddySeasons', JSON.stringify(paddySeasons));
     localStorage.setItem('dispatches', JSON.stringify(dispatches));
     localStorage.setItem('inventoryAdjustments', JSON.stringify(inventoryAdjustments));
     localStorage.setItem('societyBanks', JSON.stringify(societyBanks));
@@ -264,7 +276,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsCloudSynced(false);
     const timeout = setTimeout(syncToCloud, 3000);
     return () => clearTimeout(timeout);
-  }, [members, transactions, meetings, paddyPurchases, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings]);
+  }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings]);
 
   const login = async (email: string, password: string): Promise<void> => {
     await signInWithEmail(email, password);
@@ -406,6 +418,74 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updatePaddyPurchase = (updatedRecord: PaddyPurchaseRecord) => setPaddyPurchases(prev => prev.map(p => p.id === updatedRecord.id ? updatedRecord : p));
   const deletePaddyPurchase = (id: string) => setPaddyPurchases(prev => prev.filter(p => p.id !== id));
 
+  // Season Management
+  const addPaddySeason = (season: PaddySeason) => {
+    // If this season is active, deactivate all others
+    if (season.isActive) {
+      setPaddySeasons(prev => prev.map(s => ({ ...s, isActive: false })));
+      updateSettings({ paddySettings: { ...settings.paddySettings, godownCapacity: settings.paddySettings?.godownCapacity || 10000, shedCapacity: settings.paddySettings?.shedCapacity || 5000, currentSeason: season.code } });
+    }
+    setPaddySeasons(prev => [season, ...prev]);
+  };
+
+  const updatePaddySeason = (updatedSeason: PaddySeason) => {
+    if (updatedSeason.isActive) {
+      setPaddySeasons(prev => prev.map(s => s.id === updatedSeason.id ? updatedSeason : { ...s, isActive: false }));
+      updateSettings({ paddySettings: { ...settings.paddySettings, godownCapacity: settings.paddySettings?.godownCapacity || 10000, shedCapacity: settings.paddySettings?.shedCapacity || 5000, currentSeason: updatedSeason.code } });
+    } else {
+      setPaddySeasons(prev => prev.map(s => s.id === updatedSeason.id ? updatedSeason : s));
+    }
+  };
+
+  const deletePaddySeason = (id: string) => setPaddySeasons(prev => prev.filter(s => s.id !== id));
+
+  const setActiveSeason = (seasonCode: string) => {
+    setPaddySeasons(prev => prev.map(s => ({ ...s, isActive: s.code === seasonCode })));
+    updateSettings({ paddySettings: { ...settings.paddySettings, godownCapacity: settings.paddySettings?.godownCapacity || 10000, shedCapacity: settings.paddySettings?.shedCapacity || 5000, currentSeason: seasonCode } });
+  };
+
+  const getActiveSeason = (): PaddySeason | undefined => {
+    return paddySeasons.find(s => s.isActive);
+  };
+
+  const getPurchasesBySeason = (seasonCode: string): PaddyPurchaseRecord[] => {
+    return paddyPurchases.filter(p => p.season === seasonCode);
+  };
+
+  // Auto-suggest season based on current date
+  const getSuggestedSeason = (): { code: string; name: string; type: 'kharif' | 'rabi'; startDate: string; endDate: string } | null => {
+    const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+    const year = now.getFullYear();
+    const yearShort = year.toString().slice(-2);
+
+    // Kharif: Nov-Mar (11, 12, 1, 2, 3)
+    if (month >= 11 || month <= 3) {
+      const startYear = month >= 11 ? year : year - 1;
+      const endYear = month >= 11 ? year + 1 : year;
+      const code = `${startYear.toString().slice(-2)}K`;
+      return {
+        code,
+        name: `खरीप ${startYear}-${endYear.toString().slice(-2)}`,
+        type: 'kharif',
+        startDate: `${startYear}-11-01`,
+        endDate: `${endYear}-03-31`
+      };
+    }
+    // Rabi: May-Jul (5, 6, 7)
+    else if (month >= 5 && month <= 7) {
+      const code = `${yearShort}R`;
+      return {
+        code,
+        name: `रब्बी ${year}`,
+        type: 'rabi',
+        startDate: `${year}-05-01`,
+        endDate: `${year}-07-31`
+      };
+    }
+    return null;
+  };
+
   const addDispatch = (record: DispatchRecord) => setDispatches(prev => [record, ...prev]);
   const updateDispatch = (updatedRecord: DispatchRecord) => setDispatches(prev => prev.map(p => p.id === updatedRecord.id ? updatedRecord : p));
   const deleteDispatch = (id: string) => setDispatches(prev => prev.filter(p => p.id !== id));
@@ -427,6 +507,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setMembers(data.members || []);
     setTransactions(data.transactions || []);
     setMeetings(data.meetings || []);
+    setPaddyPurchases(data.paddyPurchases || []);
+    setPaddySeasons(data.paddySeasons || []);
     setDispatches(data.dispatches || []);
     setInventoryAdjustments(data.inventoryAdjustments || []);
     setSocietyBanks(data.societyBanks || []);
@@ -439,10 +521,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      members, transactions, meetings, paddyPurchases, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+      members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
       login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,
       addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase,
+      addPaddySeason, updatePaddySeason, deletePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason,
       addDispatch, updateDispatch, deleteDispatch,
       addInventoryAdjustment, updateInventoryAdjustment, deleteInventoryAdjustment,
       addSocietyBank, updateSocietyBank, deleteSocietyBank,

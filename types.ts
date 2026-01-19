@@ -67,9 +67,21 @@ export interface Meeting {
   timestamp: number;
 }
 
+export interface PaddySeason {
+  id: string;
+  code: string;          // e.g., "25K", "26R"
+  name: string;          // e.g., "खरीप 2025-26", "रब्बी 2026"
+  type: 'kharif' | 'rabi';
+  startDate: string;     // ISO date
+  endDate: string;       // ISO date
+  isActive: boolean;     // Only one season can be active
+  createdAt: number;
+}
+
 export interface PaddyPurchaseRecord {
   id: string;
   date: string;
+  season: string;        // Season code (e.g., "25K", "26R")
   centerName: string;
   tribalMembers: number;
   nonTribalMembers: number;
@@ -203,6 +215,7 @@ export interface AppSettings {
   paddySettings?: {
     godownCapacity: number;
     shedCapacity: number;
+    currentSeason?: string;  // Active season code
   };
   geminiApiKey?: string;
   openaiApiKey?: string;
