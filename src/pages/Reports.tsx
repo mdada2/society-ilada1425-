@@ -75,7 +75,7 @@ const Reports = () => {
                 reportDate,
                 settings.financialYearStart,
                 settings.financialYearEnd,
-                true // Hide interest during first FY
+                false // Show interest in reports (NPA/defaulters need to see accumulated interest)
             );
 
             const totalInterest = m.loanInterestDue + accrued;

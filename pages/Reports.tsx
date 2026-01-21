@@ -21,6 +21,7 @@ import { downloadBlob, exportTSV } from '../utils/downloadUtils';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
+import { calculateLoanInterest } from '../utils/loanCalculator';
 
 // --- Real Data Integration helpers ---
 // Mock schemes data (as schemes are not yet in AppContext)
@@ -94,7 +95,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
 ];
 
 const Reports = () => {
-  const { members, transactions, deleteTransaction } = useApp();
+  const { members, transactions, deleteTransaction, settings } = useApp();
   const navigate = useNavigate();
   const { categoryId, subTab } = useParams<{ categoryId: CategoryId; subTab: string }>();
 
@@ -124,12 +125,30 @@ const Reports = () => {
     account: t.accountType === 'BankTransfer' ? 'Bank' : t.accountType
   })).sort((a, b) => b.timestamp - a.timestamp);
 
-  // Loans
+  // Loans - Calculate LIVE interest for reports
   const loanData = members
     .filter(m => m.loanPrincipal > 0 || m.originalLoanDate)
     .map(m => {
       const loanDate = m.originalLoanDate || 'N/A';
-      const total = Number(m.loanPrincipal) + Number(m.loanInterestDue);
+
+      // Calculate current accrued interest (NOT hiding for reports)
+      let accruedInterest = 0;
+      if (m.loanPrincipal > 0 && m.lastLoanCalculationDate) {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const result = calculateLoanInterest(
+          m.loanPrincipal,
+          m.lastLoanCalculationDate,
+          today,
+          settings.financialYearStart,
+          settings.financialYearEnd,
+          false // Show interest in reports - don't hide for first FY
+        );
+        accruedInterest = result.interest;
+      }
+
+      const totalInterest = Number(m.loanInterestDue) + accruedInterest;
+      const total = Number(m.loanPrincipal) + totalInterest;
+
       return {
         id: m.id,
         memberNo: m.memberNo,
@@ -137,7 +156,7 @@ const Reports = () => {
         village: m.village,
         loanDate: loanDate,
         principal: Number(m.loanPrincipal),
-        interest: Number(m.loanInterestDue),
+        interest: totalInterest,
         total: total,
         loanType: m.loanType || 'N/A',
         overdueDays: loanDate !== 'N/A' ? differenceInDays(new Date(), parseISO(loanDate)) : 0
