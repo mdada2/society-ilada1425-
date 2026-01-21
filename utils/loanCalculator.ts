@@ -18,11 +18,12 @@ const getDifferenceInDays = (d1: Date, d2: Date): number => {
 
 export const calculateLoanInterest = (
   principal: number,
-  lastDateStr: string, // YYYY-MM-DD (Loan taken date or last calc date)
+  lastDateStr: string, // YYYY-MM-DD (Last calculation date - could be after payment)
   currentDateStr: string, // YYYY-MM-DD
   fyStartStr: string = '2025-04-01', // Not used in new logic, kept for compatibility
   fyEndStr: string = '2026-03-31',    // Not used in new logic, kept for compatibility
-  hideFirstYearInterest: boolean = true // Hide interest display during first FY
+  hideFirstYearInterest: boolean = true, // Hide interest display during first FY
+  originalLoanDateStr?: string // YYYY-MM-DD (Original loan date - used to determine first FY)
 ): { interest: number; breakdown: string[] } => {
 
   if (principal <= 0) return { interest: 0, breakdown: ['No principal pending'] };
@@ -35,10 +36,14 @@ export const calculateLoanInterest = (
     return { interest: 0, breakdown: ['Date not advanced or invalid date range'] };
   }
 
+  // Determine the ORIGINAL loan date for first FY calculation
+  // If not provided, use lastDateStr (backward compatibility)
+  const originalLoanDate = originalLoanDateStr ? parseDate(originalLoanDateStr) : lastDate;
+
   // NEW LOGIC: First Financial Year gets 6%, Subsequent years get 12%
-  // Determine the end of first FY based on loan date
-  const loanYear = lastDate.getFullYear();
-  const loanMonth = lastDate.getMonth(); // 0-indexed (0 = Jan, 3 = Apr)
+  // Determine the end of first FY based on ORIGINAL loan date
+  const loanYear = originalLoanDate.getFullYear();
+  const loanMonth = originalLoanDate.getMonth(); // 0-indexed (0 = Jan, 3 = Apr)
 
   // If loan is in Jan-Mar (months 0-2), first FY ends on 31-Mar of same year
   // If loan is in Apr-Dec (months 3-11), first FY ends on 31-Mar of next year
@@ -57,8 +62,9 @@ export const calculateLoanInterest = (
     interest += int;
     breakdown.push(`First FY (6%): ${days} days (${lastDateStr} to ${currentDateStr}) = ₹${int}`);
 
-    // Hide interest during first FY if requested
-    if (hideFirstYearInterest) {
+    // Hide interest during first FY ONLY if we're calculating from WITHIN the first FY
+    // If lastDate is AFTER first FY end, don't hide (payment was made after first FY)
+    if (hideFirstYearInterest && lastDate.getTime() <= firstFYEnd.getTime()) {
       return {
         interest: 0,
         breakdown: [`व्याज पहिल्या आर्थिक वर्षाच्या शेवटी (${firstFYEnd.toISOString().split('T')[0]}) दाखवले जाईल`]

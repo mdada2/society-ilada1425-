@@ -28,7 +28,8 @@ export const askSocietyAI = async (
         new Date().toISOString().split('T')[0],
         undefined,
         undefined,
-        true // Hide interest during first FY
+        true, // Hide interest during first FY
+        m.originalLoanDate // Pass original loan date
       );
       accruedInterest = result.interest;
     }

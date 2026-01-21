@@ -29,7 +29,8 @@ const LoanCalculatorPage = () => {
             endDate,
             settings.financialYearStart,
             settings.financialYearEnd,
-            false // Show interest calculations for user reference
+            false, // Show interest calculations for user reference
+            startDate // Use start date as original loan date for calculator
         );
         setResult(res);
     };

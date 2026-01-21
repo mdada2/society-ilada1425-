@@ -141,7 +141,8 @@ const Reports = () => {
           today,
           settings.financialYearStart,
           settings.financialYearEnd,
-          false // Show interest in reports - don't hide for first FY
+          false, // Show interest in reports - don't hide for first FY
+          m.originalLoanDate // Pass original loan date
         );
         accruedInterest = result.interest;
       }

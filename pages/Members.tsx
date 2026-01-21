@@ -376,7 +376,7 @@ const Members = () => {
       let totalInterest = m.loanInterestDue;
       if (m.loanPrincipal > 0) {
         const lastDate = m.lastLoanCalculationDate || '2022-04-01';
-        const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true);
+        const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true, m.originalLoanDate);
         totalInterest += accrued;
       }
       return [
@@ -411,7 +411,7 @@ const Members = () => {
       let totalInterest = m.loanInterestDue;
       if (m.loanPrincipal > 0) {
         const lastDate = m.lastLoanCalculationDate || '2022-04-01';
-        const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true);
+        const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true, m.originalLoanDate);
         totalInterest += accrued;
       }
       return [

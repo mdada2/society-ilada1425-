@@ -66,7 +66,8 @@ const MemberDetails = () => {
                 today,
                 settings.financialYearStart,
                 settings.financialYearEnd,
-                true // Hide interest during first FY
+                true, // Hide interest during first FY
+                member.originalLoanDate // Pass original loan date for first FY calculation
             );
 
             setAccruedInterest(interest);
@@ -89,6 +90,19 @@ const MemberDetails = () => {
     const totalLoanOutstanding = useMemo(() => {
         return Math.max(0, (member ? (member.loanPrincipal || 0) : 0) + totalInterestToShow);
     }, [member, totalInterestToShow]);
+
+    const handleResetInterest = () => {
+        if (!member || !window.confirm('व्याज ₹0 करायचे आहे का? (Reset Loan Interest Due to ₹0?)')) return;
+
+        const updatedMember = { ...member, loanInterestDue: 0 };
+        updateMember(updatedMember);
+        alert('✅ व्याज ₹0 केले! Page refresh होत आहे...');
+
+        // Wait for React state update and localStorage save before reload
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    };
 
     const handleGenerateScore = async () => {
         if (!member) return;
@@ -483,8 +497,7 @@ const MemberDetails = () => {
                     </div>
 
                     {/* Interest Card */}
-                    <div className="group p-3 md:p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800 print:border-black relative flex flex-col min-w-0 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer active:scale-95"
-                        onClick={() => accruedInterest > 0 && setShowBreakdown(!showBreakdown)}
+                    <div className="group p-3 md:p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800 print:border-black relative flex flex-col min-w-0 transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
                     >
                         <div>
                             <p className="text-[10px] md:text-xs text-orange-600 dark:text-orange-400 uppercase font-bold flex items-center gap-1 truncate">
@@ -499,14 +512,24 @@ const MemberDetails = () => {
                             </p>
                         )}
 
-                        {accruedInterest > 0 && !isEditing && (
-                            <div className="mt-auto pt-2 no-print">
+                        {!isEditing && (
+                            <div className="mt-auto pt-2 no-print flex gap-2 flex-wrap">
+                                {accruedInterest > 0 && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowBreakdown(!showBreakdown); }}
+                                        className="text-[10px] md:text-xs flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white whitespace-nowrap"
+                                    >
+                                        {showBreakdown ? 'Hide Details' : 'Show Details'}
+                                        {showBreakdown ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                    </button>
+                                )}
+                                {/* Always show Reset button for testing */}
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); setShowBreakdown(!showBreakdown); }}
-                                    className="text-[10px] md:text-xs flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white whitespace-nowrap"
+                                    onClick={() => { alert('Button clicked!'); handleResetInterest(); }}
+                                    className="text-[10px] md:text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition whitespace-nowrap"
+                                    title="Reset old unpaid interest to ₹0"
                                 >
-                                    {showBreakdown ? 'Hide Details' : 'Show Details'}
-                                    {showBreakdown ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                    Reset Interest
                                 </button>
                             </div>
                         )}
