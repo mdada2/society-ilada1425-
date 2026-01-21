@@ -74,7 +74,8 @@ const Reports = () => {
                 lastCalcDate,
                 reportDate,
                 settings.financialYearStart,
-                settings.financialYearEnd
+                settings.financialYearEnd,
+                true // Hide interest during first FY
             );
 
             const totalInterest = m.loanInterestDue + accrued;

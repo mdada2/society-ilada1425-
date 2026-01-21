@@ -25,7 +25,10 @@ export const askSocietyAI = async (
       const result = calculateLoanInterest(
         m.loanPrincipal,
         m.lastLoanCalculationDate,
-        new Date().toISOString().split('T')[0]
+        new Date().toISOString().split('T')[0],
+        undefined,
+        undefined,
+        true // Hide interest during first FY
       );
       accruedInterest = result.interest;
     }

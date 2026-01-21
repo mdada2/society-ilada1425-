@@ -21,7 +21,8 @@ export const calculateLoanInterest = (
   lastDateStr: string, // YYYY-MM-DD (Loan taken date or last calc date)
   currentDateStr: string, // YYYY-MM-DD
   fyStartStr: string = '2025-04-01', // Not used in new logic, kept for compatibility
-  fyEndStr: string = '2026-03-31'    // Not used in new logic, kept for compatibility
+  fyEndStr: string = '2026-03-31',    // Not used in new logic, kept for compatibility
+  hideFirstYearInterest: boolean = true // Hide interest display during first FY
 ): { interest: number; breakdown: string[] } => {
 
   if (principal <= 0) return { interest: 0, breakdown: ['No principal pending'] };
@@ -55,6 +56,14 @@ export const calculateLoanInterest = (
     const int = Math.round((principal * days * 6) / 36500);
     interest += int;
     breakdown.push(`First FY (6%): ${days} days (${lastDateStr} to ${currentDateStr}) = ₹${int}`);
+
+    // Hide interest during first FY if requested
+    if (hideFirstYearInterest) {
+      return {
+        interest: 0,
+        breakdown: [`व्याज पहिल्या आर्थिक वर्षाच्या शेवटी (${firstFYEnd.toISOString().split('T')[0]}) दाखवले जाईल`]
+      };
+    }
   } else {
     // Crossed into subsequent FYs - split into two periods
 

@@ -65,7 +65,8 @@ const MemberDetails = () => {
                 lastDate,
                 today,
                 settings.financialYearStart,
-                settings.financialYearEnd
+                settings.financialYearEnd,
+                true // Hide interest during first FY
             );
 
             setAccruedInterest(interest);
