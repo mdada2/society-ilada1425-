@@ -85,8 +85,15 @@ export const calculateLoanInterest = (
     const nextFYStart = new Date(firstFYEnd);
     nextFYStart.setDate(firstFYEnd.getDate() + 1); // Day after first FY end (1st April)
 
-    // If lastDate is AFTER first FY end, start from lastDate instead of nextFYStart
-    const period2Start = lastDate.getTime() > firstFYEnd.getTime() ? lastDate : nextFYStart;
+    // If lastDate is AFTER first FY end, start from DAY AFTER lastDate
+    // (because interest starts accruing from the day after payment)
+    let period2Start: Date;
+    if (lastDate.getTime() > firstFYEnd.getTime()) {
+      period2Start = new Date(lastDate);
+      period2Start.setDate(lastDate.getDate() + 1); // Start from day AFTER payment
+    } else {
+      period2Start = nextFYStart;
+    }
 
     const daysP2 = getDifferenceInDays(period2Start, currentDate) + 1; // +1 to include current date
     if (daysP2 > 0) {
