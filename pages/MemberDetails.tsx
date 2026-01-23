@@ -60,15 +60,6 @@ const MemberDetails = () => {
             const lastDate = member.lastLoanCalculationDate || '2022-04-01';
             const today = format(new Date(), 'yyyy-MM-dd');
 
-            // DEBUG: Log calculation details
-            console.log('🔍 Interest Calculation Debug:');
-            console.log('Member:', member.name, '#' + member.memberNo);
-            console.log('Loan Principal:', member.loanPrincipal);
-            console.log('lastLoanCalculationDate:', member.lastLoanCalculationDate);
-            console.log('Using lastDate:', lastDate);
-            console.log('Today:', today);
-            console.log('originalLoanDate:', member.originalLoanDate);
-
             const { interest, breakdown } = calculateLoanInterest(
                 member.loanPrincipal,
                 lastDate,
@@ -78,9 +69,6 @@ const MemberDetails = () => {
                 true, // Hide interest during first FY
                 member.originalLoanDate // Pass original loan date for first FY calculation
             );
-
-            console.log('Calculated Interest:', interest);
-            console.log('Breakdown:', breakdown);
 
             setAccruedInterest(interest);
             setInterestBreakdown(breakdown);
