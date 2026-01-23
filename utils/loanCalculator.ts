@@ -73,23 +73,26 @@ export const calculateLoanInterest = (
   } else {
     // Crossed into subsequent FYs - split into two periods
 
-    // Period 1: Loan date to end of first FY @ 6% (EXCLUSIVE of 31st March)
-    const daysP1 = getDifferenceInDays(lastDate, firstFYEnd); // No +1, exclusive of last day
+    // Period 1: lastDate to end of first FY @ 6% (ONLY if lastDate is BEFORE first FY end)
+    const daysP1 = getDifferenceInDays(lastDate, firstFYEnd);
     if (daysP1 > 0) {
       const intP1 = Math.round((principal * daysP1 * 6) / 36500);
       interest += intP1;
       breakdown.push(`First FY (6%): ${daysP1} days (${lastDateStr} to ${firstFYEnd.toISOString().split('T')[0]}) = ₹${intP1}`);
     }
 
-    // Period 2: Start of next FY to current date @ 12% (INCLUSIVE of current date)
+    // Period 2: Start from the LATER of (lastDate or nextFYStart) to current date @ 12%
     const nextFYStart = new Date(firstFYEnd);
     nextFYStart.setDate(firstFYEnd.getDate() + 1); // Day after first FY end (1st April)
 
-    const daysP2 = getDifferenceInDays(nextFYStart, currentDate) + 1; // +1 to include current date
+    // If lastDate is AFTER first FY end, start from lastDate instead of nextFYStart
+    const period2Start = lastDate.getTime() > firstFYEnd.getTime() ? lastDate : nextFYStart;
+
+    const daysP2 = getDifferenceInDays(period2Start, currentDate) + 1; // +1 to include current date
     if (daysP2 > 0) {
       const intP2 = Math.round((principal * daysP2 * 12) / 36500);
       interest += intP2;
-      breakdown.push(`Subsequent FYs (12%): ${daysP2} days (${nextFYStart.toISOString().split('T')[0]} to ${currentDateStr}) = ₹${intP2}`);
+      breakdown.push(`Subsequent FYs (12%): ${daysP2} days (${period2Start.toISOString().split('T')[0]} to ${currentDateStr}) = ₹${intP2}`);
     }
   }
 
