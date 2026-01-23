@@ -96,12 +96,9 @@ const MemberDetails = () => {
 
         const updatedMember = { ...member, loanInterestDue: 0 };
         updateMember(updatedMember);
-        alert('✅ व्याज ₹0 केले! Page refresh होत आहे...');
 
-        // Wait for React state update and localStorage save before reload
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
+        // Show success message - no reload needed, React will update the UI
+        alert('✅ व्याज ₹0 केले! Data saved.');
     };
 
     const handleGenerateScore = async () => {
