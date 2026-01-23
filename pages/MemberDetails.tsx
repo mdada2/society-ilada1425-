@@ -525,7 +525,7 @@ const MemberDetails = () => {
                                 )}
                                 {/* Always show Reset button for testing */}
                                 <button
-                                    onClick={() => { alert('Button clicked!'); handleResetInterest(); }}
+                                    onClick={handleResetInterest}
                                     className="text-[10px] md:text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition whitespace-nowrap"
                                     title="Reset old unpaid interest to ₹0"
                                 >

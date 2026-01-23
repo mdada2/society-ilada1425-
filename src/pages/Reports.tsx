@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { format } from 'date-fns';
 import { Download, AlertTriangle, CheckCircle, List, TrendingUp, IndianRupee, Calendar, Users, Filter, Printer, Table, Share2 } from 'lucide-react';
-import { TransactionType } from '../types';
-import { calculateLoanInterest } from '../utils/loanCalculator';
+import { TransactionType } from '../../types';
+import { calculateLoanInterest } from '../../utils/loanCalculator';
 import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { downloadBlob } from '../utils/downloadUtils';
+import { downloadBlob } from '../../utils/downloadUtils';
 
 const Reports = () => {
     const { transactions, members, settings } = useApp();
@@ -673,4 +673,6 @@ const Reports = () => {
         );
     };
 
-    export default Reports;
+};
+
+export default Reports;
