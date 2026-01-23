@@ -94,7 +94,13 @@ const MemberDetails = () => {
     const handleResetInterest = () => {
         if (!member || !window.confirm('व्याज ₹0 करायचे आहे का? (Reset Loan Interest Due to ₹0?)')) return;
 
-        const updatedMember = { ...member, loanInterestDue: 0 };
+        // Reset both loanInterestDue AND lastLoanCalculationDate to make total interest ₹0
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const updatedMember = {
+            ...member,
+            loanInterestDue: 0,
+            lastLoanCalculationDate: today  // This will make accruedInterest = ₹0
+        };
         updateMember(updatedMember);
 
         // Show success message - no reload needed, React will update the UI
