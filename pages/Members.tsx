@@ -218,8 +218,28 @@ const Members = () => {
         // Current FY borrowers - members with active loans
         matchesStatus = (m.loanPrincipal || 0) > 0;
       } else if (filterStatus === 'Defaulters') {
-        // Defaulters - members with outstanding loan principal or interest
-        matchesStatus = (m.loanPrincipal || 0) > 0 || (m.loanInterestDue || 0) > 0;
+        // TRUE Defaulters - members with outstanding loans from BEFORE current FY
+        // Exclude current FY (01-04-2025 to 31-03-2026) - they are regular borrowers, not defaulters
+        const hasOutstanding = (m.loanPrincipal || 0) > 0 || (m.loanInterestDue || 0) > 0;
+        if (!hasOutstanding) {
+          matchesStatus = false;
+        } else {
+          // Check if loan is from current FY
+          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (loanDate) {
+            const fyStart = new Date('2025-04-01');
+            const fyEnd = new Date('2026-03-31');
+            const loanDateObj = new Date(loanDate);
+            // Exclude current FY loans
+            if (loanDateObj >= fyStart && loanDateObj <= fyEnd) {
+              matchesStatus = false; // Current FY loan - not a defaulter
+            } else {
+              matchesStatus = true; // Loan from before current FY - TRUE defaulter
+            }
+          } else {
+            matchesStatus = true; // No date info - include by default
+          }
+        }
       }
       // 'All' status returns true (no filtering)
 
