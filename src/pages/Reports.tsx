@@ -105,7 +105,7 @@ const Reports = () => {
         // Structure: Rows for Large Farmer, Small Farmer, Total
         // Cols: Short Term (Thakit/Chalu), Medium Term (Thakit/Chalu)
 
-        const createBucket = () => ({ count: 0, amount: 0 });
+        const createBucket = () => ({ count: 0, amount: 0, interest: 0 });
         const createRow = (label: string) => ({
             label,
             st_thakit: createBucket(),
@@ -132,16 +132,33 @@ const Reports = () => {
             const targetRowCategory = isST ? rows.st_cat : rows.non_st;
 
             const amount = loan.totalDue;
+            const interest = loan.calculatedInterest;
 
             // Helper to add to bucket
             const addToBucket = (row: typeof rows.large) => {
                 if (isMediumTerm) {
-                    if (isThakit) { row.mt_thakit.count++; row.mt_thakit.amount += amount; }
-                    else { row.mt_chalu.count++; row.mt_chalu.amount += amount; }
+                    if (isThakit) {
+                        row.mt_thakit.count++;
+                        row.mt_thakit.amount += amount;
+                        row.mt_thakit.interest += interest;
+                    }
+                    else {
+                        row.mt_chalu.count++;
+                        row.mt_chalu.amount += amount;
+                        row.mt_chalu.interest += interest;
+                    }
                 } else {
                     // Short Term
-                    if (isThakit) { row.st_thakit.count++; row.st_thakit.amount += amount; }
-                    else { row.st_chalu.count++; row.st_chalu.amount += amount; }
+                    if (isThakit) {
+                        row.st_thakit.count++;
+                        row.st_thakit.amount += amount;
+                        row.st_thakit.interest += interest;
+                    }
+                    else {
+                        row.st_chalu.count++;
+                        row.st_chalu.amount += amount;
+                        row.st_chalu.interest += interest;
+                    }
                 }
             };
 
@@ -158,6 +175,8 @@ const Reports = () => {
                 farmerTotal[key].count = rows.large[key].count + rows.small[key].count;
                 // @ts-ignore
                 farmerTotal[key].amount = rows.large[key].amount + rows.small[key].amount;
+                // @ts-ignore
+                farmerTotal[key].interest = rows.large[key].interest + rows.small[key].interest;
             }
         });
 
@@ -170,6 +189,8 @@ const Reports = () => {
                 catTotal[key].count = rows.st_cat[key].count + rows.non_st[key].count;
                 // @ts-ignore
                 catTotal[key].amount = rows.st_cat[key].amount + rows.non_st[key].amount;
+                // @ts-ignore
+                catTotal[key].interest = rows.st_cat[key].interest + rows.non_st[key].interest;
             }
         });
 
@@ -228,7 +249,8 @@ const Reports = () => {
             "अल्प मुदत (एकूण) - सभासद", "अल्प मुदत (एकूण) - रक्कम",
             "मध्यम मुदत (थकीत) - सभासद", "मध्यम मुदत (थकीत) - रक्कम",
             "मध्यम मुदत (चालू) - सभासद", "मध्यम मुदत (चालू) - रक्कम",
-            "मध्यम मुदत (एकूण) - सभासद", "मध्यम मुदत (एकूण) - रक्कम"
+            "मध्यम मुदत (एकूण) - सभासद", "मध्यम मुदत (एकूण) - रक्कम",
+            "एकूण थकीत व्याज - सभासद", "एकूण थकीत व्याज - रक्कम"
         ];
 
         const processRow = (row: any) => {
@@ -236,6 +258,8 @@ const Reports = () => {
             const stTotalAmount = row.st_thakit.amount + row.st_chalu.amount;
             const mtTotalCount = row.mt_thakit.count + row.mt_chalu.count;
             const mtTotalAmount = row.mt_thakit.amount + row.mt_chalu.amount;
+            const totalInterestCount = stTotalCount + mtTotalCount;
+            const totalInterestAmount = row.st_thakit.interest + row.st_chalu.interest + row.mt_thakit.interest + row.mt_chalu.interest;
 
             return [
                 `"${String(row.label)}"`,
@@ -244,7 +268,8 @@ const Reports = () => {
                 stTotalCount, stTotalAmount,
                 row.mt_thakit.count, row.mt_thakit.amount,
                 row.mt_chalu.count, row.mt_chalu.amount,
-                mtTotalCount, mtTotalAmount
+                mtTotalCount, mtTotalAmount,
+                totalInterestCount, totalInterestAmount
             ].map(String).join(",");
         };
 
@@ -612,6 +637,7 @@ const Reports = () => {
                                                     <th rowSpan={3} className="border dark:border-slate-600 p-2 min-w-[150px]">प्रकार</th>
                                                     <th colSpan={6} className="border dark:border-slate-600 p-2 bg-blue-50 dark:bg-blue-900/20">अल्प मुदती</th>
                                                     <th colSpan={6} className="border dark:border-slate-600 p-2 bg-purple-50 dark:bg-purple-900/20">मध्यम मुदती</th>
+                                                    <th colSpan={2} className="border dark:border-slate-600 p-2 bg-orange-50 dark:bg-orange-900/20">एकूण थकीत व्याज</th>
                                                 </tr>
                                                 <tr className="bg-slate-50 dark:bg-slate-700/50">
                                                     {/* Short Term */}
@@ -622,6 +648,9 @@ const Reports = () => {
                                                     <th colSpan={2} className="border dark:border-slate-600 p-2 text-red-600 dark:text-red-400">थकीत</th>
                                                     <th colSpan={2} className="border dark:border-slate-600 p-2 text-green-600 dark:text-green-400">चालू</th>
                                                     <th colSpan={2} className="border dark:border-slate-600 p-2 font-bold">एकूण</th>
+                                                    {/* Total Interest */}
+                                                    <th rowSpan={2} className="border dark:border-slate-600 p-1 text-orange-600 dark:text-orange-400">सभा</th>
+                                                    <th rowSpan={2} className="border dark:border-slate-600 p-1 text-orange-600 dark:text-orange-400">रक्कम</th>
                                                 </tr>
                                                 <tr className="text-[10px] text-slate-500">
                                                     {Array(2).fill(null).map((_, i) => (
@@ -639,6 +668,10 @@ const Reports = () => {
                                             <tbody>
                                                 {section.data.map((row: any, rIdx: number) => {
                                                     const isTotal = rIdx === section.data.length - 1;
+                                                    // Calculate total interest for this row
+                                                    const totalInterestCount = row.st_thakit.count + row.st_chalu.count + row.mt_thakit.count + row.mt_chalu.count;
+                                                    const totalInterestAmount = row.st_thakit.interest + row.st_chalu.interest + row.mt_thakit.interest + row.mt_chalu.interest;
+
                                                     return (
                                                         <tr key={rIdx} className={`${isTotal ? 'bg-slate-100 dark:bg-slate-700 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
                                                             <td className="border dark:border-slate-600 p-2 text-left">{row.label}</td>
@@ -658,6 +691,10 @@ const Reports = () => {
                                                             <td className="border dark:border-slate-600 p-2 text-green-600 dark:text-green-400">{row.mt_chalu.amount.toLocaleString()}</td>
                                                             <td className="border dark:border-slate-600 p-2 font-bold">{row.mt_thakit.count + row.mt_chalu.count}</td>
                                                             <td className="border dark:border-slate-600 p-2 font-bold">{(row.mt_thakit.amount + row.mt_chalu.amount).toLocaleString()}</td>
+
+                                                            {/* Total Interest */}
+                                                            <td className="border dark:border-slate-600 p-2 font-bold text-orange-600 dark:text-orange-400">{totalInterestCount}</td>
+                                                            <td className="border dark:border-slate-600 p-2 font-bold text-orange-600 dark:text-orange-400">{totalInterestAmount.toLocaleString()}</td>
                                                         </tr>
                                                     );
                                                 })}
