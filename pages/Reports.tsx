@@ -721,9 +721,68 @@ const Reports = () => {
           return m.loanPrincipal > 0;
         });
 
-        // Calculate Total Overdue Interest for the category
-        row.overdueInterest_amount = categoryMembers.reduce((sum, m) => sum + (Number(m.loanInterestDue) || 0), 0);
-        row.overdueInterest_count = categoryMembers.filter(m => (Number(m.loanInterestDue) || 0) > 0).length;
+        // Calculate Total Overdue Interest for the category (including live accrued interest)
+        // EXCLUDE current FY loans (01-04-2025 to 31-03-2026) - they are not defaulters yet
+        const fyStart = new Date('2025-04-01');
+        const fyEnd = new Date('2026-03-31');
+
+        row.overdueInterest_amount = categoryMembers.reduce((sum, m) => {
+          // Exclude current FY loans
+          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (loanDate) {
+            const loanDateObj = new Date(loanDate);
+            if (loanDateObj >= fyStart && loanDateObj <= fyEnd) {
+              return sum; // Skip current FY loans
+            }
+          }
+
+          // Calculate accrued interest (same logic as loanData)
+          let accruedInterest = 0;
+          if (m.loanPrincipal > 0 && m.lastLoanCalculationDate) {
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const result = calculateLoanInterest(
+              m.loanPrincipal,
+              m.lastLoanCalculationDate,
+              today,
+              settings.financialYearStart,
+              settings.financialYearEnd,
+              false, // Show interest in reports
+              m.originalLoanDate
+            );
+            accruedInterest = result.interest;
+          }
+          const totalInterest = (Number(m.loanInterestDue) || 0) + accruedInterest;
+          return sum + totalInterest;
+        }, 0);
+
+        row.overdueInterest_count = categoryMembers.filter(m => {
+          // Exclude current FY loans
+          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (loanDate) {
+            const loanDateObj = new Date(loanDate);
+            if (loanDateObj >= fyStart && loanDateObj <= fyEnd) {
+              return false; // Skip current FY loans
+            }
+          }
+
+          // Calculate accrued interest
+          let accruedInterest = 0;
+          if (m.loanPrincipal > 0 && m.lastLoanCalculationDate) {
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const result = calculateLoanInterest(
+              m.loanPrincipal,
+              m.lastLoanCalculationDate,
+              today,
+              settings.financialYearStart,
+              settings.financialYearEnd,
+              false,
+              m.originalLoanDate
+            );
+            accruedInterest = result.interest;
+          }
+          const totalInterest = (Number(m.loanInterestDue) || 0) + accruedInterest;
+          return totalInterest > 0;
+        }).length;
 
         timePeriods.forEach(period => {
           const filteredMembers = categoryMembers.filter(m => {
