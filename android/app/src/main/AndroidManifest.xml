@@ -26,48 +26,6 @@
 
         </activity>
 
-        <!-- Widget Query Activity -->
-        <activity
-            android:name=".widget.WidgetQueryActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:exported="false" />
-
-        <!-- Society Mitra Query Widget -->
-        <receiver
-            android:name=".widget.SocietyMitraQueryWidgetProvider"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_query" />
-        </receiver>
-
-        <!-- Society Mitra Search Widget -->
-        <receiver
-            android:name=".widget.SocietyMitraSearchWidgetProvider"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_search" />
-        </receiver>
-
-        <!-- Society Mitra Quick Launch Widget -->
-        <receiver
-            android:name=".widget.SocietyMitraLaunchWidgetProvider"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_launch" />
-        </receiver>
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
