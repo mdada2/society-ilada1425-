@@ -444,8 +444,8 @@ const Members = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "LoanPrincipal", "LoanDate", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
-    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "'9999999999", "OPEN", "01-01-1990", "'123456789012", "50000", "01-04-2022", "'LN001", "Short Term", "'BANK001", "2.5", "0", "0", "0"];
+    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "LoanPrincipal", "LoanDate", "LoanInterestDue", "LastPaymentDate", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
+    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "'9999999999", "OPEN", "01-01-1990", "'123456789012", "50000", "01-04-2024", "1500", "15-12-2024", "'LN001", "Short Term", "'BANK001", "2.5", "0", "0", "0"];
     exportTSV(headers, [sampleRow], "Import_Template");
   };
 
@@ -504,6 +504,8 @@ const Members = () => {
         const idxAadhar = findCol(['aadhar', 'uid']);
         const idxLoanPrin = findCol(['loanprincipal', 'loan principal', 'loan amount', 'principal', 'loan']);
         const idxLoanDate = findCol(['loandate', 'loan date', 'date', 'start date']);
+        const idxLoanInterest = findCol(['loaninterestdue', 'loan interest due', 'loan interest', 'interest due', 'interest', 'व्याज']);
+        const idxLastPayment = findCol(['lastpaymentdate', 'last payment date', 'payment date', 'last payment', 'भरल्याची तारीख']);
         const idxLoanAcc = findCol(['loanaccountno', 'loan account no', 'loan acc', 'loan no']);
         const idxLoanType = findCol(['loantype', 'loan type', 'type']);
         const idxBankAcc = findCol(['bankaccountno', 'bank acc', 'bank no']);
@@ -552,6 +554,7 @@ const Members = () => {
             else if (rawType.includes('short') || rawType.includes('s.t') || rawType) parsedLoanType = 'Short Term';
           }
           const loanDate = idxLoanDate !== -1 ? parseDateSafe(values[idxLoanDate]) : undefined;
+          const lastPaymentDate = idxLastPayment !== -1 ? parseDateSafe(values[idxLastPayment]) : undefined;
           const membershipDate = idxMembershipDate !== -1 ? parseDateSafe(values[idxMembershipDate]) : undefined;
 
           // Check if member already exists
@@ -586,7 +589,8 @@ const Members = () => {
               loanAccountNo: mergeField(existing.loanAccountNo, idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '') as string,
               loanType: mergeField(existing.loanType, parsedLoanType || 'Short Term') as any,
               loanPrincipal: mergeField(existing.loanPrincipal, idxLoanPrin !== -1 ? parseNumberSafe(values[idxLoanPrin]) : 0) as number,
-              lastLoanCalculationDate: mergeField(existing.lastLoanCalculationDate, loanDate) as string | undefined,
+              loanInterestDue: mergeField(existing.loanInterestDue, idxLoanInterest !== -1 ? parseNumberSafe(values[idxLoanInterest]) : 0) as number,
+              lastLoanCalculationDate: mergeField(existing.lastLoanCalculationDate, lastPaymentDate || loanDate) as string | undefined,
               originalLoanDate: mergeField(existing.originalLoanDate, loanDate) as string | undefined,
               savingsBalance: mergeField(existing.savingsBalance, idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0) as number,
               shareBalance: mergeField(existing.shareBalance, idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0) as number,
@@ -610,8 +614,8 @@ const Members = () => {
               loanAccountNo: idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '',
               loanType: parsedLoanType || 'Short Term', farmerType: 'Small Farmer',
               loanPrincipal: idxLoanPrin !== -1 ? parseNumberSafe(values[idxLoanPrin]) : 0,
-              lastLoanCalculationDate: loanDate, originalLoanDate: loanDate,
-              loanInterestDue: 0, savingsBalance: idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0,
+              lastLoanCalculationDate: lastPaymentDate || loanDate, originalLoanDate: loanDate,
+              loanInterestDue: idxLoanInterest !== -1 ? parseNumberSafe(values[idxLoanInterest]) : 0, savingsBalance: idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0,
               shareBalance: idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0,
               fdBalance: idxFD !== -1 ? parseNumberSafe(values[idxFD]) : 0,
               isActive: true, photoUrl: ''
