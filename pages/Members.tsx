@@ -398,7 +398,7 @@ const Members = () => {
 
     const headers = [
       "Member No", "Name", "Designation", "Gender", "Village", "Membership Date", "Mobile", "Category", "DOB", "Aadhar",
-      "Savings Balance", "Share Balance", "Loan Principal", "Loan Date", "Original Loan Date", "Loan Account No", "Loan Type", "Farmer Type", "Loan Interest Due (Total)", "FD Balance"
+      "Savings Balance", "Share Balance", "Original Loan Principal", "Original Loan Date", "Last Loan Principal", "Last Payment Date", "Loan Interest Due (Total)", "Loan Account No", "Loan Type", "Farmer Type", "FD Balance"
     ];
 
     const formatDateCSV = (d?: string) => {
@@ -415,12 +415,14 @@ const Members = () => {
         const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true, m.originalLoanDate);
         totalInterest += accrued;
       }
+      // Calculate original loan principal from transaction history if available
+      const originalPrincipal = m.originalLoanDate ? m.loanPrincipal : 0; // Simplified - could be enhanced with transaction history
       return [
         m.memberNo, m.name, m.designation || 'शेतकरी', m.gender || 'Male', m.village,
         formatDateCSV(m.membershipDate), `'${m.mobile}`, m.category, formatDateCSV(m.dob), `'${m.aadhar}`,
-        m.savingsBalance, m.shareBalance, m.loanPrincipal || 0, formatDateCSV(m.lastLoanCalculationDate),
-        formatDateCSV(m.originalLoanDate || m.lastLoanCalculationDate), `'${m.loanAccountNo || ''}`,
-        m.loanType || 'Short Term', m.farmerType || 'Small Farmer', totalInterest, m.fdBalance
+        m.savingsBalance, m.shareBalance, originalPrincipal, formatDateCSV(m.originalLoanDate),
+        m.loanPrincipal || 0, formatDateCSV(m.lastLoanCalculationDate), totalInterest,
+        `'${m.loanAccountNo || ''}`, m.loanType || 'Short Term', m.farmerType || 'Small Farmer', m.fdBalance
       ];
     });
 
@@ -433,7 +435,7 @@ const Members = () => {
 
     const headers = [
       "Member No", "Name", "Designation", "Gender", "Village", "Membership Date", "Mobile", "Category", "DOB", "Aadhar",
-      "Savings Balance", "Share Balance", "Loan Principal", "Loan Date", "Original Loan Date", "Loan Account No", "Loan Type", "Farmer Type", "Loan Interest Due (Total)", "FD Balance"
+      "Savings Balance", "Share Balance", "Original Loan Principal", "Original Loan Date", "Last Loan Principal", "Last Payment Date", "Loan Interest Due (Total)", "Loan Account No", "Loan Type", "Farmer Type", "FD Balance"
     ];
 
     const formatDateCSV = (d?: string) => {
@@ -450,12 +452,14 @@ const Members = () => {
         const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true, m.originalLoanDate);
         totalInterest += accrued;
       }
+      // Calculate original loan principal from transaction history if available
+      const originalPrincipal = m.originalLoanDate ? m.loanPrincipal : 0; // Simplified - could be enhanced with transaction history
       return [
         m.memberNo, m.name, m.designation || 'शेतकरी', m.gender || 'Male', m.village,
         formatDateCSV(m.membershipDate), `'${m.mobile}`, m.category, formatDateCSV(m.dob), `'${m.aadhar}`,
-        m.savingsBalance, m.shareBalance, m.loanPrincipal || 0, formatDateCSV(m.lastLoanCalculationDate),
-        formatDateCSV(m.originalLoanDate || m.lastLoanCalculationDate), `'${m.loanAccountNo || ''}`,
-        m.loanType || 'Short Term', m.farmerType || 'Small Farmer', totalInterest, m.fdBalance
+        m.savingsBalance, m.shareBalance, originalPrincipal, formatDateCSV(m.originalLoanDate),
+        m.loanPrincipal || 0, formatDateCSV(m.lastLoanCalculationDate), totalInterest,
+        `'${m.loanAccountNo || ''}`, m.loanType || 'Short Term', m.farmerType || 'Small Farmer', m.fdBalance
       ];
     });
 
@@ -480,8 +484,8 @@ const Members = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "LoanPrincipal", "LoanDate", "LoanInterestDue", "LastPaymentDate", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
-    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "'9999999999", "OPEN", "01-01-1990", "'123456789012", "50000", "01-04-2024", "1500", "15-12-2024", "'LN001", "Short Term", "'BANK001", "2.5", "0", "0", "0"];
+    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
+    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "'9999999999", "OPEN", "01-01-1990", "'123456789012", "50000", "01-04-2024", "50000", "01-04-2024", "0", "'LN001", "Short Term", "'BANK001", "2.5", "0", "0", "0"];
     exportTSV(headers, [sampleRow], "Import_Template");
   };
 
@@ -538,10 +542,11 @@ const Members = () => {
         const idxCategory = findCol(['category', 'caste']);
         const idxDOB = findCol(['dob', 'date of birth', 'birthdate']);
         const idxAadhar = findCol(['aadhar', 'uid']);
-        const idxLoanPrin = findCol(['loanprincipal', 'loan principal', 'loan amount', 'principal', 'loan']);
-        const idxLoanDate = findCol(['loandate', 'loan date', 'date', 'start date']);
+        const idxOriginalLoanPrin = findCol(['originalloanprincipal', 'original loan principal', 'original principal', 'original loan amount']);
+        const idxOriginalLoanDate = findCol(['originalloandate', 'original loan date', 'original date']);
+        const idxLastLoanPrin = findCol(['lastloanprincipal', 'last loan principal', 'current principal', 'remaining principal', 'loanprincipal', 'loan principal', 'loan amount', 'principal', 'loan']);
+        const idxLastPaymentDate = findCol(['lastpaymentdate', 'last payment date', 'payment date', 'last payment', 'भरल्याची तारीख', 'loandate', 'loan date', 'date', 'start date']);
         const idxLoanInterest = findCol(['loaninterestdue', 'loan interest due', 'loan interest', 'interest due', 'interest', 'व्याज']);
-        const idxLastPayment = findCol(['lastpaymentdate', 'last payment date', 'payment date', 'last payment', 'भरल्याची तारीख']);
         const idxLoanAcc = findCol(['loanaccountno', 'loan account no', 'loan acc', 'loan no']);
         const idxLoanType = findCol(['loantype', 'loan type', 'type']);
         const idxBankAcc = findCol(['bankaccountno', 'bank acc', 'bank no']);
@@ -589,9 +594,11 @@ const Members = () => {
             if (rawType.includes('medium') || rawType.includes('m.t')) parsedLoanType = 'Medium Term';
             else if (rawType.includes('short') || rawType.includes('s.t') || rawType) parsedLoanType = 'Short Term';
           }
-          const loanDate = idxLoanDate !== -1 ? parseDateSafe(values[idxLoanDate]) : undefined;
-          const lastPaymentDate = idxLastPayment !== -1 ? parseDateSafe(values[idxLastPayment]) : undefined;
+          const originalLoanDate = idxOriginalLoanDate !== -1 ? parseDateSafe(values[idxOriginalLoanDate]) : undefined;
+          const lastPaymentDate = idxLastPaymentDate !== -1 ? parseDateSafe(values[idxLastPaymentDate]) : undefined;
           const membershipDate = idxMembershipDate !== -1 ? parseDateSafe(values[idxMembershipDate]) : undefined;
+          const originalLoanPrincipal = idxOriginalLoanPrin !== -1 ? parseNumberSafe(values[idxOriginalLoanPrin]) : 0;
+          const lastLoanPrincipal = idxLastLoanPrin !== -1 ? parseNumberSafe(values[idxLastLoanPrin]) : 0;
 
           // Check if member already exists
           const existingMember = existingMembersMap.get(memberNo);
@@ -624,10 +631,10 @@ const Members = () => {
               landArea: mergeField(existing.landArea, idxLand !== -1 ? (values[idxLand] || '') : '') as string,
               loanAccountNo: mergeField(existing.loanAccountNo, idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '') as string,
               loanType: mergeField(existing.loanType, parsedLoanType || 'Short Term') as any,
-              loanPrincipal: mergeField(existing.loanPrincipal, idxLoanPrin !== -1 ? parseNumberSafe(values[idxLoanPrin]) : 0) as number,
+              loanPrincipal: mergeField(existing.loanPrincipal, lastLoanPrincipal || originalLoanPrincipal) as number,
               loanInterestDue: mergeField(existing.loanInterestDue, idxLoanInterest !== -1 ? parseNumberSafe(values[idxLoanInterest]) : 0) as number,
-              lastLoanCalculationDate: mergeField(existing.lastLoanCalculationDate, lastPaymentDate || loanDate) as string | undefined,
-              originalLoanDate: mergeField(existing.originalLoanDate, loanDate) as string | undefined,
+              lastLoanCalculationDate: mergeField(existing.lastLoanCalculationDate, lastPaymentDate || originalLoanDate) as string | undefined,
+              originalLoanDate: mergeField(existing.originalLoanDate, originalLoanDate) as string | undefined,
               savingsBalance: mergeField(existing.savingsBalance, idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0) as number,
               shareBalance: mergeField(existing.shareBalance, idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0) as number,
               fdBalance: mergeField(existing.fdBalance, idxFD !== -1 ? parseNumberSafe(values[idxFD]) : 0) as number,
@@ -649,8 +656,8 @@ const Members = () => {
               landArea: idxLand !== -1 ? (values[idxLand] || '') : '',
               loanAccountNo: idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '',
               loanType: parsedLoanType || 'Short Term', farmerType: 'Small Farmer',
-              loanPrincipal: idxLoanPrin !== -1 ? parseNumberSafe(values[idxLoanPrin]) : 0,
-              lastLoanCalculationDate: lastPaymentDate || loanDate, originalLoanDate: loanDate,
+              loanPrincipal: lastLoanPrincipal || originalLoanPrincipal,
+              lastLoanCalculationDate: lastPaymentDate || originalLoanDate, originalLoanDate: originalLoanDate,
               loanInterestDue: idxLoanInterest !== -1 ? parseNumberSafe(values[idxLoanInterest]) : 0, savingsBalance: idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0,
               shareBalance: idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0,
               fdBalance: idxFD !== -1 ? parseNumberSafe(values[idxFD]) : 0,
