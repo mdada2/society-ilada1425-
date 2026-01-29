@@ -76,7 +76,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Membership Reports',
     icon: <Users size={24} />,
     color: 'bg-emerald-500',
-    subTabs: ['Shares Capital', 'Caste Summary', 'Land Holding']
+    subTabs: ['Shares Capital', 'Caste Summary', 'Gender Summary', 'Gender + Category', 'Gender + Village', 'Gender Financial', 'Land Holding']
   },
   {
     id: 'schemes',
@@ -1242,6 +1242,7 @@ const Reports = () => {
       ];
       return <ReportTable title="Shares Capital" columns={columns} data={memberReportData} onRowClick={(item) => handleMemberClick(item.realId)} />;
     }
+
     if (activeSubTab === 'Caste Summary') {
       // Summary Table using real data aggregation
       const summaryMap = memberReportData.reduce((acc, curr) => {
@@ -1262,6 +1263,494 @@ const Reports = () => {
       ];
       return <ReportTable title="Caste Summary" columns={columns} data={summaryData} enableSearch={false} />;
     }
+
+    // --- NEW: Gender Summary Report ---
+    if (activeSubTab === 'Gender Summary') {
+      const genderMap = members.reduce((acc, curr) => {
+        const gender = curr.gender || 'Unknown';
+        acc[gender] = (acc[gender] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const total = members.length;
+      const summaryData = Object.entries(genderMap).map(([gender, count], idx) => ({
+        id: idx + 1,
+        gender: gender === 'Male' ? 'पुरुष (Male)' : gender === 'Female' ? 'महिला (Female)' : gender,
+        count: count as number,
+        percentage: total > 0 ? (((count as number) / total) * 100).toFixed(1) + '%' : '0%'
+      }));
+
+      // Add total row
+      summaryData.push({
+        id: 0,
+        gender: 'एकूण (Total)',
+        count: total,
+        percentage: '100%'
+      });
+
+      const handleExportGenderSummary = () => {
+        const headers = ['लिंग (Gender)', 'संख्या (Count)', 'टक्केवारी (%)'];
+        const rows = summaryData.map(item => [
+          item.gender,
+          item.count,
+          item.percentage
+        ]);
+        exportTSV(headers, rows, `Gender_Summary_${format(new Date(), 'dd-MM-yyyy')}`);
+      };
+
+      const handleShareGenderSummary = async () => {
+        try {
+          const shareUrl = 'https://society-ilada1425.vercel.app' + window.location.hash;
+          if (Capacitor.isNativePlatform()) {
+            await Share.share({
+              title: 'Society Ilada - Gender Summary',
+              text: 'Gender-wise member distribution report.',
+              url: shareUrl,
+              dialogTitle: 'Share Gender Summary'
+            });
+          } else if (navigator.share) {
+            await navigator.share({
+              title: 'Society Ilada - Gender Summary',
+              text: 'Gender-wise member distribution report.',
+              url: shareUrl,
+            });
+          } else {
+            alert('Sharing is not supported on this device/browser.');
+          }
+        } catch (error) {
+          console.log('Error sharing:', error);
+        }
+      };
+
+      const columns = [
+        { header: 'अ. क्र.', accessorKey: 'id', render: (i: any) => i.id === 0 ? '' : i.id, width: '80px' },
+        { header: 'लिंग (Gender)', accessorKey: 'gender', className: 'font-bold' },
+        { header: 'संख्या (Count)', accessorKey: 'count', className: 'text-center' },
+        { header: 'टक्केवारी (%)', accessorKey: 'percentage', className: 'text-center font-mono' },
+      ];
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">Gender Summary (लिंग गोषवारा)</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">सभासदांचे लिंगनिहाय वितरण</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShareGenderSummary}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-100 rounded-lg transition text-sm font-medium border border-emerald-400/30"
+              >
+                <Share2 size={16} /> Share
+              </button>
+              <button
+                onClick={handleExportGenderSummary}
+                className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+              >
+                <Download size={16} /> CSV
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-6">
+            <ReportTable title="" columns={columns} data={summaryData} enableSearch={false} />
+          </div>
+        </div>
+      );
+    }
+
+    // --- NEW: Gender + Category Report ---
+    if (activeSubTab === 'Gender + Category') {
+      const getCategoryLabel = (cat: string) => {
+        switch (cat) {
+          case 'ST': return 'आदिवासी (ST)';
+          case 'SC': return 'विशेष घटक (SC)';
+          case 'OBC': return 'सर्व साधारण (OBC)';
+          case 'OPEN': return 'इतर (OPEN)';
+          default: return cat;
+        }
+      };
+
+      const categories = ['ST', 'SC', 'OBC', 'OPEN'];
+      const genders = ['Male', 'Female', 'Other'];
+
+      const crossTabData: any[] = [];
+      let rowId = 1;
+
+      categories.forEach(cat => {
+        genders.forEach(gender => {
+          const count = members.filter(m => m.category === cat && m.gender === gender).length;
+          if (count > 0) {
+            const genderLabel = gender === 'Male' ? 'पुरुष' : gender === 'Female' ? 'महिला' : 'इतर';
+            crossTabData.push({
+              id: rowId++,
+              category: getCategoryLabel(cat),
+              gender: genderLabel,
+              count: count
+            });
+          }
+        });
+
+        // Subtotal for category
+        const categoryTotal = members.filter(m => m.category === cat).length;
+        if (categoryTotal > 0) {
+          crossTabData.push({
+            id: 0,
+            category: getCategoryLabel(cat) + ' - एकूण',
+            gender: '',
+            count: categoryTotal,
+            isSubtotal: true
+          });
+        }
+      });
+
+      // Grand Total
+      crossTabData.push({
+        id: 0,
+        category: 'सर्व एकूण (Grand Total)',
+        gender: '',
+        count: members.length,
+        isGrandTotal: true
+      });
+
+      const handleExportGenderCategory = () => {
+        const headers = ['अ. क्र.', 'प्रवर्ग (Category)', 'लिंग (Gender)', 'संख्या (Count)'];
+        const rows = crossTabData.map(item => [
+          item.id || '',
+          item.category,
+          item.gender,
+          item.count
+        ]);
+        exportTSV(headers, rows, `Gender_Category_${format(new Date(), 'dd-MM-yyyy')}`);
+      };
+
+      const handleShareGenderCategory = async () => {
+        try {
+          const shareUrl = 'https://society-ilada1425.vercel.app' + window.location.hash;
+          if (Capacitor.isNativePlatform()) {
+            await Share.share({
+              title: 'Society Ilada - Gender + Category Report',
+              text: 'Gender and category-wise member distribution.',
+              url: shareUrl,
+              dialogTitle: 'Share Gender + Category'
+            });
+          } else if (navigator.share) {
+            await navigator.share({
+              title: 'Society Ilada - Gender + Category Report',
+              text: 'Gender and category-wise member distribution.',
+              url: shareUrl,
+            });
+          } else {
+            alert('Sharing is not supported on this device/browser.');
+          }
+        } catch (error) {
+          console.log('Error sharing:', error);
+        }
+      };
+
+      const columns = [
+        { header: 'अ. क्र.', accessorKey: 'id', render: (i: any) => i.id === 0 ? '' : i.id, width: '80px' },
+        {
+          header: 'प्रवर्ग (Category)',
+          accessorKey: 'category',
+          className: 'font-bold',
+          render: (i: any) => i.isSubtotal || i.isGrandTotal ? <span className={i.isGrandTotal ? 'text-blue-700 font-bold' : 'text-amber-700'}>{i.category}</span> : i.category
+        },
+        { header: 'लिंग (Gender)', accessorKey: 'gender' },
+        {
+          header: 'संख्या (Count)',
+          accessorKey: 'count',
+          className: 'text-center font-mono',
+          render: (i: any) => i.isGrandTotal ? <span className="font-bold text-blue-700">{i.count}</span> : i.count
+        },
+      ];
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">Gender + Category (लिंग आणि प्रवर्ग)</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">जातीनिहाय महिला/पुरुष सभासद</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShareGenderCategory}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-100 rounded-lg transition text-sm font-medium border border-emerald-400/30"
+              >
+                <Share2 size={16} /> Share
+              </button>
+              <button
+                onClick={handleExportGenderCategory}
+                className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+              >
+                <Download size={16} /> CSV
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-6">
+            <ReportTable title="" columns={columns} data={crossTabData} enableSearch={false} />
+          </div>
+        </div>
+      );
+    }
+
+    // --- NEW: Gender + Village Report ---
+    if (activeSubTab === 'Gender + Village') {
+      const villages = Array.from(new Set(members.map(m => m.village).filter(v => v && v.trim() !== ''))).sort();
+
+      const villageData = villages.map((village, idx) => {
+        const maleCount = members.filter(m => m.village === village && m.gender === 'Male').length;
+        const femaleCount = members.filter(m => m.village === village && m.gender === 'Female').length;
+        const otherCount = members.filter(m => m.village === village && m.gender === 'Other').length;
+        const total = maleCount + femaleCount + otherCount;
+
+        return {
+          id: idx + 1,
+          village: village,
+          male: maleCount,
+          female: femaleCount,
+          other: otherCount,
+          total: total
+        };
+      });
+
+      // Grand Total
+      const grandTotal = {
+        id: 0,
+        village: 'एकूण (Total)',
+        male: villageData.reduce((sum, v) => sum + v.male, 0),
+        female: villageData.reduce((sum, v) => sum + v.female, 0),
+        other: villageData.reduce((sum, v) => sum + v.other, 0),
+        total: members.length
+      };
+      villageData.push(grandTotal);
+
+      const handleExportGenderVillage = () => {
+        const headers = ['अ. क्र.', 'गाव (Village)', 'पुरुष (Male)', 'महिला (Female)', 'इतर (Other)', 'एकूण (Total)'];
+        const rows = villageData.map(item => [
+          item.id || '',
+          item.village,
+          item.male,
+          item.female,
+          item.other,
+          item.total
+        ]);
+        exportTSV(headers, rows, `Gender_Village_${format(new Date(), 'dd-MM-yyyy')}`);
+      };
+
+      const handleShareGenderVillage = async () => {
+        try {
+          const shareUrl = 'https://society-ilada1425.vercel.app' + window.location.hash;
+          if (Capacitor.isNativePlatform()) {
+            await Share.share({
+              title: 'Society Ilada - Gender + Village Report',
+              text: 'Village-wise gender distribution of members.',
+              url: shareUrl,
+              dialogTitle: 'Share Gender + Village'
+            });
+          } else if (navigator.share) {
+            await navigator.share({
+              title: 'Society Ilada - Gender + Village Report',
+              text: 'Village-wise gender distribution of members.',
+              url: shareUrl,
+            });
+          } else {
+            alert('Sharing is not supported on this device/browser.');
+          }
+        } catch (error) {
+          console.log('Error sharing:', error);
+        }
+      };
+
+      const columns = [
+        { header: 'अ. क्र.', accessorKey: 'id', render: (i: any) => i.id === 0 ? '' : i.id, width: '80px' },
+        {
+          header: 'गाव (Village)',
+          accessorKey: 'village',
+          className: 'font-bold',
+          render: (i: any) => i.id === 0 ? <span className="text-blue-700 font-bold">{i.village}</span> : i.village
+        },
+        { header: 'पुरुष (Male)', accessorKey: 'male', className: 'text-center text-blue-600 font-mono' },
+        { header: 'महिला (Female)', accessorKey: 'female', className: 'text-center text-pink-600 font-mono' },
+        { header: 'इतर (Other)', accessorKey: 'other', className: 'text-center text-slate-600 font-mono' },
+        {
+          header: 'एकूण (Total)',
+          accessorKey: 'total',
+          className: 'text-center font-bold font-mono',
+          render: (i: any) => i.id === 0 ? <span className="text-blue-700 font-bold">{i.total}</span> : i.total
+        },
+      ];
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">Gender + Village (गावनिहाय लिंग)</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">गावनिहाय महिला/पुरुष वितरण</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShareGenderVillage}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-100 rounded-lg transition text-sm font-medium border border-emerald-400/30"
+              >
+                <Share2 size={16} /> Share
+              </button>
+              <button
+                onClick={handleExportGenderVillage}
+                className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+              >
+                <Download size={16} /> CSV
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-6">
+            <ReportTable title="" columns={columns} data={villageData} enableSearch={false} />
+          </div>
+        </div>
+      );
+    }
+
+    // --- NEW: Gender Financial Report ---
+    if (activeSubTab === 'Gender Financial') {
+      const genders = ['Male', 'Female'];
+
+      const financialData = genders.map((gender, idx) => {
+        const genderMembers = members.filter(m => m.gender === gender);
+        const count = genderMembers.length;
+
+        const totalShares = genderMembers.reduce((sum, m) => sum + (m.shareBalance || 0), 0);
+        const totalSavings = genderMembers.reduce((sum, m) => sum + (m.savingsBalance || 0), 0);
+        const totalLoanPrincipal = genderMembers.reduce((sum, m) => sum + (m.loanPrincipal || 0), 0);
+        const totalLoanInterest = genderMembers.reduce((sum, m) => sum + (m.loanInterestDue || 0), 0);
+        const totalFD = genderMembers.reduce((sum, m) => sum + (m.fdBalance || 0), 0);
+
+        const avgShares = count > 0 ? Math.round(totalShares / count) : 0;
+        const avgSavings = count > 0 ? Math.round(totalSavings / count) : 0;
+        const avgLoan = count > 0 ? Math.round(totalLoanPrincipal / count) : 0;
+
+        return {
+          id: idx + 1,
+          gender: gender === 'Male' ? 'पुरुष (Male)' : 'महिला (Female)',
+          count: count,
+          totalShares: totalShares,
+          avgShares: avgShares,
+          totalSavings: totalSavings,
+          avgSavings: avgSavings,
+          totalLoanPrincipal: totalLoanPrincipal,
+          avgLoan: avgLoan,
+          totalLoanInterest: totalLoanInterest,
+          totalFD: totalFD
+        };
+      });
+
+      // Grand Total
+      const grandTotal = {
+        id: 0,
+        gender: 'एकूण (Total)',
+        count: members.length,
+        totalShares: financialData.reduce((sum, g) => sum + g.totalShares, 0),
+        avgShares: 0,
+        totalSavings: financialData.reduce((sum, g) => sum + g.totalSavings, 0),
+        avgSavings: 0,
+        totalLoanPrincipal: financialData.reduce((sum, g) => sum + g.totalLoanPrincipal, 0),
+        avgLoan: 0,
+        totalLoanInterest: financialData.reduce((sum, g) => sum + g.totalLoanInterest, 0),
+        totalFD: financialData.reduce((sum, g) => sum + g.totalFD, 0)
+      };
+      financialData.push(grandTotal);
+
+      const handleExportGenderFinancial = () => {
+        const headers = [
+          'लिंग (Gender)', 'संख्या', 'एकूण शेअर', 'सरासरी शेअर',
+          'एकूण बचत', 'सरासरी बचत', 'एकूण कर्ज', 'सरासरी कर्ज',
+          'एकूण व्याज', 'एकूण FD'
+        ];
+        const rows = financialData.map(item => [
+          item.gender,
+          item.count,
+          item.totalShares,
+          item.avgShares || '-',
+          item.totalSavings,
+          item.avgSavings || '-',
+          item.totalLoanPrincipal,
+          item.avgLoan || '-',
+          item.totalLoanInterest,
+          item.totalFD
+        ]);
+        exportTSV(headers, rows, `Gender_Financial_${format(new Date(), 'dd-MM-yyyy')}`);
+      };
+
+      const handleShareGenderFinancial = async () => {
+        try {
+          const shareUrl = 'https://society-ilada1425.vercel.app' + window.location.hash;
+          if (Capacitor.isNativePlatform()) {
+            await Share.share({
+              title: 'Society Ilada - Gender Financial Report',
+              text: 'Gender-wise financial summary of members.',
+              url: shareUrl,
+              dialogTitle: 'Share Gender Financial'
+            });
+          } else if (navigator.share) {
+            await navigator.share({
+              title: 'Society Ilada - Gender Financial Report',
+              text: 'Gender-wise financial summary of members.',
+              url: shareUrl,
+            });
+          } else {
+            alert('Sharing is not supported on this device/browser.');
+          }
+        } catch (error) {
+          console.log('Error sharing:', error);
+        }
+      };
+
+      const columns = [
+        { header: 'अ. क्र.', accessorKey: 'id', render: (i: any) => i.id === 0 ? '' : i.id, width: '60px' },
+        {
+          header: 'लिंग (Gender)',
+          accessorKey: 'gender',
+          className: 'font-bold',
+          render: (i: any) => i.id === 0 ? <span className="text-blue-700 font-bold">{i.gender}</span> : i.gender
+        },
+        { header: 'संख्या', accessorKey: 'count', className: 'text-center' },
+        { header: 'एकूण शेअर', accessorKey: 'totalShares', render: (i: any) => `₹${i.totalShares.toLocaleString()}`, className: 'text-right font-mono text-green-600' },
+        { header: 'सरासरी शेअर', accessorKey: 'avgShares', render: (i: any) => i.avgShares > 0 ? `₹${i.avgShares.toLocaleString()}` : '-', className: 'text-right font-mono text-xs' },
+        { header: 'एकूण बचत', accessorKey: 'totalSavings', render: (i: any) => `₹${i.totalSavings.toLocaleString()}`, className: 'text-right font-mono text-blue-600' },
+        { header: 'सरासरी बचत', accessorKey: 'avgSavings', render: (i: any) => i.avgSavings > 0 ? `₹${i.avgSavings.toLocaleString()}` : '-', className: 'text-right font-mono text-xs' },
+        { header: 'एकूण कर्ज', accessorKey: 'totalLoanPrincipal', render: (i: any) => `₹${i.totalLoanPrincipal.toLocaleString()}`, className: 'text-right font-mono text-red-600' },
+        { header: 'सरासरी कर्ज', accessorKey: 'avgLoan', render: (i: any) => i.avgLoan > 0 ? `₹${i.avgLoan.toLocaleString()}` : '-', className: 'text-right font-mono text-xs' },
+        { header: 'एकूण व्याज', accessorKey: 'totalLoanInterest', render: (i: any) => `₹${i.totalLoanInterest.toLocaleString()}`, className: 'text-right font-mono text-orange-600' },
+        { header: 'एकूण FD', accessorKey: 'totalFD', render: (i: any) => `₹${i.totalFD.toLocaleString()}`, className: 'text-right font-mono text-purple-600' },
+      ];
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">Gender Financial (लिंगनिहाय आर्थिक)</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">महिला/पुरुष सभासदांचे आर्थिक तपशील</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShareGenderFinancial}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-100 rounded-lg transition text-sm font-medium border border-emerald-400/30"
+              >
+                <Share2 size={16} /> Share
+              </button>
+              <button
+                onClick={handleExportGenderFinancial}
+                className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+              >
+                <Download size={16} /> CSV
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-6">
+            <ReportTable title="" columns={columns} data={financialData} enableSearch={false} />
+          </div>
+        </div>
+      );
+    }
+
     if (activeSubTab === 'Land Holding') {
       const columns = [
         { header: 'No.', accessorKey: 'id', width: '60px' },
@@ -1272,6 +1761,7 @@ const Reports = () => {
       ];
       return <ReportTable title="Land Holding Report" columns={columns} data={memberReportData} onRowClick={(item) => handleMemberClick(item.realId)} />;
     }
+
     return <div className="p-8 text-center text-slate-500">Feature '{activeSubTab}' is under development.</div>;
   };
 
