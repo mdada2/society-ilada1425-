@@ -55,6 +55,23 @@ export interface Transaction {
   receiptUrl?: string; // Image of the bill
 }
 
+export interface StaffSalary {
+  id: string;
+  employeeName: string;           // कर्मचारी/रोजनदार चे नाव
+  designation: string;             // पद (e.g., Manager, Clerk, Daily Worker)
+  employeeType: 'Permanent' | 'Daily Wage' | 'Contract';  // कर्मचारी प्रकार
+  month: string;                   // Format: 'YYYY-MM' (e.g., '2026-01')
+  grossSalary: number;             // एकूण पगार
+  deductions: number;              // कपात (PF, TDS, etc.)
+  netPayable: number;              // निव्वळ देय (Gross - Deductions)
+  accountNumber: string;           // खाते क्रमांक
+  paymentDate: string;             // पेमेंट तारीख (ISO format)
+  paymentStatus: 'Paid' | 'Pending' | 'Partial';  // पेमेंट स्थिती
+  paymentMode?: 'Cash' | 'Bank Transfer' | 'Cheque';  // पेमेंट पद्धत
+  remarks?: string;                // टिप्पणी
+  timestamp: number;               // Creation timestamp
+}
+
 export interface Meeting {
   id: string;
   date: string;

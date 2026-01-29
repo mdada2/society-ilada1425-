@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, PaddySeason, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment } from '../types';
+import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, PaddySeason, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment, StaffSalary } from '../types';
 import { db, auth, signInWithEmail, signUpWithEmail, signOutUser, sendPasswordResetEmail as sendResetEmail, setupRecaptcha, signInWithPhone, verifyOTP, clearRecaptcha } from '../services/firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged, User, ConfirmationResult, ApplicationVerifier } from 'firebase/auth';
@@ -15,6 +15,7 @@ interface AppContextType {
   inventoryAdjustments: InventoryAdjustment[];
   societyBanks: SocietyBank[];
   auditNotes: AuditNote[];
+  staffSalaries: StaffSalary[];
   settings: AppSettings;
   localSettings: LocalSettings;
   isAuthenticated: boolean;
@@ -59,6 +60,10 @@ interface AppContextType {
   addAuditNote: (note: AuditNote) => void;
   updateAuditNote: (note: AuditNote) => void;
   deleteAuditNote: (id: string) => void;
+  addStaffSalary: (salary: StaffSalary) => void;
+  updateStaffSalary: (salary: StaffSalary) => void;
+  deleteStaffSalary: (id: string) => void;
+  getStaffSalariesByMonth: (month: string) => StaffSalary[];
   updateMember: (member: Member) => void;
   updateMembers: (updatedMembers: Member[]) => void;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
@@ -114,6 +119,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [inventoryAdjustments, setInventoryAdjustments] = useState<InventoryAdjustment[]>([]);
   const [societyBanks, setSocietyBanks] = useState<SocietyBank[]>([]);
   const [auditNotes, setAuditNotes] = useState<AuditNote[]>([]);
+  const [staffSalaries, setStaffSalaries] = useState<StaffSalary[]>([]);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('settings');
@@ -178,6 +184,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (data.inventoryAdjustments) setInventoryAdjustments(data.inventoryAdjustments);
             if (data.societyBanks) setSocietyBanks(data.societyBanks);
             if (data.auditNotes) setAuditNotes(data.auditNotes);
+            if (data.staffSalaries) setStaffSalaries(data.staffSalaries);
             if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
             setIsCloudSynced(true);
             isInitialized.current = true;
@@ -222,7 +229,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const timestamp = Date.now();
       const sanitizedData = JSON.parse(JSON.stringify({
-        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, lastUpdated: timestamp
+        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings, lastUpdated: timestamp
       }));
       await setDoc(doc(db, "societies", "ilada_main"), sanitizedData);
       lastCloudTimestamp.current = timestamp;
@@ -252,6 +259,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setInventoryAdjustments(data.inventoryAdjustments || []);
         setSocietyBanks(data.societyBanks || []);
         setAuditNotes(data.auditNotes || []);
+        setStaffSalaries(data.staffSalaries || []);
         if (data.settings) setSettings(data.settings);
         isRestoring.current = false;
         setIsCloudSynced(true);
@@ -272,11 +280,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('inventoryAdjustments', JSON.stringify(inventoryAdjustments));
     localStorage.setItem('societyBanks', JSON.stringify(societyBanks));
     localStorage.setItem('auditNotes', JSON.stringify(auditNotes));
+    localStorage.setItem('staffSalaries', JSON.stringify(staffSalaries));
     localStorage.setItem('settings', JSON.stringify(settings));
     setIsCloudSynced(false);
     const timeout = setTimeout(syncToCloud, 3000);
     return () => clearTimeout(timeout);
-  }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings]);
+  }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings]);
 
   const login = async (email: string, password: string): Promise<void> => {
     await signInWithEmail(email, password);
@@ -502,6 +511,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateAuditNote = (note: AuditNote) => setAuditNotes(prev => prev.map(n => n.id === note.id ? note : n));
   const deleteAuditNote = (id: string) => setAuditNotes(prev => prev.filter(n => n.id !== id));
 
+  const addStaffSalary = (salary: StaffSalary) => setStaffSalaries(prev => [salary, ...prev]);
+  const updateStaffSalary = (salary: StaffSalary) => setStaffSalaries(prev => prev.map(s => s.id === salary.id ? salary : s));
+  const deleteStaffSalary = (id: string) => setStaffSalaries(prev => prev.filter(s => s.id !== id));
+  const getStaffSalariesByMonth = (month: string): StaffSalary[] => staffSalaries.filter(s => s.month === month);
+
   const resetData = (data: any) => {
     isRestoring.current = true;
     setMembers(data.members || []);
@@ -521,7 +535,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+      members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
       login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,
       addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase,
@@ -530,6 +544,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addInventoryAdjustment, updateInventoryAdjustment, deleteInventoryAdjustment,
       addSocietyBank, updateSocietyBank, deleteSocietyBank,
       addAuditNote, updateAuditNote, deleteAuditNote,
+      addStaffSalary, updateStaffSalary, deleteStaffSalary, getStaffSalariesByMonth,
       updateMember, updateMembers, updateSettings, updateLocalSettings, resetData, getMember, importMembers, syncToCloud, restoreFromCloud
     }}>
       {children}
