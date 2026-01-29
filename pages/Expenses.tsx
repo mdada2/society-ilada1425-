@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { format } from 'date-fns';
-import { Receipt, Plus, PieChart as PieIcon, Trash2, X, TrendingDown, Eye, AlertCircle, Sparkles, CheckCircle, Users, Calendar, DollarSign, CreditCard, FileText, Download, Share2 } from 'lucide-react';
+import { Receipt, Plus, PieChart as PieIcon, Trash2, X, TrendingDown, Eye, AlertCircle, Sparkles, CheckCircle, Users, Calendar, CreditCard, FileText, Download, Share2 } from 'lucide-react';
 import { TransactionType, StaffSalary } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Capacitor } from '@capacitor/core';
@@ -463,7 +463,7 @@ const Expenses = () => {
                                     <h4 className="text-2xl font-black text-slate-800 dark:text-white">₹{salaryStats.totalSalary.toLocaleString()}</h4>
                                 </div>
                                 <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                                    <DollarSign className="text-blue-600 dark:text-blue-400" size={24} />
+                                    <span className="text-blue-600 dark:text-blue-400 text-3xl font-black">₹</span>
                                 </div>
                             </div>
                         </div>
@@ -625,8 +625,8 @@ const Expenses = () => {
                                                 <div className="text-xs text-slate-400 mt-1">{monthName} {year}</div>
                                             </div>
                                             <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${salary.paymentStatus === 'Paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-                                                    salary.paymentStatus === 'Pending' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
-                                                        'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                                salary.paymentStatus === 'Pending' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
+                                                    'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
                                                 }`}>
                                                 {salary.paymentStatus}
                                             </span>
