@@ -1254,8 +1254,16 @@ const Reports = () => {
       const summaryData = Object.entries(summaryMap).map(([cat, count], idx) => ({
         id: idx + 1,
         category: cat,
-        count: count
+        count: count as number
       }));
+
+      // Add total row
+      const totalCount = summaryData.reduce((sum, item) => sum + item.count, 0);
+      summaryData.push({
+        id: 0,
+        category: 'एकूण (Total)',
+        count: totalCount
+      });
 
       const columns = [
         { header: 'Category', accessorKey: 'category' },
@@ -1612,6 +1620,7 @@ const Reports = () => {
     // --- NEW: Gender Financial Report ---
     if (activeSubTab === 'Gender Financial') {
       const genders = ['Male', 'Female'];
+      const todayStr = new Date().toISOString().split('T')[0];
 
       const financialData = genders.map((gender, idx) => {
         const genderMembers = members.filter(m => m.gender === gender);
@@ -1620,7 +1629,29 @@ const Reports = () => {
         const totalShares = genderMembers.reduce((sum, m) => sum + (m.shareBalance || 0), 0);
         const totalSavings = genderMembers.reduce((sum, m) => sum + (m.savingsBalance || 0), 0);
         const totalLoanPrincipal = genderMembers.reduce((sum, m) => sum + (m.loanPrincipal || 0), 0);
-        const totalLoanInterest = genderMembers.reduce((sum, m) => sum + (m.loanInterestDue || 0), 0);
+
+        // Calculate total loan interest (stored + accrued)
+        const totalLoanInterest = genderMembers.reduce((sum, m) => {
+          let memberInterest = m.loanInterestDue || 0;
+
+          // Add accrued interest for members with outstanding loans
+          if (m.loanPrincipal > 0) {
+            const lastDate = m.lastLoanCalculationDate || m.originalLoanDate || '2022-04-01';
+            const { interest: accrued } = calculateLoanInterest(
+              m.loanPrincipal,
+              lastDate,
+              todayStr,
+              settings.financialYearStart,
+              settings.financialYearEnd,
+              true,
+              m.originalLoanDate
+            );
+            memberInterest += accrued;
+          }
+
+          return sum + memberInterest;
+        }, 0);
+
         const totalFD = genderMembers.reduce((sum, m) => sum + (m.fdBalance || 0), 0);
 
         const avgShares = count > 0 ? Math.round(totalShares / count) : 0;
