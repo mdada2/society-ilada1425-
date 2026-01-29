@@ -425,15 +425,17 @@ const Expenses = () => {
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700">
                                 <h3 className="text-sm font-black uppercase text-slate-500 mb-6 flex items-center gap-2"><PieIcon size={16} /> Spending Split</h3>
                                 <div className="h-64 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie data={chartData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={5} dataKey="value">
-                                                {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                            </Pie>
-                                            <Tooltip contentStyle={{ borderRadius: '12px', fontWeight: 'bold' }} formatter={(val: any) => `₹${val}`} />
-                                            <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                    {chartData.length > 0 && (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={chartData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={5} dataKey="value">
+                                                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                                </Pie>
+                                                <Tooltip contentStyle={{ borderRadius: '12px', fontWeight: 'bold' }} formatter={(val: any) => `₹${val}`} />
+                                                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    )}
                                 </div>
                             </div>
 
@@ -553,56 +555,107 @@ const Expenses = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-100 dark:bg-slate-900">
-                                    <tr>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400">Employee</th>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400">Month</th>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 text-right">Gross</th>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 text-right">Deductions</th>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 text-right">Net Payable</th>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400">Status</th>
-                                        <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y dark:divide-slate-700">
-                                    {filteredSalaries.length === 0 ? (
-                                        <tr><td colSpan={7} className="p-10 text-center text-slate-400 italic">No salary records found.</td></tr>
-                                    ) : filteredSalaries.map(salary => {
-                                        const [year, month] = salary.month.split('-');
-                                        const monthName = MARATHI_MONTHS[month] || month;
-                                        return (
-                                            <tr key={salary.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group">
-                                                <td className="p-3">
-                                                    <div className="font-black text-slate-800 dark:text-white">{salary.employeeName}</div>
-                                                    <div className="text-[10px] text-slate-500 font-bold">{salary.designation.split('(')[0]}</div>
-                                                </td>
-                                                <td className="p-3">
-                                                    <div className="text-xs font-bold text-slate-600 dark:text-slate-400">{monthName} {year}</div>
-                                                </td>
-                                                <td className="p-3 text-right font-bold text-slate-700 dark:text-slate-300">₹{salary.grossSalary.toLocaleString()}</td>
-                                                <td className="p-3 text-right font-bold text-red-600 dark:text-red-400">₹{salary.deductions.toLocaleString()}</td>
-                                                <td className="p-3 text-right font-black text-green-600 dark:text-green-400 text-base">₹{salary.netPayable.toLocaleString()}</td>
-                                                <td className="p-3">
-                                                    <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${salary.paymentStatus === 'Paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-                                                        salary.paymentStatus === 'Pending' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
-                                                            'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                                                        }`}>
-                                                        {salary.paymentStatus}
-                                                    </span>
-                                                </td>
-                                                <td className="p-3">
-                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleEditSalary(salary)} className="text-blue-600 hover:text-blue-700"><FileText size={16} /></button>
-                                                        <button onClick={() => handleDeleteSalary(salary.id)} className="text-red-600 hover:text-red-700"><Trash2 size={16} /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                        <div className="hidden md:block overflow-x-auto">
+                            <div className="min-w-[800px]">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-100 dark:bg-slate-900">
+                                        <tr>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 whitespace-nowrap">Employee</th>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 whitespace-nowrap">Month</th>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 text-right whitespace-nowrap">Gross</th>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 text-right whitespace-nowrap">Deductions</th>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 text-right whitespace-nowrap">Net Payable</th>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 whitespace-nowrap">Status</th>
+                                            <th className="p-3 font-black text-[10px] uppercase text-slate-600 dark:text-slate-400 whitespace-nowrap">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y dark:divide-slate-700">
+                                        {filteredSalaries.length === 0 ? (
+                                            <tr><td colSpan={7} className="p-10 text-center text-slate-400 italic">No salary records found.</td></tr>
+                                        ) : filteredSalaries.map(salary => {
+                                            const [year, month] = salary.month.split('-');
+                                            const monthName = MARATHI_MONTHS[month] || month;
+                                            return (
+                                                <tr key={salary.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group">
+                                                    <td className="p-3">
+                                                        <div className="font-black text-slate-800 dark:text-white">{salary.employeeName}</div>
+                                                        <div className="text-[10px] text-slate-500 font-bold">{salary.designation.split('(')[0]}</div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="text-xs font-bold text-slate-600 dark:text-slate-400">{monthName} {year}</div>
+                                                    </td>
+                                                    <td className="p-3 text-right font-bold text-slate-700 dark:text-slate-300">₹{salary.grossSalary.toLocaleString()}</td>
+                                                    <td className="p-3 text-right font-bold text-red-600 dark:text-red-400">₹{salary.deductions.toLocaleString()}</td>
+                                                    <td className="p-3 text-right font-black text-green-600 dark:text-green-400 text-base">₹{salary.netPayable.toLocaleString()}</td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${salary.paymentStatus === 'Paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                                            salary.paymentStatus === 'Pending' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
+                                                                'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                                            }`}>
+                                                            {salary.paymentStatus}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => handleEditSalary(salary)} className="text-blue-600 hover:text-blue-700"><FileText size={16} /></button>
+                                                            <button onClick={() => handleDeleteSalary(salary.id)} className="text-red-600 hover:text-red-700"><Trash2 size={16} /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Mobile Card View */}
+                        <div className="md:hidden space-y-3 p-4">
+                            {filteredSalaries.length === 0 ? (
+                                <div className="p-10 text-center text-slate-400 italic">No salary records found.</div>
+                            ) : filteredSalaries.map(salary => {
+                                const [year, month] = salary.month.split('-');
+                                const monthName = MARATHI_MONTHS[month] || month;
+                                return (
+                                    <div key={salary.id} className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-700">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <div className="font-black text-slate-800 dark:text-white text-base">{salary.employeeName}</div>
+                                                <div className="text-xs text-slate-500 font-bold">{salary.designation.split('(')[0]}</div>
+                                                <div className="text-xs text-slate-400 mt-1">{monthName} {year}</div>
+                                            </div>
+                                            <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${salary.paymentStatus === 'Paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                                    salary.paymentStatus === 'Pending' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
+                                                        'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                                }`}>
+                                                {salary.paymentStatus}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 mb-3">
+                                            <div>
+                                                <div className="text-[10px] text-slate-400 uppercase font-bold">Gross</div>
+                                                <div className="font-bold text-slate-700 dark:text-slate-300">₹{salary.grossSalary.toLocaleString()}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] text-slate-400 uppercase font-bold">Deductions</div>
+                                                <div className="font-bold text-red-600 dark:text-red-400">₹{salary.deductions.toLocaleString()}</div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded-lg mb-3">
+                                            <div className="text-[10px] text-green-700 dark:text-green-400 uppercase font-bold">Net Payable</div>
+                                            <div className="font-black text-green-700 dark:text-green-400 text-lg">₹{salary.netPayable.toLocaleString()}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleEditSalary(salary)} className="flex-1 bg-blue-600 text-white py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition font-bold text-xs">
+                                                <FileText size={14} /> Edit
+                                            </button>
+                                            <button onClick={() => handleDeleteSalary(salary.id)} className="flex-1 bg-red-600 text-white py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-red-700 transition font-bold text-xs">
+                                                <Trash2 size={14} /> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </>
