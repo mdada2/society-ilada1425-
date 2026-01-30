@@ -721,7 +721,7 @@ const Members = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 pb-24">
       <style>{`
         /* MOBILE ONLY: Prominent Scrollbar & Table Fixes */
         @media (max-width: 768px) {

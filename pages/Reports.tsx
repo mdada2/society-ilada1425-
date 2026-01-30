@@ -2128,7 +2128,7 @@ const Reports = () => {
   if (!selectedCategory) {
     // Grid View
     return (
-      <div className="p-4 md:p-8 animate-fade-in">
+      <div className="p-4 md:p-8 pb-24 animate-fade-in">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
           <FileText className="text-blue-600" /> Reports Center
         </h1>
@@ -2205,7 +2205,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden p-4 bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 overflow-auto p-4 pb-24 bg-slate-50 dark:bg-slate-900">
         {renderContent()}
       </div>
 
