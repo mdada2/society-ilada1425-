@@ -53,8 +53,8 @@ const LoginScreen = () => {
                 type="button"
                 onClick={() => setLoginMethod('email')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition ${loginMethod === 'email'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 <Mail size={18} />
@@ -64,8 +64,8 @@ const LoginScreen = () => {
                 type="button"
                 onClick={() => setLoginMethod('phone')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition ${loginMethod === 'phone'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 <Smartphone size={18} />

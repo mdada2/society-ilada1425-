@@ -147,7 +147,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 pb-24">
+        <div className="p-4 md:p-6 pb-28 bg-ios-gray-50 dark:bg-black min-h-screen">
             {/* Print Only Header */}
             <div className="hidden print:block text-center mb-8 border-b-2 border-black pb-4">
                 <h1 className="text-3xl font-bold text-black">Society Ilada</h1>
@@ -157,78 +157,80 @@ const Dashboard = () => {
 
             <div className="flex justify-between items-center mb-6 print:hidden">
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                    >
-                        <ArrowLeft size={20} />
-                        <span className="hidden sm:inline text-sm font-medium">Back</span>
-                    </button>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard Overview</h2>
+                    <h2 className="text-3xl font-bold text-ios-gray-900 dark:text-white">Dashboard</h2>
                 </div>
-                <span className="text-xs font-bold text-slate-500 bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded-full">{format(new Date(), 'dd MMMM yyyy')}</span>
+                <span className="text-xs font-semibold text-ios-gray-500 bg-ios-gray-100 dark:bg-ios-gray-800 px-3 py-1.5 rounded-ios">{format(new Date(), 'dd MMM yyyy')}</span>
             </div>
 
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:grid-cols-2 print:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 print:grid-cols-2 print:gap-4">
                 {/* Members */}
-                <Link to="/members" className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700 hover:shadow-md transition group relative overflow-hidden">
+                <Link to="/members" className="ios-card p-5 rounded-ios-xl hover:shadow-ios-md transition-all duration-200 ios-touch group relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Users size={80} /></div>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Total Members</p>
+                    <p className="text-xs font-semibold text-ios-gray-500 dark:text-ios-gray-400 mb-2">Total Members</p>
                     <div className="flex items-baseline gap-2">
-                        <h3 className="text-3xl font-black text-slate-800 dark:text-white">{stats.totalMembers}</h3>
-                        <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">{stats.activeMembers} Active</span>
+                        <h3 className="text-3xl font-bold text-ios-gray-900 dark:text-white">{stats.totalMembers}</h3>
+                        <span className="ios-badge text-ios-green bg-ios-green/10">{stats.activeMembers} Active</span>
                     </div>
                 </Link>
 
                 {/* Cash in Hand */}
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700 hover:shadow-md transition group relative overflow-hidden">
+                <div className="ios-card p-5 rounded-ios-xl hover:shadow-ios-md transition-all duration-200 group relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={80} /></div>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Cash In Hand (हातातील रोकड)</p>
-                    <h3 className="text-3xl font-black text-amber-600 dark:text-amber-400">₹{stats.cashInHand.toLocaleString()}</h3>
-                    <div className="flex gap-4 mt-2">
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-green-600"><ArrowUpRight size={12} /> Today: ₹{stats.todayCollection.toLocaleString()}</div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-red-600"><ArrowDownRight size={12} /> Exp: ₹{stats.todayExpense.toLocaleString()}</div>
+                    <p className="text-xs font-semibold text-ios-gray-500 dark:text-ios-gray-400 mb-2">Cash In Hand</p>
+                    <h3 className="text-3xl font-bold text-ios-orange">₹{stats.cashInHand.toLocaleString()}</h3>
+                    <div className="flex gap-3 mt-2">
+                        <div className="flex items-center gap-1 text-[10px] font-semibold text-ios-green"><ArrowUpRight size={12} /> ₹{stats.todayCollection.toLocaleString()}</div>
+                        <div className="flex items-center gap-1 text-[10px] font-semibold text-ios-red"><ArrowDownRight size={12} /> ₹{stats.todayExpense.toLocaleString()}</div>
                     </div>
                 </div>
 
                 {/* Total Bank Balance (New) */}
-                <Link to="/bank-audit" className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700 hover:shadow-md transition group relative overflow-hidden">
+                <Link to="/bank-audit" className="ios-card p-5 rounded-ios-xl hover:shadow-ios-md transition-all duration-200 ios-touch group relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Landmark size={80} /></div>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Total Bank Balance (बँक शिल्लक)</p>
-                    <h3 className="text-3xl font-black text-indigo-600 dark:text-indigo-400">₹{stats.totalBankBalance.toLocaleString()}</h3>
-                    <p className="text-xs text-slate-400 mt-1 font-medium">{societyBanks.length} Connected Accounts</p>
+                    <p className="text-xs font-semibold text-ios-gray-500 dark:text-ios-gray-400 mb-2">Bank Balance</p>
+                    <h3 className="text-3xl font-bold text-ios-indigo">₹{stats.totalBankBalance.toLocaleString()}</h3>
+                    <p className="text-xs text-ios-gray-400 mt-1 font-medium">{societyBanks.length} Accounts</p>
                 </Link>
 
                 {/* Outstanding Loans */}
-                <Link to="/reports" className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700 hover:shadow-md transition group relative overflow-hidden">
+                <Link to="/reports" className="ios-card p-5 rounded-ios-xl hover:shadow-ios-md transition-all duration-200 ios-touch group relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><AlertTriangle size={80} /></div>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Active Loans (कर्ज बाकी)</p>
-                    <h3 className="text-3xl font-black text-red-600 dark:text-red-400">{stats.outstandingLoans}</h3>
-                    <p className="text-xs text-slate-400 mt-1 font-medium">Disbursed: ₹{(stats.loansGiven / 100000).toFixed(2)} Lakhs</p>
+                    <p className="text-xs font-semibold text-ios-gray-500 dark:text-ios-gray-400 mb-2">Active Loans</p>
+                    <h3 className="text-3xl font-bold text-ios-red">{stats.outstandingLoans}</h3>
+                    <p className="text-xs text-ios-gray-400 mt-1 font-medium">₹{(stats.loansGiven / 100000).toFixed(2)}L Disbursed</p>
                 </Link>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Chart Section */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700 min-w-0 print:border-black print:shadow-none">
+                <div className="lg:col-span-2 ios-card p-6 rounded-ios-2xl min-w-0 print:border-black print:shadow-none">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                            {chartType === 'bar' && <BarChart3 size={20} className="text-blue-500" />}
-                            {chartType === 'pie' && <PieChartIcon size={20} className="text-blue-500" />}
-                            {chartType === 'area' && <Activity size={20} className="text-blue-500" />}
+                        <h3 className="text-lg font-semibold text-ios-gray-900 dark:text-white flex items-center gap-2">
+                            {chartType === 'bar' && <BarChart3 size={20} className="text-ios-blue" />}
+                            {chartType === 'pie' && <PieChartIcon size={20} className="text-ios-blue" />}
+                            {chartType === 'area' && <Activity size={20} className="text-ios-blue" />}
                             Financial Overview
                         </h3>
-                        <div className="relative print:hidden">
-                            <select
-                                value={chartType}
-                                onChange={(e) => setChartType(e.target.value)}
-                                className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold py-1.5 px-3 rounded-lg border-none outline-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition appearance-none pr-8"
+                        <div className="ios-segmented print:hidden">
+                            <button
+                                onClick={() => setChartType('bar')}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-ios transition-all ${chartType === 'bar' ? 'bg-white dark:bg-ios-gray-900 text-ios-blue shadow-ios' : 'text-ios-gray-600 dark:text-ios-gray-400'}`}
                             >
-                                <option value="bar">Bar Chart</option>
-                                <option value="pie">Pie Chart</option>
-                                <option value="area">Area Chart</option>
-                            </select>
+                                Bar
+                            </button>
+                            <button
+                                onClick={() => setChartType('pie')}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-ios transition-all ${chartType === 'pie' ? 'bg-white dark:bg-ios-gray-900 text-ios-blue shadow-ios' : 'text-ios-gray-600 dark:text-ios-gray-400'}`}
+                            >
+                                Pie
+                            </button>
+                            <button
+                                onClick={() => setChartType('area')}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-ios transition-all ${chartType === 'area' ? 'bg-white dark:bg-ios-gray-900 text-ios-blue shadow-ios' : 'text-ios-gray-600 dark:text-ios-gray-400'}`}
+                            >
+                                Area
+                            </button>
                         </div>
                     </div>
 

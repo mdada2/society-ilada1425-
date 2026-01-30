@@ -5,16 +5,135 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
 
-/* Safe Area handled by native fitsSystemWindows */
-/* 
-@supports (padding-top: env(safe-area-inset-top)) {
+  /* iOS-style smooth scrolling */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+
+  /* iOS-style list separator */
+  .ios-list-separator {
+    @apply border-b border-ios-gray-200 dark:border-ios-gray-800;
+  }
+
+  /* iOS-style card */
+  .ios-card {
+    @apply bg-white dark:bg-ios-gray-900 rounded-ios-lg shadow-ios;
+  }
+
+  /* iOS-style blur background */
+  .ios-blur {
+    @apply backdrop-blur-ios bg-white/80 dark:bg-ios-gray-900/80;
+  }
+
+  /* iOS-style button */
+  .ios-button {
+    @apply rounded-ios-lg font-semibold transition-all duration-200 active:scale-95;
+  }
+
+  /* iOS-style input */
+  .ios-input {
+    @apply rounded-ios bg-ios-gray-50 dark:bg-ios-gray-800 border-0 px-4 py-3 focus:ring-2 focus:ring-ios-blue outline-none transition-all;
+  }
+
+  /* iOS-style section header */
+  .ios-section-header {
+    @apply text-xs font-semibold uppercase tracking-wide text-ios-gray-500 dark:text-ios-gray-400 px-4 py-2;
+  }
+
+  /* iOS-style grouped list */
+  .ios-grouped-list {
+    @apply bg-white dark:bg-ios-gray-900 rounded-ios-xl overflow-hidden divide-y divide-ios-gray-200 dark:divide-ios-gray-800;
+  }
+
+  /* iOS-style navigation bar */
+  .ios-navbar {
+    @apply bg-white/80 dark:bg-ios-gray-900/80 backdrop-blur-ios border-b border-ios-gray-200 dark:border-ios-gray-800;
+  }
+
+  /* iOS-style tab bar */
+  .ios-tabbar {
+    @apply bg-white/95 dark:bg-ios-gray-900/95 backdrop-blur-ios border-t border-ios-gray-200 dark:border-ios-gray-800;
+  }
+
+  /* iOS-style badge */
+  .ios-badge {
+    @apply inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded-full;
+  }
+
+  /* iOS-style toggle switch */
+  .ios-toggle {
+    @apply relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 ease-in-out;
+  }
+
+  /* iOS-style segmented control */
+  .ios-segmented {
+    @apply inline-flex bg-ios-gray-100 dark:bg-ios-gray-800 rounded-ios p-1;
+  }
+
+  /* iOS-style modal overlay */
+  .ios-modal-overlay {
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50;
+  }
+
+  /* iOS-style bottom sheet */
+  .ios-bottom-sheet {
+    @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-ios-gray-900 rounded-t-ios-3xl shadow-ios-xl z-50 max-h-[90vh] overflow-hidden;
+  }
+}
+
+@layer utilities {
+
+  /* iOS-style safe area padding */
+  .safe-top {
     padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
-} 
-*/
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* iOS-style touch feedback */
+  .ios-touch {
+    @apply active:opacity-70 transition-opacity duration-150;
+  }
+
+  /* iOS-style spring animation */
+  .ios-spring {
+    transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  /* Glassmorphism effect */
+  .glass {
+    @apply bg-white/70 dark:bg-ios-gray-900/70 backdrop-blur-xl;
+  }
+
+  .glass-strong {
+    @apply bg-white/90 dark:bg-ios-gray-900/90 backdrop-blur-2xl;
+  }
+}
 
 /* Custom animations */
 @keyframes pulse-soft {
@@ -31,4 +150,31 @@
 
 .animate-pulse-soft {
   animation: pulse-soft 2s infinite;
+}
+
+/* iOS-style scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
