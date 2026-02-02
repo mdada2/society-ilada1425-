@@ -593,3 +593,189 @@ export interface PredictionModel {
   dataPoints: number;
   lastTrained: number;
 }
+
+// ============================================================================
+// PHASE 8: AUTOMATED WORKFLOWS
+// ============================================================================
+
+export interface WorkflowRule {
+  id: string;
+  name: string;
+  type: 'categorization' | 'reconciliation' | 'backup' | 'report';
+  enabled: boolean;
+  conditions: {
+    field: string;
+    operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+    value: any;
+  }[];
+  actions: {
+    type: 'categorize' | 'flag' | 'notify' | 'export';
+    params: any;
+  }[];
+  schedule?: {
+    frequency: 'daily' | 'weekly' | 'monthly';
+    time?: string; // HH:mm format
+    dayOfWeek?: number; // 0-6
+    dayOfMonth?: number; // 1-31
+  };
+  createdAt: number;
+  lastRun?: number;
+}
+
+export interface AutoCategorizationRule {
+  id: string;
+  pattern: string; // Regex or keyword
+  category: string;
+  accountType: AccountType;
+  confidence: number; // 0-100
+  priority: number; // Higher = applied first
+}
+
+export interface ReconciliationResult {
+  date: string;
+  totalTransactions: number;
+  matchedTransactions: number;
+  unmatchedTransactions: number;
+  discrepancies: Array<{
+    transactionId: string;
+    issue: string;
+    expectedAmount: number;
+    actualAmount: number;
+  }>;
+  balanceMatches: boolean;
+  suggestions: string[];
+}
+
+export interface BackupSchedule {
+  id: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  time: string; // HH:mm
+  enabled: boolean;
+  lastBackup?: number;
+  nextBackup: number;
+  backupLocation: 'local' | 'cloud';
+  includeAttachments: boolean;
+}
+
+export interface AutoReport {
+  id: string;
+  name: string;
+  type: 'financial' | 'member' | 'loan' | 'custom';
+  schedule: {
+    frequency: 'daily' | 'weekly' | 'monthly';
+    recipients: string[]; // Email addresses
+  };
+  filters?: FilterCriteria;
+  format: 'pdf' | 'csv' | 'excel';
+  enabled: boolean;
+  lastGenerated?: number;
+}
+
+// ============================================================================
+// PHASE 9: MULTILINGUAL SUPPORT
+// ============================================================================
+
+export interface LanguagePreference {
+  userId: string;
+  primaryLanguage: 'marathi' | 'english' | 'bilingual';
+  voiceEnabled: boolean;
+  autoTranslate: boolean;
+  preferredScript: 'devanagari' | 'latin';
+}
+
+export interface TranslationEntry {
+  id: string;
+  english: string;
+  marathi: string;
+  category: 'ui' | 'command' | 'message' | 'report';
+  context?: string;
+}
+
+export interface VoiceCommand {
+  id: string;
+  marathiCommand: string;
+  englishEquivalent: string;
+  action: string;
+  confidence: number; // 0-100
+  alternates?: string[];
+}
+
+export interface BilingualResponse {
+  english: string;
+  marathi: string;
+  format: 'text' | 'voice';
+  timestamp: number;
+}
+
+// ============================================================================
+// PHASE 10: SECURITY & COMPLIANCE
+// ============================================================================
+
+export interface AuditLog {
+  id: string;
+  timestamp: number;
+  userId: string;
+  userName: string;
+  action: 'create' | 'update' | 'delete' | 'view' | 'export';
+  entityType: 'member' | 'transaction' | 'loan' | 'report' | 'settings';
+  entityId: string;
+  details: string;
+  ipAddress?: string;
+  changes?: {
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }[];
+}
+
+export interface SuspiciousActivity {
+  id: string;
+  timestamp: number;
+  activityType: 'large_transaction' | 'unusual_pattern' | 'multiple_failures' | 'data_anomaly';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  entityType: string;
+  entityId: string;
+  riskScore: number; // 0-100
+  autoBlocked: boolean;
+  resolved: boolean;
+  resolvedBy?: string;
+  resolvedAt?: number;
+}
+
+export interface ComplianceRule {
+  id: string;
+  name: string;
+  category: 'financial' | 'data_privacy' | 'operational' | 'regulatory';
+  description: string;
+  enabled: boolean;
+  severity: 'info' | 'warning' | 'error';
+  checkFunction: string; // Function name to execute
+  schedule?: 'realtime' | 'daily' | 'weekly' | 'monthly';
+}
+
+export interface SecurityAlert {
+  id: string;
+  timestamp: number;
+  type: 'unauthorized_access' | 'data_breach' | 'compliance_violation' | 'suspicious_activity';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  details: any;
+  acknowledged: boolean;
+  acknowledgedBy?: string;
+  acknowledgedAt?: number;
+}
+
+export interface DataValidationResult {
+  valid: boolean;
+  errors: Array<{
+    field: string;
+    message: string;
+    severity: 'error' | 'warning';
+  }>;
+  warnings: Array<{
+    field: string;
+    message: string;
+  }>;
+  score: number; // 0-100, data quality score
+}

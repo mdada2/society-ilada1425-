@@ -17,7 +17,8 @@ import {
     analyzeBulkOperation,
     generateDocumentContent,
     parseNaturalLanguageQuery,
-    generatePredictionInsights
+    generatePredictionInsights,
+    suggestWorkflowOptimizations
 } from '../services/ai';
 import {
     generatePaymentReminders,
@@ -51,6 +52,27 @@ import {
     predictMemberGrowth,
     getPredictionSummary
 } from '../services/predictiveAnalytics';
+import {
+    categorizeTransaction,
+    batchCategorizeTransactions,
+    reconcileTransactions,
+    generateBackupData,
+    generateFinancialReport
+} from '../services/automatedWorkflows';
+import {
+    recognizeVoiceCommand,
+    translate,
+    generateBilingualResponse,
+    getMultilingualSummary,
+    marathiVoiceCommands
+} from '../services/multilingualSupport';
+import {
+    detectSuspiciousActivity,
+    checkCompliance,
+    validateData,
+    getSecuritySummary,
+    exportAuditReport
+} from '../services/securityCompliance';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -93,6 +115,20 @@ const COMMANDS = [
     { cmd: '/predictcash', label: '💰 Cash Flow Forecast', text: 'Predict cash flow', action: 'AI_FUNCTION', payload: 'predictcash' },
     { cmd: '/predictloans', label: '📈 Loan Recovery', text: 'Forecast loan recovery', action: 'AI_FUNCTION', payload: 'predictloans' },
     { cmd: '/predictgrowth', label: '📈 Member Growth', text: 'Predict member growth', action: 'AI_FUNCTION', payload: 'predictgrowth' },
+    // Phase 8: Automated Workflows Commands
+    { cmd: '/autocategorize', label: '🏷️ Auto-Categorize', text: 'Auto-categorize transactions', action: 'AI_FUNCTION', payload: 'autocategorize' },
+    { cmd: '/reconcile', label: '⚖️ Reconcile', text: 'Reconcile accounts', action: 'AI_FUNCTION', payload: 'reconcile' },
+    { cmd: '/backup', label: '💾 Backup', text: 'Generate backup', action: 'AI_FUNCTION', payload: 'backup' },
+    { cmd: '/autoreport', label: '📊 Auto-Report', text: 'Generate automated report', action: 'AI_FUNCTION', payload: 'autoreport' },
+    // Phase 9: Multilingual Support Commands
+    { cmd: '/translate', label: '🌐 Translate', text: 'Translate text', action: 'AI_FUNCTION', payload: 'translate' },
+    { cmd: '/voice', label: '🎤 Voice Commands', text: 'Show voice commands', action: 'AI_FUNCTION', payload: 'voice' },
+    { cmd: '/bilingual', label: '🗣️ Bilingual', text: 'Bilingual response', action: 'AI_FUNCTION', payload: 'bilingual' },
+    // Phase 10: Security & Compliance Commands
+    { cmd: '/security', label: '🔒 Security', text: 'Security summary', action: 'AI_FUNCTION', payload: 'security' },
+    { cmd: '/suspicious', label: '⚠️ Suspicious', text: 'Detect suspicious activity', action: 'AI_FUNCTION', payload: 'suspicious' },
+    { cmd: '/compliance', label: '✅ Compliance', text: 'Check compliance', action: 'AI_FUNCTION', payload: 'compliance' },
+    { cmd: '/audit', label: '📝 Audit', text: 'Audit report', action: 'AI_FUNCTION', payload: 'audit' },
 ];
 
 
@@ -582,6 +618,110 @@ const AIChatWidget = () => {
                     const growthMsg = `📊 **Member Growth Prediction** (Next 6 Months)\n\n**${nextGrowth.period}:**\nNew Members: ${nextGrowth.predictedNewMembers}\nChurn: ${nextGrowth.predictedChurnMembers}\nNet Growth: ${nextGrowth.netGrowth}\nProjected Total: ${nextGrowth.totalMembersProjected}\nGrowth Rate: ${nextGrowth.growthRate.toFixed(2)}%\nConfidence: ${nextGrowth.confidence}%\n\n**Factors:**\n• ${nextGrowth.factors.seasonalTrend}\n• ${nextGrowth.factors.economicIndicators}\n• ${nextGrowth.factors.historicalPattern}\n\n💡 ${nextGrowth.netGrowth > 0 ? 'Positive growth expected!' : 'Focus on retention strategies.'}`;
                     setMessages(prev => [...prev, { role: 'ai', text: growthMsg }]);
                     setLastAction('Growth Predicted');
+                    break;
+
+                case 'autocategorize':
+                    // Auto-categorize transactions
+                    const categorized = batchCategorizeTransactions(transactions.slice(0, 10));
+                    const highConfidence = categorized.filter(c => c.confidence >= 80).length;
+
+                    const catMsg = `🏷️ **Auto-Categorization** (Sample: 10 transactions)\n\nCategorized: ${categorized.length}\nHigh Confidence (≥80%): ${highConfidence}\n\n**Sample Results:**\n${categorized.slice(0, 5).map(c => `\n${c.details.substring(0, 30)}...\nCategory: ${c.suggestedCategory}\nConfidence: ${c.confidence}%`).join('\n')}\n\n💡 Apply to all ${transactions.length} transactions?`;
+                    setMessages(prev => [...prev, { role: 'ai', text: catMsg }]);
+                    setLastAction('Auto-Categorization Complete');
+                    break;
+
+                case 'reconcile':
+                    // Reconcile accounts
+                    const reconciliation = reconcileTransactions(members, transactions);
+
+                    const reconMsg = `⚖️ **Account Reconciliation**\n\nDate: ${reconciliation.date}\nTotal Transactions: ${reconciliation.totalTransactions}\nMatched: ${reconciliation.matchedTransactions}\nUnmatched: ${reconciliation.unmatchedTransactions}\nBalance Matches: ${reconciliation.balanceMatches ? '✅ Yes' : '❌ No'}\n\n${reconciliation.discrepancies.length > 0 ? `**Discrepancies Found:**\n${reconciliation.discrepancies.slice(0, 3).map(d => `\n${d.issue}\nExpected: ₹${Math.round(d.expectedAmount).toLocaleString('en-IN')}\nActual: ₹${Math.round(d.actualAmount).toLocaleString('en-IN')}`).join('\n')}` : '✅ No discrepancies found!'}\n\n**Suggestions:**\n${reconciliation.suggestions.map(s => `• ${s}`).join('\n')}`;
+                    setMessages(prev => [...prev, { role: 'ai', text: reconMsg }]);
+                    setLastAction('Reconciliation Complete');
+                    break;
+
+                case 'backup':
+                    // Generate backup
+                    const backupData = generateBackupData(members, transactions);
+                    const backupSize = (backupData.length / 1024).toFixed(2);
+
+                    const backupMsg = `💾 **Backup Generated**\n\nSize: ${backupSize} KB\nMembers: ${members.length}\nTransactions: ${transactions.length}\nTimestamp: ${format(new Date(), 'dd-MM-yyyy HH:mm:ss')}\n\n✅ Backup data ready for download\n\n💡 Save this backup securely for disaster recovery.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: backupMsg }]);
+                    setLastAction('Backup Generated');
+                    break;
+
+                case 'autoreport':
+                    // Generate automated report
+                    const report = generateFinancialReport(members, transactions, 'daily');
+
+                    setMessages(prev => [...prev, { role: 'ai', text: report }]);
+                    setLastAction('Report Generated');
+                    break;
+
+                case 'translate':
+                    // Translation demo
+                    const sampleEnglish = "Total Members: 150, Total Loans: ₹500000";
+                    const translated = translate(sampleEnglish, 'en-to-mr');
+
+                    const translateMsg = `🌐 **Translation Demo**\n\n**English:**\n${sampleEnglish}\n\n**Marathi (मराठी):**\n${translated}\n\n💡 Translation engine supports 30+ common terms.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: translateMsg }]);
+                    setLastAction('Translation Complete');
+                    break;
+
+                case 'voice':
+                    // Voice commands list
+                    const voiceMsg = `🎤 **Marathi Voice Commands**\nमराठी आवाज आदेश\n\n${marathiVoiceCommands.slice(0, 10).map((cmd, i) => `${i + 1}. "${cmd.marathiCommand}"\n   → ${cmd.englishEquivalent}\n   Action: ${cmd.action}`).join('\n\n')}\n\n💡 Total ${marathiVoiceCommands.length} voice commands available.\n\n**Usage:**\nSpeak any command in Marathi to execute it.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: voiceMsg }]);
+                    setLastAction('Voice Commands Listed');
+                    break;
+
+                case 'bilingual':
+                    // Bilingual response demo
+                    const bilingualDemo = generateBilingualResponse(
+                        "Financial analysis complete. Total savings: ₹1,000,000. Total loans: ₹500,000."
+                    );
+
+                    const bilingualMsg = `🗣️ **Bilingual Response**\nद्विभाषिक प्रतिसाद\n\n**English:**\n${bilingualDemo.english}\n\n**Marathi (मराठी):**\n${bilingualDemo.marathi}\n\n💡 All AI responses can be displayed in both languages.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: bilingualMsg }]);
+                    setLastAction('Bilingual Response Generated');
+                    break;
+
+                case 'security':
+                    // Security summary
+                    const securitySummary = getSecuritySummary(members, transactions);
+
+                    setMessages(prev => [...prev, { role: 'ai', text: securitySummary }]);
+                    setLastAction('Security Summary Generated');
+                    break;
+
+                case 'suspicious':
+                    // Suspicious activity detection
+                    const suspicious = detectSuspiciousActivity(members, transactions);
+                    const topSuspicious = suspicious.slice(0, 5);
+
+                    const suspiciousMsg = `⚠️ **Suspicious Activity Detection**\n\nTotal Detected: ${suspicious.length}\n\n**Top 5 High-Risk Activities:**\n${topSuspicious.map((s, i) => `\n${i + 1}. ${s.description}\n   Type: ${s.activityType}\n   Severity: ${s.severity.toUpperCase()}\n   Risk Score: ${s.riskScore}/100\n   Entity: ${s.entityType} (${s.entityId})`).join('\n')}\n\n${suspicious.length > 5 ? `\n... and ${suspicious.length - 5} more activities` : ''}\n\n💡 Review and resolve high-risk activities immediately.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: suspiciousMsg }]);
+                    setLastAction('Suspicious Activity Detected');
+                    break;
+
+                case 'compliance':
+                    // Compliance check
+                    const complianceResults = checkCompliance(members, transactions);
+                    const failed = complianceResults.filter(r => !r.passed);
+                    const passed = complianceResults.filter(r => r.passed);
+
+                    const complianceMsg = `✅ **Compliance Check**\n\nTotal Rules: ${complianceResults.length}\nPassed: ${passed.length}\nFailed: ${failed.length}\n\n${failed.length > 0 ? `**Failed Compliance Rules:**\n${failed.map(r => `\n• ${r.rule.name}\n  Category: ${r.rule.category}\n  Severity: ${r.rule.severity.toUpperCase()}\n  Violations: ${r.violations.length}\n  ${r.violations.slice(0, 2).map(v => `  - ${v}`).join('\n')}`).join('\n')}` : '✅ All compliance rules passed!'}\n\n💡 Address failed compliance rules to ensure regulatory adherence.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: complianceMsg }]);
+                    setLastAction('Compliance Check Complete');
+                    break;
+
+                case 'audit':
+                    // Audit report
+                    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+                    const auditReport = exportAuditReport(thirtyDaysAgo, Date.now());
+
+                    const auditMsg = `📝 **Audit Report** (Last 30 Days)\n\n${auditReport.substring(0, 800)}...\n\n💡 Full audit report can be exported for detailed analysis.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: auditMsg }]);
+                    setLastAction('Audit Report Generated');
                     break;
 
                 default:

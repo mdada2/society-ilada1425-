@@ -1359,3 +1359,60 @@ export const generatePredictionInsights = async (
     return null;
   }
 };
+
+// ============================================================================
+// PHASE 8: AUTOMATED WORKFLOWS
+// ============================================================================
+
+// --- 19. Workflow Optimization Suggestions ---
+export const suggestWorkflowOptimizations = async (
+  workflowType: 'categorization' | 'reconciliation' | 'backup' | 'report',
+  currentRules: any[],
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required for workflow optimization." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+    Analyze current workflow rules and suggest optimizations in Marathi-English.
+    
+    Workflow Type: ${workflowType}
+    Current Rules: ${currentRules.length}
+    
+    Provide:
+    1. Optimization suggestions (3-5 points)
+    2. New rule recommendations
+    3. Efficiency improvements
+    4. Best practices
+    
+    Return JSON with:
+    - optimizations: string[]
+    - newRules: string[]
+    - efficiencyTips: string[]
+    - bestPractices: string[]
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            optimizations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            newRules: { type: Type.ARRAY, items: { type: Type.STRING } },
+            efficiencyTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+            bestPractices: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Workflow Optimization Error:", error);
+    return null;
+  }
+};
