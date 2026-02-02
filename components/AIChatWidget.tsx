@@ -13,7 +13,8 @@ import {
     calculateEMI,
     analyzeProfitLoss,
     analyzeNotificationPriorities,
-    generateSmartReminderMessage
+    generateSmartReminderMessage,
+    analyzeBulkOperation
 } from '../services/ai';
 import {
     generatePaymentReminders,
@@ -22,6 +23,12 @@ import {
     generateSeasonAlerts,
     scheduleReminders
 } from '../services/notifications';
+import {
+    bulkCalculateInterest,
+    applyBulkInterestCalculation,
+    prepareBulkSMS,
+    exportBulkCalculationToCSV
+} from '../services/bulkOperations';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -48,6 +55,10 @@ const COMMANDS = [
     // Phase 3: Notification & Reminder Commands
     { cmd: '/reminders', label: '🔔 Payment Reminders', text: 'Show payment reminders', action: 'AI_FUNCTION', payload: 'reminders' },
     { cmd: '/notifications', label: '📬 Notifications', text: 'Analyze notification priorities', action: 'AI_FUNCTION', payload: 'notifications' },
+    // Phase 4: Bulk Operations Commands
+    { cmd: '/bulkinterest', label: '🧮 Bulk Interest Calc', text: 'Calculate interest for all members', action: 'AI_FUNCTION', payload: 'bulkinterest' },
+    { cmd: '/bulksms', label: '📱 Bulk SMS', text: 'Prepare bulk SMS', action: 'AI_FUNCTION', payload: 'bulksms' },
+    { cmd: '/bulkanalysis', label: '📊 Bulk Analysis', text: 'Analyze bulk operation', action: 'AI_FUNCTION', payload: 'bulkanalysis' },
 ];
 
 
@@ -383,6 +394,37 @@ const AIChatWidget = () => {
                         const msg = `📬 **Notification Priority Analysis**\n\n🔴 Urgent: ${notifAnalysis.urgentCount}\n🟠 High Priority: ${notifAnalysis.highPriorityCount}\n🟡 Medium Priority: ${notifAnalysis.mediumPriorityCount}\n\n**Strategy:**\n${notifAnalysis.strategy}\n\n**Recommendations:**\n${notifAnalysis.recommendations?.map((r: string) => `• ${r}`).join('\n')}`;
                         setMessages(prev => [...prev, { role: 'ai', text: msg }]);
                         setLastAction('Notification Analysis Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'bulkinterest':
+                    // Bulk interest calculation
+                    const bulkResults = bulkCalculateInterest(members);
+                    const successCount = bulkResults.filter(r => r.success).length;
+                    const totalInterest = bulkResults.reduce((sum, r) => sum + r.calculatedInterest, 0);
+
+                    const bulkMsg = `🧮 **Bulk Interest Calculation**\n\nProcessed: ${bulkResults.length} members\nSuccess: ${successCount}\nFailed: ${bulkResults.length - successCount}\n\nTotal Interest Calculated: ₹${Math.round(totalInterest).toLocaleString('en-IN')}\n\n**Top 5 Results:**\n${bulkResults.slice(0, 5).map(r => `${r.memberNo} - ${r.name}\nInterest: ₹${Math.round(r.calculatedInterest).toLocaleString('en-IN')}\nTotal Due: ₹${Math.round(r.totalDue).toLocaleString('en-IN')}`).join('\n\n')}\n\n💡 Use this data to apply bulk updates or export to CSV.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: bulkMsg }]);
+                    setLastAction('Bulk Interest Calculated');
+                    break;
+
+                case 'bulksms':
+                    // Prepare bulk SMS
+                    const smsJob = prepareBulkSMS(members, 'Sample message', { hasLoan: true });
+                    const smsMsg = `📱 **Bulk SMS Preparation**\n\nTotal Recipients: ${smsJob.recipients.length}\nValid Mobile Numbers: ${smsJob.recipients.length}\n\n**Sample Recipients:**\n${smsJob.recipients.slice(0, 5).map(r => `${r.memberNo} - ${r.name}\n${r.mobile}`).join('\n\n')}\n\n💡 Ready to send! Configure message template and send.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: smsMsg }]);
+                    setLastAction('Bulk SMS Prepared');
+                    break;
+
+                case 'bulkanalysis':
+                    // Analyze bulk operation
+                    const bulkAnalysis = await analyzeBulkOperation(members, transactions, 'interest', settings.geminiApiKey);
+                    if (bulkAnalysis) {
+                        const analysisMsg = `📊 **Bulk Operation Analysis**\n\n${bulkAnalysis.recommended ? '✅ Recommended' : '⚠️ Not Recommended'}\n\nEstimated Interest: ₹${bulkAnalysis.estimatedInterest?.toLocaleString('en-IN')}\n\n**Warnings:**\n${bulkAnalysis.warnings?.map((w: string) => `⚠️ ${w}`).join('\n')}\n\n**Recommendations:**\n${bulkAnalysis.recommendations?.map((r: string) => `• ${r}`).join('\n')}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: analysisMsg }]);
+                        setLastAction('Bulk Analysis Complete');
                     } else {
                         setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
                     }

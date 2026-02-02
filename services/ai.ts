@@ -1018,3 +1018,100 @@ export const generateSmartReminderMessage = async (
     return null;
   }
 };
+
+// ============================================================================
+// PHASE 4: BULK OPERATIONS
+// ============================================================================
+
+// --- 15. Analyze Bulk Operation Feasibility ---
+export const analyzeBulkOperation = async (
+  members: Member[],
+  transactions: Transaction[],
+  operationType: 'interest' | 'sms' | 'transaction',
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required for analysis." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  let prompt = '';
+
+  if (operationType === 'interest') {
+    const membersWithLoans = members.filter(m => (m.loanPrincipal || 0) > 0);
+    const totalPrincipal = membersWithLoans.reduce((sum, m) => sum + (m.loanPrincipal || 0), 0);
+
+    prompt = `
+      Analyze bulk interest calculation feasibility for this cooperative society.
+      
+      Total Members with Loans: ${membersWithLoans.length}
+      Total Principal Outstanding: ₹${totalPrincipal.toLocaleString('en-IN')}
+      
+      Sample Members: ${JSON.stringify(membersWithLoans.slice(0, 5).map(m => ({
+      no: m.memberNo,
+      name: m.name,
+      principal: m.loanPrincipal,
+      lastCalc: m.lastLoanCalculationDate
+    })))}
+      
+      Provide analysis in Marathi-English:
+      1. Is bulk calculation recommended?
+      2. Estimated total interest to be calculated
+      3. Any risks or warnings
+      4. Best practices
+      
+      Return JSON with:
+      - recommended: boolean
+      - estimatedInterest: number
+      - warnings: string[]
+      - recommendations: string[]
+    `;
+  } else if (operationType === 'sms') {
+    const membersWithMobile = members.filter(m => m.mobile && m.mobile.length === 10);
+
+    prompt = `
+      Analyze bulk SMS sending feasibility for this cooperative society.
+      
+      Total Members: ${members.length}
+      Members with Valid Mobile: ${membersWithMobile.length}
+      Coverage: ${Math.round((membersWithMobile.length / members.length) * 100)}%
+      
+      Provide analysis in Marathi-English:
+      1. Is bulk SMS recommended?
+      2. Estimated cost (assume ₹0.20 per SMS)
+      3. Coverage analysis
+      4. Recommendations
+      
+      Return JSON with:
+      - recommended: boolean
+      - estimatedCost: number
+      - coverage: number
+      - warnings: string[]
+      - recommendations: string[]
+    `;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            recommended: { type: Type.BOOLEAN },
+            estimatedInterest: { type: Type.NUMBER },
+            estimatedCost: { type: Type.NUMBER },
+            coverage: { type: Type.NUMBER },
+            warnings: { type: Type.ARRAY, items: { type: Type.STRING } },
+            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Bulk Operation Analysis Error:", error);
+    return null;
+  }
+};

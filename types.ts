@@ -306,3 +306,68 @@ export interface NotificationSettings {
   whatsappEnabled: boolean;
   emailEnabled: boolean;
 }
+
+// ============================================================================
+// PHASE 4: BULK OPERATIONS
+// ============================================================================
+
+export interface BulkOperation {
+  id: string;
+  type: 'sms' | 'whatsapp' | 'interest' | 'transaction' | 'member_update';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  totalItems: number;
+  processedItems: number;
+  failedItems: number;
+  startedAt?: number;
+  completedAt?: number;
+  createdBy: string;
+  createdAt: number;
+  errorLog?: string[];
+}
+
+export interface BulkSMSJob {
+  id: string;
+  recipients: Array<{
+    memberId: string;
+    memberNo: string;
+    name: string;
+    mobile: string;
+  }>;
+  message: string;
+  templateType?: 'payment_reminder' | 'meeting_alert' | 'general';
+  scheduledDate?: string;
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
+  sentCount: number;
+  failedCount: number;
+  createdAt: number;
+}
+
+export interface BulkCalculationResult {
+  memberId: string;
+  memberNo: string;
+  name: string;
+  previousInterest: number;
+  calculatedInterest: number;
+  newTotalInterest: number;
+  principal: number;
+  totalDue: number;
+  calculationDate: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkTransactionImport {
+  id: string;
+  fileName: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  importedRows: number;
+  status: 'validating' | 'importing' | 'completed' | 'failed';
+  errors: Array<{
+    row: number;
+    field: string;
+    message: string;
+  }>;
+  createdAt: number;
+}
