@@ -14,7 +14,8 @@ import {
     analyzeProfitLoss,
     analyzeNotificationPriorities,
     generateSmartReminderMessage,
-    analyzeBulkOperation
+    analyzeBulkOperation,
+    generateDocumentContent
 } from '../services/ai';
 import {
     generatePaymentReminders,
@@ -29,6 +30,12 @@ import {
     prepareBulkSMS,
     exportBulkCalculationToCSV
 } from '../services/bulkOperations';
+import {
+    generateLoanAgreement,
+    generateReceipt,
+    generateMeetingMinutes,
+    validateDocumentData
+} from '../services/documentGeneration';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -59,6 +66,10 @@ const COMMANDS = [
     { cmd: '/bulkinterest', label: '🧮 Bulk Interest Calc', text: 'Calculate interest for all members', action: 'AI_FUNCTION', payload: 'bulkinterest' },
     { cmd: '/bulksms', label: '📱 Bulk SMS', text: 'Prepare bulk SMS', action: 'AI_FUNCTION', payload: 'bulksms' },
     { cmd: '/bulkanalysis', label: '📊 Bulk Analysis', text: 'Analyze bulk operation', action: 'AI_FUNCTION', payload: 'bulkanalysis' },
+    // Phase 5: Document Generation Commands
+    { cmd: '/loanagreement', label: '📄 Loan Agreement', text: 'Generate loan agreement', action: 'AI_FUNCTION', payload: 'loanagreement' },
+    { cmd: '/receipt', label: '🧾 Receipt', text: 'Generate receipt', action: 'AI_FUNCTION', payload: 'receipt' },
+    { cmd: '/minutes', label: '📝 Meeting Minutes', text: 'Generate meeting minutes', action: 'AI_FUNCTION', payload: 'minutes' },
 ];
 
 
@@ -427,6 +438,55 @@ const AIChatWidget = () => {
                         setLastAction('Bulk Analysis Complete');
                     } else {
                         setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'loanagreement':
+                    // Generate loan agreement suggestions
+                    const loanDoc = await generateDocumentContent('loan_agreement', {
+                        memberName: members[0]?.name || 'Sample Member',
+                        loanAmount: 50000,
+                        interestRate: 12,
+                        repaymentPeriod: 12
+                    }, settings.geminiApiKey);
+
+                    if (loanDoc) {
+                        const docMsg = `📄 **Loan Agreement Generator**\n\n**Suggested Terms:**\n${loanDoc.terms?.map((t: string) => `• ${t}`).join('\n')}\n\n**Important Clauses:**\n${loanDoc.clauses?.map((c: string) => `• ${c}`).join('\n')}\n\n**Warnings:**\n${loanDoc.warnings?.map((w: string) => `⚠️ ${w}`).join('\n')}\n\n💡 Use these suggestions to create a comprehensive loan agreement.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: docMsg }]);
+                        setLastAction('Loan Agreement Suggestions Generated');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Document generation failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'receipt':
+                    // Generate receipt preview
+                    if (members.length > 0 && transactions.length > 0) {
+                        const sampleMember = members[0];
+                        const sampleTxn = transactions[0];
+                        const receiptNo = `RCP-${Date.now()}`;
+
+                        const receiptMsg = `🧾 **Receipt Generator**\n\nReceipt Preview:\n\nReceipt No: ${receiptNo}\nMember: ${sampleMember.name} (${sampleMember.memberNo})\nAmount: ₹${sampleTxn.amount.toLocaleString('en-IN')}\nType: ${sampleTxn.type}\nAccount: ${sampleTxn.accountType}\n\n✅ Receipt template ready! You can generate full HTML/PDF receipts for any transaction.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: receiptMsg }]);
+                        setLastAction('Receipt Preview Generated');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "No transactions found to generate receipt." }]);
+                    }
+                    break;
+
+                case 'minutes':
+                    // Generate meeting minutes suggestions
+                    const meetingDoc = await generateDocumentContent('meeting_minutes', {
+                        meetingType: 'Monthly',
+                        topic: 'General Meeting'
+                    }, settings.geminiApiKey);
+
+                    if (meetingDoc) {
+                        const minutesMsg = `📝 **Meeting Minutes Generator**\n\n**Suggested Agenda:**\n${meetingDoc.agenda?.map((a: string, i: number) => `${i + 1}. ${a}`).join('\n')}\n\n**Common Resolutions:**\n${meetingDoc.resolutions?.map((r: string) => `• ${r}`).join('\n')}\n\n**Discussion Points:**\n${meetingDoc.discussionPoints?.map((d: string) => `• ${d}`).join('\n')}\n\n💡 Use these suggestions to create comprehensive meeting minutes.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: minutesMsg }]);
+                        setLastAction('Meeting Minutes Suggestions Generated');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Document generation failed. Please try again." }]);
                     }
                     break;
 

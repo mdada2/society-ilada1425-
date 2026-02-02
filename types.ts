@@ -371,3 +371,105 @@ export interface BulkTransactionImport {
   }>;
   createdAt: number;
 }
+
+// ============================================================================
+// PHASE 5: DOCUMENT GENERATION
+// ============================================================================
+
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  type: 'loan_agreement' | 'receipt' | 'meeting_minutes' | 'audit_report' | 'custom';
+  language: 'marathi' | 'english' | 'bilingual';
+  template: string; // HTML/Markdown template
+  variables: string[]; // List of variables used in template
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GeneratedDocument {
+  id: string;
+  templateId: string;
+  type: 'loan_agreement' | 'receipt' | 'meeting_minutes' | 'audit_report';
+  title: string;
+  content: string; // Generated HTML/Markdown
+  metadata: {
+    memberId?: string;
+    memberName?: string;
+    transactionId?: string;
+    meetingId?: string;
+    amount?: number;
+    date?: string;
+    [key: string]: any;
+  };
+  format: 'html' | 'pdf' | 'markdown';
+  status: 'draft' | 'generated' | 'sent';
+  generatedBy: string;
+  generatedAt: number;
+}
+
+export interface LoanAgreement {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberNo: string;
+  loanAmount: number;
+  interestRate: number;
+  loanDate: string;
+  repaymentPeriod: number; // months
+  guarantorName?: string;
+  guarantorMemberId?: string;
+  terms: string[];
+  witnessNames: string[];
+  status: 'draft' | 'signed' | 'active' | 'completed';
+  documentUrl?: string;
+  createdAt: number;
+}
+
+export interface Receipt {
+  id: string;
+  receiptNo: string;
+  memberId: string;
+  memberName: string;
+  memberNo: string;
+  transactionId: string;
+  amount: number;
+  accountType: AccountType;
+  transactionType: TransactionType;
+  date: string;
+  details: string;
+  paymentMode: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Online';
+  receivedBy: string;
+  status: 'draft' | 'issued' | 'cancelled';
+  documentUrl?: string;
+  createdAt: number;
+}
+
+export interface MeetingMinutes {
+  id: string;
+  meetingId: string;
+  meetingTitle: string;
+  meetingDate: string;
+  venue: string;
+  attendees: Array<{
+    memberId: string;
+    name: string;
+    role?: string;
+  }>;
+  agenda: string[];
+  discussions: string[];
+  resolutions: Array<{
+    title: string;
+    description: string;
+    votedFor: number;
+    votedAgainst: number;
+    abstained: number;
+    status: 'passed' | 'rejected';
+  }>;
+  nextMeetingDate?: string;
+  preparedBy: string;
+  approvedBy?: string;
+  status: 'draft' | 'approved' | 'published';
+  documentUrl?: string;
+  createdAt: number;
+}

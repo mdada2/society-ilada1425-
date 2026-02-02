@@ -1115,3 +1115,83 @@ export const analyzeBulkOperation = async (
     return null;
   }
 };
+
+// ============================================================================
+// PHASE 5: DOCUMENT GENERATION
+// ============================================================================
+
+// --- 16. Generate Document Content Suggestions ---
+export const generateDocumentContent = async (
+  documentType: 'loan_agreement' | 'receipt' | 'meeting_minutes',
+  context: any,
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required for document generation." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  let prompt = '';
+
+  if (documentType === 'loan_agreement') {
+    prompt = `
+      Generate loan agreement terms and conditions in Marathi-English bilingual format.
+      
+      Member: ${context.memberName}
+      Loan Amount: ₹${context.loanAmount?.toLocaleString('en-IN')}
+      Interest Rate: ${context.interestRate}%
+      Period: ${context.repaymentPeriod} months
+      
+      Provide:
+      1. Key terms and conditions (5-7 points)
+      2. Important clauses
+      3. Warnings/notices
+      
+      Return JSON with:
+      - terms: string[] (Marathi-English)
+      - clauses: string[]
+      - warnings: string[]
+    `;
+  } else if (documentType === 'meeting_minutes') {
+    prompt = `
+      Generate meeting agenda and resolution suggestions in Marathi-English.
+      
+      Meeting Type: ${context.meetingType}
+      Topic: ${context.topic || 'General Meeting'}
+      
+      Provide:
+      1. Suggested agenda items (5-7 points)
+      2. Common resolutions for this type of meeting
+      3. Discussion points
+      
+      Return JSON with:
+      - agenda: string[]
+      - resolutions: string[]
+      - discussionPoints: string[]
+    `;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            terms: { type: Type.ARRAY, items: { type: Type.STRING } },
+            clauses: { type: Type.ARRAY, items: { type: Type.STRING } },
+            warnings: { type: Type.ARRAY, items: { type: Type.STRING } },
+            agenda: { type: Type.ARRAY, items: { type: Type.STRING } },
+            resolutions: { type: Type.ARRAY, items: { type: Type.STRING } },
+            discussionPoints: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Document Generation Error:", error);
+    return null;
+  }
+};
