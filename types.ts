@@ -473,3 +473,64 @@ export interface MeetingMinutes {
   documentUrl?: string;
   createdAt: number;
 }
+
+// ============================================================================
+// PHASE 6: SMART SEARCH & FILTERS
+// ============================================================================
+
+export interface SearchQuery {
+  query: string;
+  type: 'member' | 'transaction' | 'all';
+  filters?: FilterCriteria;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+}
+
+export interface FilterCriteria {
+  village?: string;
+  gender?: 'Male' | 'Female';
+  category?: string;
+  hasLoan?: boolean;
+  loanAmountMin?: number;
+  loanAmountMax?: number;
+  savingsMin?: number;
+  savingsMax?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  accountType?: AccountType;
+  transactionType?: TransactionType;
+}
+
+export interface SearchResult<T> {
+  items: T[];
+  totalCount: number;
+  query: string;
+  executionTime: number; // milliseconds
+  suggestions?: string[];
+}
+
+export interface DuplicateDetectionResult {
+  duplicates: Array<{
+    group: Member[];
+    reason: string;
+    confidence: number; // 0-100
+  }>;
+  totalDuplicates: number;
+  suggestions: string[];
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: Array<{
+    field: string;
+    value: any;
+    message: string;
+    severity: 'error' | 'warning';
+  }>;
+  warnings: Array<{
+    field: string;
+    value: any;
+    message: string;
+  }>;
+}

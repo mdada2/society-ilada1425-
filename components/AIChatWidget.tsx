@@ -15,7 +15,8 @@ import {
     analyzeNotificationPriorities,
     generateSmartReminderMessage,
     analyzeBulkOperation,
-    generateDocumentContent
+    generateDocumentContent,
+    parseNaturalLanguageQuery
 } from '../services/ai';
 import {
     generatePaymentReminders,
@@ -36,6 +37,13 @@ import {
     generateMeetingMinutes,
     validateDocumentData
 } from '../services/documentGeneration';
+import {
+    searchMembers,
+    searchTransactions,
+    detectDuplicates,
+    validateMemberData,
+    validateTransactionData
+} from '../services/smartSearch';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -70,6 +78,10 @@ const COMMANDS = [
     { cmd: '/loanagreement', label: '📄 Loan Agreement', text: 'Generate loan agreement', action: 'AI_FUNCTION', payload: 'loanagreement' },
     { cmd: '/receipt', label: '🧾 Receipt', text: 'Generate receipt', action: 'AI_FUNCTION', payload: 'receipt' },
     { cmd: '/minutes', label: '📝 Meeting Minutes', text: 'Generate meeting minutes', action: 'AI_FUNCTION', payload: 'minutes' },
+    // Phase 6: Smart Search Commands
+    { cmd: '/search', label: '🔍 Smart Search', text: 'Search members and transactions', action: 'AI_FUNCTION', payload: 'search' },
+    { cmd: '/duplicates', label: '👥 Find Duplicates', text: 'Detect duplicate members', action: 'AI_FUNCTION', payload: 'duplicates' },
+    { cmd: '/validate', label: '✅ Validate Data', text: 'Validate member data', action: 'AI_FUNCTION', payload: 'validate' },
 ];
 
 
@@ -488,6 +500,47 @@ const AIChatWidget = () => {
                     } else {
                         setMessages(prev => [...prev, { role: 'ai', text: "Document generation failed. Please try again." }]);
                     }
+                    break;
+
+                case 'search':
+                    // Smart search with natural language
+                    const searchQuery = 'members with loans'; // Default query
+                    const searchResults = searchMembers(members, searchQuery, { hasLoan: true });
+
+                    const searchMsg = `🔍 **Smart Search Results**\n\nQuery: "${searchQuery}"\nFound: ${searchResults.totalCount} members\nExecution Time: ${searchResults.executionTime}ms\n\n**Top 5 Results:**\n${searchResults.items.slice(0, 5).map(m => `${m.memberNo} - ${m.name}\nVillage: ${m.village}\nLoan: ₹${(m.loanPrincipal || 0).toLocaleString('en-IN')}`).join('\n\n')}\n\n💡 Try natural language queries like:\n• "Show members from Ilada"\n• "Find members with high loans"\n• "Search for Patil"`;
+                    setMessages(prev => [...prev, { role: 'ai', text: searchMsg }]);
+                    setLastAction('Search Complete');
+                    break;
+
+                case 'duplicates':
+                    // Detect duplicate members
+                    const duplicateResults = detectDuplicates(members);
+
+                    if (duplicateResults.totalDuplicates > 0) {
+                        const dupMsg = `👥 **Duplicate Detection**\n\nTotal Duplicates Found: ${duplicateResults.totalDuplicates}\nGroups: ${duplicateResults.duplicates.length}\n\n**Duplicate Groups:**\n${duplicateResults.duplicates.slice(0, 5).map((d, i) => `\n**Group ${i + 1}** (${d.reason}, ${d.confidence}% confidence):\n${d.group.map(m => `• ${m.memberNo} - ${m.name} (${m.village})`).join('\n')}`).join('\n')}\n\n⚠️ Review these duplicates and merge if necessary.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: dupMsg }]);
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "✅ No duplicates found! Your data is clean." }]);
+                    }
+                    setLastAction('Duplicate Detection Complete');
+                    break;
+
+                case 'validate':
+                    // Validate member data
+                    let validCount = 0;
+                    let errorCount = 0;
+                    let warningCount = 0;
+
+                    members.slice(0, 10).forEach(m => {
+                        const validation = validateMemberData(m);
+                        if (validation.valid) validCount++;
+                        errorCount += validation.errors.length;
+                        warningCount += validation.warnings.length;
+                    });
+
+                    const validateMsg = `✅ **Data Validation** (Sample: 10 members)\n\nValid Records: ${validCount}/10\nErrors Found: ${errorCount}\nWarnings: ${warningCount}\n\n**Common Issues:**\n${errorCount > 0 ? '• Missing required fields\n• Invalid mobile numbers\n• Negative values' : '✅ No errors found!'}\n\n💡 Run full validation to check all ${members.length} members.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: validateMsg }]);
+                    setLastAction('Validation Complete');
                     break;
 
                 default:

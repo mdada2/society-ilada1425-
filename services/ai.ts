@@ -1195,3 +1195,67 @@ export const generateDocumentContent = async (
     return null;
   }
 };
+
+// ============================================================================
+// PHASE 6: SMART SEARCH & FILTERS
+// ============================================================================
+
+// --- 17. Natural Language Search Query Parser ---
+export const parseNaturalLanguageQuery = async (
+  query: string,
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required for natural language search." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+    Parse this natural language search query into structured filters.
+    
+    Query: "${query}"
+    
+    Identify:
+    1. Search type (member/transaction/general)
+    2. Filters (village, gender, loan status, amount range, date range)
+    3. Sort preferences
+    4. Intent (what is the user looking for?)
+    
+    Examples:
+    - "Show me all male members from Ilada with loans" → { type: "member", filters: { gender: "Male", village: "Ilada", hasLoan: true } }
+    - "Find transactions above 10000 in last month" → { type: "transaction", filters: { amountMin: 10000, dateFrom: "last month" } }
+    - "Who has the highest loan?" → { type: "member", sortBy: "loanPrincipal", sortOrder: "desc" }
+    
+    Return JSON with:
+    - searchType: string
+    - filters: object
+    - sortBy: string (optional)
+    - sortOrder: string (optional)
+    - intent: string
+    - suggestions: string[]
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            searchType: { type: Type.STRING },
+            filters: { type: Type.OBJECT },
+            sortBy: { type: Type.STRING },
+            sortOrder: { type: Type.STRING },
+            intent: { type: Type.STRING },
+            suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Natural Language Search Error:", error);
+    return null;
+  }
+};
