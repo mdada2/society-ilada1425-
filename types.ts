@@ -252,3 +252,57 @@ export interface LoanCalculationResult {
   interest: number;
   breakdown: string[];
 }
+
+// ============================================================================
+// PHASE 3: NOTIFICATIONS & REMINDERS
+// ============================================================================
+
+export interface Notification {
+  id: string;
+  type: 'payment' | 'meeting' | 'audit' | 'season' | 'general';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  title: string;
+  message: string;
+  targetMembers?: string[]; // Member IDs, empty = all members
+  scheduledDate?: string; // ISO date for scheduled notifications
+  sentDate?: string; // ISO date when sent
+  status: 'pending' | 'sent' | 'failed';
+  createdBy: string;
+  createdAt: number;
+  metadata?: {
+    meetingId?: string;
+    seasonCode?: string;
+    dueAmount?: number;
+    daysOverdue?: number;
+  };
+}
+
+export interface Reminder {
+  id: string;
+  type: 'payment' | 'meeting' | 'audit' | 'season';
+  memberId?: string; // Specific member or null for society-wide
+  title: string;
+  description: string;
+  dueDate: string; // ISO date
+  reminderDate: string; // ISO date when to send reminder
+  isRecurring: boolean;
+  recurringPattern?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  status: 'active' | 'completed' | 'cancelled';
+  notificationSent: boolean;
+  createdAt: number;
+}
+
+export interface NotificationSettings {
+  enablePaymentReminders: boolean;
+  paymentReminderDays: number; // Days before due date
+  enableMeetingAlerts: boolean;
+  meetingAlertDays: number; // Days before meeting
+  enableAuditReminders: boolean;
+  auditReminderDays: number; // Days before audit
+  enableSeasonAlerts: boolean;
+  seasonAlertDays: number; // Days before season start/end
+  autoSendReminders: boolean;
+  smsEnabled: boolean;
+  whatsappEnabled: boolean;
+  emailEnabled: boolean;
+}

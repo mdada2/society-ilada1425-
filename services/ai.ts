@@ -874,3 +874,147 @@ export const analyzeProfitLoss = async (
     return null;
   }
 };
+
+// ============================================================================
+// PHASE 3: SMART NOTIFICATIONS & REMINDERS
+// ============================================================================
+
+// --- 13. Analyze Notification Priorities ---
+export const analyzeNotificationPriorities = async (
+  members: Member[],
+  transactions: Transaction[],
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required for analysis." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Find members with overdue payments
+  const today = new Date();
+  const overdueMembers = members.filter(m => {
+    if ((m.loanPrincipal || 0) <= 0) return false;
+
+    const lastPaymentDate = m.lastLoanCalculationDate
+      ? new Date(m.lastLoanCalculationDate)
+      : new Date(0);
+
+    const daysSincePayment = Math.floor((today.getTime() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSincePayment > 30;
+  });
+
+  const prompt = `
+    Analyze payment reminder priorities for this cooperative society.
+    
+    Total Members with Loans: ${members.filter(m => (m.loanPrincipal || 0) > 0).length}
+    Overdue Members (>30 days): ${overdueMembers.length}
+    
+    Overdue Details: ${JSON.stringify(overdueMembers.slice(0, 10).map(m => ({
+    no: m.memberNo,
+    name: m.name,
+    loan: m.loanPrincipal,
+    lastPayment: m.lastLoanCalculationDate
+  })))}
+    
+    Provide analysis in Marathi-English:
+    1. Who needs urgent reminders?
+    2. Recommended reminder strategy
+    3. Priority levels for each category
+    
+    Return JSON with:
+    - urgentCount: number
+    - highPriorityCount: number
+    - mediumPriorityCount: number
+    - strategy: string (Marathi-English)
+    - recommendations: string[]
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            urgentCount: { type: Type.INTEGER },
+            highPriorityCount: { type: Type.INTEGER },
+            mediumPriorityCount: { type: Type.INTEGER },
+            strategy: { type: Type.STRING },
+            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Notification Analysis Error:", error);
+    return null;
+  }
+};
+
+// --- 14. Generate Smart Reminder Message ---
+export const generateSmartReminderMessage = async (
+  member: Member,
+  reminderType: 'payment' | 'meeting' | 'general',
+  context: any,
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  let prompt = '';
+
+  if (reminderType === 'payment') {
+    const totalDue = (member.loanPrincipal || 0) + (member.loanInterestDue || 0);
+    prompt = `
+      Generate a polite payment reminder message in Marathi-English mix.
+      
+      Member: ${member.name} (${member.memberNo})
+      Village: ${member.village}
+      Total Due: ₹${totalDue.toLocaleString('en-IN')}
+      Principal: ₹${(member.loanPrincipal || 0).toLocaleString('en-IN')}
+      Interest: ₹${(member.loanInterestDue || 0).toLocaleString('en-IN')}
+      
+      Create a friendly but firm reminder message (max 150 words).
+      Include:
+      - Polite greeting
+      - Amount details
+      - Request for payment
+      - Contact information
+    `;
+  } else if (reminderType === 'meeting') {
+    prompt = `
+      Generate a meeting reminder message in Marathi-English mix.
+      
+      Meeting: ${context.title}
+      Date: ${context.date}
+      Venue: ${context.venue || 'TBD'}
+      Type: ${context.type}
+      
+      Create a professional reminder (max 100 words).
+    `;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            message: { type: Type.STRING },
+            subject: { type: Type.STRING }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Message Generation Error:", error);
+    return null;
+  }
+};

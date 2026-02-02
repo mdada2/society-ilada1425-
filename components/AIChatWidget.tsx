@@ -11,8 +11,17 @@ import {
     calculateLoanEligibility,
     forecastInterest,
     calculateEMI,
-    analyzeProfitLoss
+    analyzeProfitLoss,
+    analyzeNotificationPriorities,
+    generateSmartReminderMessage
 } from '../services/ai';
+import {
+    generatePaymentReminders,
+    generateMeetingAlerts,
+    generateAuditReminders,
+    generateSeasonAlerts,
+    scheduleReminders
+} from '../services/notifications';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -36,6 +45,9 @@ const COMMANDS = [
     { cmd: '/forecast', label: '📈 Interest Forecast', text: 'Forecast interest income', action: 'AI_FUNCTION', payload: 'forecast' },
     { cmd: '/emi', label: '💰 EMI Calculator', text: 'Calculate EMI', action: 'AI_FUNCTION', payload: 'emi' },
     { cmd: '/profitloss', label: '📉 P&L Analysis', text: 'Analyze profit/loss', action: 'AI_FUNCTION', payload: 'profitloss' },
+    // Phase 3: Notification & Reminder Commands
+    { cmd: '/reminders', label: '🔔 Payment Reminders', text: 'Show payment reminders', action: 'AI_FUNCTION', payload: 'reminders' },
+    { cmd: '/notifications', label: '📬 Notifications', text: 'Analyze notification priorities', action: 'AI_FUNCTION', payload: 'notifications' },
 ];
 
 
@@ -347,6 +359,30 @@ const AIChatWidget = () => {
                         const msg = `📉 **Profit & Loss Analysis (YTD)**\n\nIncome: ₹${plAnalysis.totalIncome?.toLocaleString('en-IN')}\nExpenses: ₹${plAnalysis.totalExpenses?.toLocaleString('en-IN')}\nNet P/L: ₹${plAnalysis.netProfitLoss?.toLocaleString('en-IN')}\n\n${plAnalysis.analysis}\n\n**Health:** ${plAnalysis.healthRating}`;
                         setMessages(prev => [...prev, { role: 'ai', text: msg }]);
                         setLastAction('P&L Analysis Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'reminders':
+                    // Generate payment reminders
+                    const paymentReminders = generatePaymentReminders(members, transactions, 7);
+                    if (paymentReminders.length > 0) {
+                        const msg = `🔔 **Payment Reminders**\n\nFound ${paymentReminders.length} members needing reminders:\n\n${paymentReminders.slice(0, 5).map(r => `• ${members.find(m => m.id === r.memberId)?.name} (${members.find(m => m.id === r.memberId)?.memberNo})\n${r.description}`).join('\n\n')}\n\n${paymentReminders.length > 5 ? `...and ${paymentReminders.length - 5} more` : ''}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('Payment Reminders Generated');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "✅ No pending payment reminders!" }]);
+                    }
+                    break;
+
+                case 'notifications':
+                    // Analyze notification priorities
+                    const notifAnalysis = await analyzeNotificationPriorities(members, transactions, settings.geminiApiKey);
+                    if (notifAnalysis) {
+                        const msg = `📬 **Notification Priority Analysis**\n\n🔴 Urgent: ${notifAnalysis.urgentCount}\n🟠 High Priority: ${notifAnalysis.highPriorityCount}\n🟡 Medium Priority: ${notifAnalysis.mediumPriorityCount}\n\n**Strategy:**\n${notifAnalysis.strategy}\n\n**Recommendations:**\n${notifAnalysis.recommendations?.map((r: string) => `• ${r}`).join('\n')}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('Notification Analysis Complete');
                     } else {
                         setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
                     }
