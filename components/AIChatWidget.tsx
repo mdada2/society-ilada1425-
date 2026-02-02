@@ -2,10 +2,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Mic, Loader2, Sparkles, Command, MessageSquarePlus, Check, AlertTriangle, ArrowRight, UserPlus, Paperclip, FileSpreadsheet, Camera, GripHorizontal, WifiOff } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { askSocietyAI, scanTableData } from '../services/ai';
+import {
+    askSocietyAI,
+    scanTableData,
+    analyzeFinancialTrends,
+    predictDefaulters,
+    analyzeByVillage,
+    calculateLoanEligibility,
+    forecastInterest,
+    calculateEMI,
+    analyzeProfitLoss
+} from '../services/ai';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
+
 
 const COMMANDS = [
     { cmd: '/home', label: 'Go to Dashboard', text: 'Go to Dashboard', action: 'NAVIGATE', payload: '/' },
@@ -17,7 +28,16 @@ const COMMANDS = [
     { cmd: '/dark', label: 'Dark Mode', text: 'Turn on Dark Mode', action: 'THEME', payload: 'dark' },
     { cmd: '/light', label: 'Light Mode', text: 'Turn on Light Mode', action: 'THEME', payload: 'light' },
     { cmd: '/logout', label: 'Logout', text: 'Logout', action: 'LOGOUT', payload: null },
+    // Phase 1: Advanced Analytics Commands
+    { cmd: '/analyze', label: '📊 Financial Analysis', text: 'Analyze financial trends', action: 'AI_FUNCTION', payload: 'analyze' },
+    { cmd: '/predict', label: '🎯 Predict Defaulters', text: 'Predict defaulter risk', action: 'AI_FUNCTION', payload: 'predict' },
+    { cmd: '/village', label: '🏘️ Village Analysis', text: 'Analyze by village', action: 'AI_FUNCTION', payload: 'village' },
+    { cmd: '/eligibility', label: '✅ Loan Eligibility', text: 'Check loan eligibility', action: 'AI_FUNCTION', payload: 'eligibility' },
+    { cmd: '/forecast', label: '📈 Interest Forecast', text: 'Forecast interest income', action: 'AI_FUNCTION', payload: 'forecast' },
+    { cmd: '/emi', label: '💰 EMI Calculator', text: 'Calculate EMI', action: 'AI_FUNCTION', payload: 'emi' },
+    { cmd: '/profitloss', label: '📉 P&L Analysis', text: 'Analyze profit/loss', action: 'AI_FUNCTION', payload: 'profitloss' },
 ];
+
 
 const AIChatWidget = () => {
     const { members, transactions, settings, localSettings, updateSettings, updateLocalSettings, logout, updateMember, addTransaction, addMember } = useApp();
@@ -244,6 +264,105 @@ const AIChatWidget = () => {
         setMessages(prev => [...prev, { role: 'ai', text: "Action cancelled. (कृती रद्द केली)." }]);
     };
 
+    // Handle Phase 1 AI Functions
+    const handleAIFunction = async (functionType: string) => {
+        if (!navigator.onLine) {
+            setMessages(prev => [...prev, { role: 'ai', text: "⚠️ Offline. Analytics require internet connection." }]);
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            switch (functionType) {
+                case 'analyze':
+                    const analysisResult = await analyzeFinancialTrends(
+                        members,
+                        transactions,
+                        'month',
+                        undefined,
+                        undefined,
+                        settings.geminiApiKey
+                    );
+                    if (analysisResult) {
+                        const msg = `📊 **Financial Analysis (Current Month)**\n\n${analysisResult.summary}\n\n**Key Insights:**\n${analysisResult.insights?.map((i: string) => `• ${i}`).join('\n')}\n\n**Health Score:** ${analysisResult.healthScore}/100`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('Financial Analysis Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'predict':
+                    const defaulters = await predictDefaulters(members, transactions, settings.geminiApiKey);
+                    if (defaulters && defaulters.length > 0) {
+                        const msg = `🎯 **Defaulter Risk Prediction**\n\nFound ${defaulters.length} members at risk:\n\n${defaulters.slice(0, 5).map((d: any) => `${d.memberNo} - ${d.name}\nRisk: ${d.riskLevel} (${d.riskScore}/100)\n${d.reason}\n`).join('\n')}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('Defaulter Prediction Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "✅ Good news! No high-risk members found." }]);
+                    }
+                    break;
+
+                case 'village':
+                    const villageAnalysis = await analyzeByVillage(members, settings.geminiApiKey);
+                    if (villageAnalysis) {
+                        const msg = `🏘️ **Village-wise Analysis**\n\n${villageAnalysis.summary}\n\n${villageAnalysis.villages?.slice(0, 5).map((v: any) => `**${v.village}**\n• Members: ${v.memberCount}\n• Loans: ₹${v.totalLoans?.toLocaleString('en-IN')}\n• ${v.insight}\n`).join('\n')}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('Village Analysis Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'eligibility':
+                    setMessages(prev => [...prev, { role: 'ai', text: "Please specify: Member Number and Requested Amount\nExample: Check eligibility for member 101 for ₹50000" }]);
+                    break;
+
+                case 'forecast':
+                    const forecast = await forecastInterest(members, 3, settings.geminiApiKey);
+                    if (forecast) {
+                        const msg = `📈 **Interest Forecast (Next 3 Months)**\n\nProjected Interest: ₹${forecast.totalProjectedInterest?.toLocaleString('en-IN')}\nMonthly Average: ₹${forecast.monthlyAverage?.toLocaleString('en-IN')}\nConfidence: ${forecast.confidence}\n\n**Assumptions:**\n${forecast.assumptions?.map((a: string) => `• ${a}`).join('\n')}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('Interest Forecast Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Forecast failed. Please try again." }]);
+                    }
+                    break;
+
+                case 'emi':
+                    // Simple EMI calculation - no API needed
+                    const emiResult = calculateEMI(100000, 12, 12);
+                    const msg = `💰 **EMI Calculator**\n\nExample: ₹1,00,000 @ 12% for 12 months\n\nEMI: ₹${emiResult.emi.toLocaleString('en-IN')}/month\nTotal Interest: ₹${emiResult.totalInterest.toLocaleString('en-IN')}\nTotal Amount: ₹${emiResult.totalAmount.toLocaleString('en-IN')}\n\nAsk me for custom calculation!`;
+                    setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                    setLastAction('EMI Calculated');
+                    break;
+
+                case 'profitloss':
+                    const now = new Date();
+                    const yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    const today = now.toISOString().split('T')[0];
+
+                    const plAnalysis = await analyzeProfitLoss(transactions, members, yearStart, today, settings.geminiApiKey);
+                    if (plAnalysis) {
+                        const msg = `📉 **Profit & Loss Analysis (YTD)**\n\nIncome: ₹${plAnalysis.totalIncome?.toLocaleString('en-IN')}\nExpenses: ₹${plAnalysis.totalExpenses?.toLocaleString('en-IN')}\nNet P/L: ₹${plAnalysis.netProfitLoss?.toLocaleString('en-IN')}\n\n${plAnalysis.analysis}\n\n**Health:** ${plAnalysis.healthRating}`;
+                        setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                        setLastAction('P&L Analysis Complete');
+                    } else {
+                        setMessages(prev => [...prev, { role: 'ai', text: "Analysis failed. Please try again." }]);
+                    }
+                    break;
+
+                default:
+                    setMessages(prev => [...prev, { role: 'ai', text: "Unknown function. Please try again." }]);
+            }
+        } catch (error: any) {
+            console.error("AI Function Error:", error);
+            setMessages(prev => [...prev, { role: 'ai', text: "❌ Error processing request. Please check your API key and try again." }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSend = async (overrideQuery?: string) => {
         const userText = overrideQuery || query;
         if (!userText.trim()) return;
@@ -273,6 +392,10 @@ const AIChatWidget = () => {
                 else if (matchedCommand.action === 'LOGOUT') {
                     setIsOpen(false);
                     logout();
+                }
+                else if (matchedCommand.action === 'AI_FUNCTION') {
+                    // Handle Phase 1 AI Functions
+                    handleAIFunction(matchedCommand.payload);
                 }
             }, 300);
             return;
