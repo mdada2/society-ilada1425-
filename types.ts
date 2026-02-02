@@ -534,3 +534,62 @@ export interface ValidationResult {
     message: string;
   }>;
 }
+
+// ============================================================================
+// PHASE 7: PREDICTIVE ANALYTICS
+// ============================================================================
+
+export interface CashFlowPrediction {
+  period: string; // e.g., "2026-03", "Q1 2026"
+  predictedInflow: number;
+  predictedOutflow: number;
+  netCashFlow: number;
+  confidence: number; // 0-100
+  breakdown: {
+    loanRepayments: number;
+    savingsDeposits: number;
+    newLoans: number;
+    withdrawals: number;
+    operationalExpenses: number;
+  };
+  trend: 'increasing' | 'decreasing' | 'stable';
+}
+
+export interface LoanRecoveryForecast {
+  memberId: string;
+  memberName: string;
+  currentOutstanding: number;
+  predictedRecoveryDate: string;
+  recoveryProbability: number; // 0-100
+  riskLevel: 'low' | 'medium' | 'high';
+  suggestedActions: string[];
+  monthlyPredictions: Array<{
+    month: string;
+    expectedPayment: number;
+    remainingBalance: number;
+  }>;
+}
+
+export interface MemberGrowthPrediction {
+  period: string;
+  predictedNewMembers: number;
+  predictedChurnMembers: number;
+  netGrowth: number;
+  totalMembersProjected: number;
+  confidence: number; // 0-100
+  growthRate: number; // percentage
+  factors: {
+    seasonalTrend: string;
+    economicIndicators: string;
+    historicalPattern: string;
+  };
+}
+
+export interface PredictionModel {
+  id: string;
+  type: 'cash_flow' | 'loan_recovery' | 'member_growth';
+  createdAt: number;
+  accuracy: number; // 0-100
+  dataPoints: number;
+  lastTrained: number;
+}

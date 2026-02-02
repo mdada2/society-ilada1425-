@@ -1259,3 +1259,103 @@ export const parseNaturalLanguageQuery = async (
     return null;
   }
 };
+
+// ============================================================================
+// PHASE 7: PREDICTIVE ANALYTICS
+// ============================================================================
+
+// --- 18. Generate Prediction Insights ---
+export const generatePredictionInsights = async (
+  predictionType: 'cash_flow' | 'loan_recovery' | 'member_growth',
+  predictionData: any,
+  apiKey?: string
+) => {
+  if (!apiKey) return { text: "⚠️ API key required for prediction insights." };
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  let prompt = '';
+
+  if (predictionType === 'cash_flow') {
+    prompt = `
+      Analyze this cash flow prediction and provide insights in Marathi-English.
+      
+      Prediction: ${JSON.stringify(predictionData)}
+      
+      Provide:
+      1. Key insights (3-5 points)
+      2. Risks and opportunities
+      3. Actionable recommendations
+      4. Trend analysis
+      
+      Return JSON with:
+      - insights: string[]
+      - risks: string[]
+      - opportunities: string[]
+      - recommendations: string[]
+      - trendAnalysis: string
+    `;
+  } else if (predictionType === 'loan_recovery') {
+    prompt = `
+      Analyze loan recovery forecasts and provide insights in Marathi-English.
+      
+      High Risk Loans: ${predictionData.highRiskCount}
+      Total Outstanding: ₹${predictionData.totalOutstanding}
+      
+      Provide:
+      1. Recovery strategy recommendations
+      2. Risk mitigation steps
+      3. Priority actions
+      
+      Return JSON with:
+      - strategy: string[]
+      - riskMitigation: string[]
+      - priorityActions: string[]
+    `;
+  } else if (predictionType === 'member_growth') {
+    prompt = `
+      Analyze member growth prediction and provide insights in Marathi-English.
+      
+      Prediction: ${JSON.stringify(predictionData)}
+      
+      Provide:
+      1. Growth opportunities
+      2. Retention strategies
+      3. Expansion recommendations
+      
+      Return JSON with:
+      - opportunities: string[]
+      - retentionStrategies: string[]
+      - expansionRecommendations: string[]
+    `;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            insights: { type: Type.ARRAY, items: { type: Type.STRING } },
+            risks: { type: Type.ARRAY, items: { type: Type.STRING } },
+            opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
+            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            trendAnalysis: { type: Type.STRING },
+            strategy: { type: Type.ARRAY, items: { type: Type.STRING } },
+            riskMitigation: { type: Type.ARRAY, items: { type: Type.STRING } },
+            priorityActions: { type: Type.ARRAY, items: { type: Type.STRING } },
+            retentionStrategies: { type: Type.ARRAY, items: { type: Type.STRING } },
+            expansionRecommendations: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Prediction Insights Error:", error);
+    return null;
+  }
+};

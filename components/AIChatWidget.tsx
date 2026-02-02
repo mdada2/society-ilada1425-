@@ -16,7 +16,8 @@ import {
     generateSmartReminderMessage,
     analyzeBulkOperation,
     generateDocumentContent,
-    parseNaturalLanguageQuery
+    parseNaturalLanguageQuery,
+    generatePredictionInsights
 } from '../services/ai';
 import {
     generatePaymentReminders,
@@ -44,6 +45,12 @@ import {
     validateMemberData,
     validateTransactionData
 } from '../services/smartSearch';
+import {
+    predictCashFlow,
+    forecastLoanRecovery,
+    predictMemberGrowth,
+    getPredictionSummary
+} from '../services/predictiveAnalytics';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -82,6 +89,10 @@ const COMMANDS = [
     { cmd: '/search', label: '🔍 Smart Search', text: 'Search members and transactions', action: 'AI_FUNCTION', payload: 'search' },
     { cmd: '/duplicates', label: '👥 Find Duplicates', text: 'Detect duplicate members', action: 'AI_FUNCTION', payload: 'duplicates' },
     { cmd: '/validate', label: '✅ Validate Data', text: 'Validate member data', action: 'AI_FUNCTION', payload: 'validate' },
+    // Phase 7: Predictive Analytics Commands
+    { cmd: '/predictcash', label: '💰 Cash Flow Forecast', text: 'Predict cash flow', action: 'AI_FUNCTION', payload: 'predictcash' },
+    { cmd: '/predictloans', label: '📈 Loan Recovery', text: 'Forecast loan recovery', action: 'AI_FUNCTION', payload: 'predictloans' },
+    { cmd: '/predictgrowth', label: '📈 Member Growth', text: 'Predict member growth', action: 'AI_FUNCTION', payload: 'predictgrowth' },
 ];
 
 
@@ -541,6 +552,36 @@ const AIChatWidget = () => {
                     const validateMsg = `✅ **Data Validation** (Sample: 10 members)\n\nValid Records: ${validCount}/10\nErrors Found: ${errorCount}\nWarnings: ${warningCount}\n\n**Common Issues:**\n${errorCount > 0 ? '• Missing required fields\n• Invalid mobile numbers\n• Negative values' : '✅ No errors found!'}\n\n💡 Run full validation to check all ${members.length} members.`;
                     setMessages(prev => [...prev, { role: 'ai', text: validateMsg }]);
                     setLastAction('Validation Complete');
+                    break;
+
+                case 'predictcash':
+                    // Cash flow prediction
+                    const cashFlowPredictions = predictCashFlow(members, transactions, 3);
+                    const nextMonth = cashFlowPredictions[0];
+
+                    const cashMsg = `💰 **Cash Flow Forecast** (Next 3 Months)\n\n**${nextMonth.period}:**\nInflow: ₹${Math.round(nextMonth.predictedInflow).toLocaleString('en-IN')}\nOutflow: ₹${Math.round(nextMonth.predictedOutflow).toLocaleString('en-IN')}\nNet Cash Flow: ₹${Math.round(nextMonth.netCashFlow).toLocaleString('en-IN')}\nTrend: ${nextMonth.trend}\nConfidence: ${nextMonth.confidence}%\n\n**Breakdown:**\n• Loan Repayments: ₹${Math.round(nextMonth.breakdown.loanRepayments).toLocaleString('en-IN')}\n• Savings Deposits: ₹${Math.round(nextMonth.breakdown.savingsDeposits).toLocaleString('en-IN')}\n• New Loans: ₹${Math.round(nextMonth.breakdown.newLoans).toLocaleString('en-IN')}\n• Withdrawals: ₹${Math.round(nextMonth.breakdown.withdrawals).toLocaleString('en-IN')}\n\n💡 Plan accordingly for ${nextMonth.trend} cash flow.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: cashMsg }]);
+                    setLastAction('Cash Flow Predicted');
+                    break;
+
+                case 'predictloans':
+                    // Loan recovery forecast
+                    const loanForecasts = forecastLoanRecovery(members, transactions);
+                    const highRiskLoans = loanForecasts.filter(f => f.riskLevel === 'high');
+
+                    const loanMsg = `📈 **Loan Recovery Forecast**\n\nTotal Loans: ${loanForecasts.length}\nHigh Risk: ${highRiskLoans.length}\nMedium Risk: ${loanForecasts.filter(f => f.riskLevel === 'medium').length}\nLow Risk: ${loanForecasts.filter(f => f.riskLevel === 'low').length}\n\n**Top 5 High Risk Loans:**\n${highRiskLoans.slice(0, 5).map(f => `\n${f.memberName}\nOutstanding: ₹${Math.round(f.currentOutstanding).toLocaleString('en-IN')}\nRecovery Probability: ${f.recoveryProbability}%\nActions: ${f.suggestedActions[0]}`).join('\n')}\n\n⚠️ Focus on high-risk loans immediately.`;
+                    setMessages(prev => [...prev, { role: 'ai', text: loanMsg }]);
+                    setLastAction('Loan Recovery Forecasted');
+                    break;
+
+                case 'predictgrowth':
+                    // Member growth prediction
+                    const growthPredictions = predictMemberGrowth(members, 6);
+                    const nextGrowth = growthPredictions[0];
+
+                    const growthMsg = `📊 **Member Growth Prediction** (Next 6 Months)\n\n**${nextGrowth.period}:**\nNew Members: ${nextGrowth.predictedNewMembers}\nChurn: ${nextGrowth.predictedChurnMembers}\nNet Growth: ${nextGrowth.netGrowth}\nProjected Total: ${nextGrowth.totalMembersProjected}\nGrowth Rate: ${nextGrowth.growthRate.toFixed(2)}%\nConfidence: ${nextGrowth.confidence}%\n\n**Factors:**\n• ${nextGrowth.factors.seasonalTrend}\n• ${nextGrowth.factors.economicIndicators}\n• ${nextGrowth.factors.historicalPattern}\n\n💡 ${nextGrowth.netGrowth > 0 ? 'Positive growth expected!' : 'Focus on retention strategies.'}`;
+                    setMessages(prev => [...prev, { role: 'ai', text: growthMsg }]);
+                    setLastAction('Growth Predicted');
                     break;
 
                 default:
