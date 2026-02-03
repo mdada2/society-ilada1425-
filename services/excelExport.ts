@@ -1,0 +1,274 @@
+import * as XLSX from 'xlsx';
+import { Member, Transaction } from '../types';
+import { format } from 'date-fns';
+
+// ============================================================================
+// EXCEL EXPORT SERVICE
+// ============================================================================
+
+// --- 1. Export Members to Excel ---
+export const exportMembersToExcel = (members: Member[]): void => {
+    // Prepare data for Excel
+    const data = members.map(m => ({
+        'Member ID': m.id,
+        'Name': m.name,
+        'Mobile': m.mobile,
+        'Village': m.village,
+        'Gender': m.gender,
+        'Savings Balance': m.savingsBalance || 0,
+        'Share Balance': m.shareBalance || 0,
+        'Loan Principal': m.loanPrincipal || 0,
+        'Loan Interest': m.loanInterestDue || 0,
+        'Total Outstanding': (m.loanPrincipal || 0) + (m.loanInterestDue || 0),
+        'Status': (m as any).status || 'Active'
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Set column widths
+    ws['!cols'] = [
+        { wch: 12 }, // Member ID
+        { wch: 25 }, // Name
+        { wch: 12 }, // Mobile
+        { wch: 20 }, // Village
+        { wch: 10 }, // Gender
+        { wch: 15 }, // Savings Balance
+        { wch: 15 }, // Share Balance
+        { wch: 15 }, // Loan Principal
+        { wch: 15 }, // Loan Interest
+        { wch: 18 }, // Total Outstanding
+        { wch: 10 }  // Status
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Members');
+
+    // Generate filename with timestamp
+    const filename = `Members_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+
+    // Write file
+    XLSX.writeFile(wb, filename);
+};
+
+// --- 2. Export Transactions to Excel ---
+export const exportTransactionsToExcel = (
+    transactions: Transaction[],
+    members: Member[]
+): void => {
+    // Prepare data for Excel
+    const data = transactions.map(t => {
+        const member = members.find(m => m.id === t.memberId);
+        return {
+            'Date': format(new Date(t.date), 'dd-MM-yyyy'),
+            'Transaction ID': t.id,
+            'Member ID': t.memberId,
+            'Member Name': member?.name || 'Unknown',
+            'Type': t.type,
+            'Account Type': t.accountType,
+            'Amount': t.amount,
+            'Details': t.details,
+            'Payment Method': (t as any).paymentMethod || 'Cash'
+        };
+    });
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Set column widths
+    ws['!cols'] = [
+        { wch: 12 }, // Date
+        { wch: 15 }, // Transaction ID
+        { wch: 12 }, // Member ID
+        { wch: 25 }, // Member Name
+        { wch: 10 }, // Type
+        { wch: 15 }, // Account Type
+        { wch: 12 }, // Amount
+        { wch: 40 }, // Details
+        { wch: 15 }  // Payment Method
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+
+    // Generate filename with timestamp
+    const filename = `Transactions_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+
+    // Write file
+    XLSX.writeFile(wb, filename);
+};
+
+// --- 3. Export Loans to Excel ---
+export const exportLoansToExcel = (members: Member[]): void => {
+    // Filter members with loans
+    const membersWithLoans = members.filter(m => (m.loanPrincipal || 0) > 0);
+
+    // Prepare data for Excel
+    const data = membersWithLoans.map(m => ({
+        'Member ID': m.id,
+        'Name': m.name,
+        'Mobile': m.mobile,
+        'Village': m.village,
+        'Loan Principal': m.loanPrincipal || 0,
+        'Interest Due': m.loanInterestDue || 0,
+        'Total Outstanding': (m.loanPrincipal || 0) + (m.loanInterestDue || 0),
+        'Loan Date': (m as any).loanDate ? format(new Date((m as any).loanDate), 'dd-MM-yyyy') : '',
+        'Interest Rate': (m as any).loanInterestRate ? `${(m as any).loanInterestRate}%` : '12%',
+        'Status': (m as any).status || 'Active'
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Set column widths
+    ws['!cols'] = [
+        { wch: 12 }, // Member ID
+        { wch: 25 }, // Name
+        { wch: 12 }, // Mobile
+        { wch: 20 }, // Village
+        { wch: 15 }, // Loan Principal
+        { wch: 15 }, // Interest Due
+        { wch: 18 }, // Total Outstanding
+        { wch: 12 }, // Loan Date
+        { wch: 15 }, // Interest Rate
+        { wch: 10 }  // Status
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Loans');
+
+    // Generate filename with timestamp
+    const filename = `Loans_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+
+    // Write file
+    XLSX.writeFile(wb, filename);
+};
+
+// --- 4. Export Financial Report to Excel ---
+export const exportFinancialReportToExcel = (
+    members: Member[],
+    transactions: Transaction[]
+): void => {
+    const wb = XLSX.utils.book_new();
+
+    // Summary Sheet
+    const summaryData = [
+        { 'Metric': 'Total Members', 'Value': members.length },
+        { 'Metric': 'Active Members', 'Value': members.filter(m => (m as any).status === 'Active').length },
+        { 'Metric': 'Total Savings', 'Value': members.reduce((sum, m) => sum + (m.savingsBalance || 0), 0) },
+        { 'Metric': 'Total Shares', 'Value': members.reduce((sum, m) => sum + (m.shareBalance || 0), 0) },
+        { 'Metric': 'Total Loan Principal', 'Value': members.reduce((sum, m) => sum + (m.loanPrincipal || 0), 0) },
+        { 'Metric': 'Total Interest Due', 'Value': members.reduce((sum, m) => sum + (m.loanInterestDue || 0), 0) },
+        { 'Metric': 'Total Transactions', 'Value': transactions.length },
+        { 'Metric': 'Total Credits', 'Value': transactions.filter(t => t.type === 'Credit').reduce((sum, t) => sum + t.amount, 0) },
+        { 'Metric': 'Total Debits', 'Value': transactions.filter(t => t.type === 'Debit').reduce((sum, t) => sum + t.amount, 0) }
+    ];
+
+    const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+    summaryWs['!cols'] = [{ wch: 25 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+
+    // Members by Village Sheet
+    const villageStats: { [key: string]: number } = {};
+    members.forEach(m => {
+        villageStats[m.village] = (villageStats[m.village] || 0) + 1;
+    });
+
+    const villageData = Object.entries(villageStats).map(([village, count]) => ({
+        'Village': village,
+        'Members': count,
+        'Percentage': ((count / members.length) * 100).toFixed(2) + '%'
+    }));
+
+    const villageWs = XLSX.utils.json_to_sheet(villageData);
+    villageWs['!cols'] = [{ wch: 25 }, { wch: 12 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(wb, villageWs, 'By Village');
+
+    // Account Type Breakdown Sheet
+    const accountBreakdown = [
+        {
+            'Account Type': 'Savings',
+            'Total Transactions': transactions.filter(t => t.accountType === 'Savings').length,
+            'Total Amount': transactions.filter(t => t.accountType === 'Savings').reduce((sum, t) => sum + t.amount, 0)
+        },
+        {
+            'Account Type': 'Loan',
+            'Total Transactions': transactions.filter(t => t.accountType === 'Loan').length,
+            'Total Amount': transactions.filter(t => t.accountType === 'Loan').reduce((sum, t) => sum + t.amount, 0)
+        },
+        {
+            'Account Type': 'Share',
+            'Total Transactions': transactions.filter(t => (t.accountType as string) === 'Share').length,
+            'Total Amount': transactions.filter(t => (t.accountType as string) === 'Share').reduce((sum, t) => sum + t.amount, 0)
+        }
+    ];
+
+    const accountWs = XLSX.utils.json_to_sheet(accountBreakdown);
+    accountWs['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, accountWs, 'Account Breakdown');
+
+    // Generate filename with timestamp
+    const filename = `Financial_Report_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+
+    // Write file
+    XLSX.writeFile(wb, filename);
+};
+
+// --- 5. Export Custom Data to Excel ---
+export const exportCustomDataToExcel = (
+    data: any[],
+    sheetName: string,
+    filename?: string
+): void => {
+    if (data.length === 0) {
+        console.warn('No data to export');
+        return;
+    }
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Auto-size columns based on content
+    const colWidths = Object.keys(data[0]).map(key => ({
+        wch: Math.max(key.length, 15)
+    }));
+    ws['!cols'] = colWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    // Generate filename
+    const finalFilename = filename || `Export_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+
+    // Write file
+    XLSX.writeFile(wb, finalFilename);
+};
+
+// --- 6. Get Export Summary ---
+export const getExportSummary = (): string => {
+    return `
+📊 **Excel Export Available**
+
+**Available Exports:**
+• Members - Complete member list with balances
+• Transactions - All transaction history
+• Loans - Outstanding loan details
+• Financial Report - Multi-sheet summary report
+
+**Commands:**
+• \`/export members\` - Export all members
+• \`/export transactions\` - Export transactions
+• \`/export loans\` - Export loan details
+• \`/export report\` - Export financial report
+
+**File Format:** .xlsx (Microsoft Excel)
+**Location:** Downloads folder
+**Includes:** Headers, formatting, auto-sized columns
+
+💡 Files are timestamped for easy tracking.
+  `.trim();
+};

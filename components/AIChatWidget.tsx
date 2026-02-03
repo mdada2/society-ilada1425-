@@ -73,6 +73,13 @@ import {
     getSecuritySummary,
     exportAuditReport
 } from '../services/securityCompliance';
+import {
+    exportMembersToExcel,
+    exportTransactionsToExcel,
+    exportLoansToExcel,
+    exportFinancialReportToExcel,
+    getExportSummary
+} from '../services/excelExport';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Member, ReportHeaders, ThemeMode } from '../types';
@@ -129,6 +136,12 @@ const COMMANDS = [
     { cmd: '/suspicious', label: '⚠️ Suspicious', text: 'Detect suspicious activity', action: 'AI_FUNCTION', payload: 'suspicious' },
     { cmd: '/compliance', label: '✅ Compliance', text: 'Check compliance', action: 'AI_FUNCTION', payload: 'compliance' },
     { cmd: '/audit', label: '📝 Audit', text: 'Audit report', action: 'AI_FUNCTION', payload: 'audit' },
+    // Excel Export Commands
+    { cmd: '/export', label: '📊 Export', text: 'Export options', action: 'AI_FUNCTION', payload: 'export' },
+    { cmd: '/export members', label: '👥 Export Members', text: 'Export members to Excel', action: 'AI_FUNCTION', payload: 'export_members' },
+    { cmd: '/export transactions', label: '💸 Export Transactions', text: 'Export transactions to Excel', action: 'AI_FUNCTION', payload: 'export_transactions' },
+    { cmd: '/export loans', label: '💰 Export Loans', text: 'Export loans to Excel', action: 'AI_FUNCTION', payload: 'export_loans' },
+    { cmd: '/export report', label: '📄 Export Report', text: 'Export financial report to Excel', action: 'AI_FUNCTION', payload: 'export_report' },
 ];
 
 
@@ -722,6 +735,62 @@ const AIChatWidget = () => {
                     const auditMsg = `📝 **Audit Report** (Last 30 Days)\n\n${auditReport.substring(0, 800)}...\n\n💡 Full audit report can be exported for detailed analysis.`;
                     setMessages(prev => [...prev, { role: 'ai', text: auditMsg }]);
                     setLastAction('Audit Report Generated');
+                    break;
+
+                case 'export':
+                    // Export options
+                    const exportMsg = getExportSummary();
+                    setMessages(prev => [...prev, { role: 'ai', text: exportMsg }]);
+                    setLastAction('Export Options Shown');
+                    break;
+
+                case 'export_members':
+                    // Export members to Excel
+                    try {
+                        exportMembersToExcel(members);
+                        const membersMsg = `✅ **Members Exported to Excel**\n\nTotal Members: ${members.length}\nFile: Members_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx\n\n💡 Check your Downloads folder for the Excel file.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: membersMsg }]);
+                        setLastAction('Members Exported');
+                    } catch (error) {
+                        setMessages(prev => [...prev, { role: 'ai', text: '❌ Error exporting members. Please try again.' }]);
+                    }
+                    break;
+
+                case 'export_transactions':
+                    // Export transactions to Excel
+                    try {
+                        exportTransactionsToExcel(transactions, members);
+                        const txnMsg = `✅ **Transactions Exported to Excel**\n\nTotal Transactions: ${transactions.length}\nFile: Transactions_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx\n\n💡 Check your Downloads folder for the Excel file.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: txnMsg }]);
+                        setLastAction('Transactions Exported');
+                    } catch (error) {
+                        setMessages(prev => [...prev, { role: 'ai', text: '❌ Error exporting transactions. Please try again.' }]);
+                    }
+                    break;
+
+                case 'export_loans':
+                    // Export loans to Excel
+                    try {
+                        exportLoansToExcel(members);
+                        const loansCount = members.filter(m => (m.loanPrincipal || 0) > 0).length;
+                        const loansMsg = `✅ **Loans Exported to Excel**\n\nTotal Loans: ${loansCount}\nFile: Loans_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx\n\n💡 Check your Downloads folder for the Excel file.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: loansMsg }]);
+                        setLastAction('Loans Exported');
+                    } catch (error) {
+                        setMessages(prev => [...prev, { role: 'ai', text: '❌ Error exporting loans. Please try again.' }]);
+                    }
+                    break;
+
+                case 'export_report':
+                    // Export financial report to Excel
+                    try {
+                        exportFinancialReportToExcel(members, transactions);
+                        const reportMsg = `✅ **Financial Report Exported to Excel**\n\nMulti-sheet report generated:\n• Summary\n• By Village\n• Account Breakdown\n\nFile: Financial_Report_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx\n\n💡 Check your Downloads folder for the Excel file.`;
+                        setMessages(prev => [...prev, { role: 'ai', text: reportMsg }]);
+                        setLastAction('Financial Report Exported');
+                    } catch (error) {
+                        setMessages(prev => [...prev, { role: 'ai', text: '❌ Error exporting report. Please try again.' }]);
+                    }
                     break;
 
                 default:
