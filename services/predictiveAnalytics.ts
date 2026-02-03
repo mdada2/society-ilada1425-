@@ -188,10 +188,9 @@ export const predictMemberGrowth = (
     // Calculate historical growth rate
     const membersByMonth: { [key: string]: number } = {};
 
-
     members.forEach(m => {
-        // Use createdAt as fallback if joiningDate doesn't exist
-        const joinDate = (m as any).joiningDate || format(new Date(m.createdAt || Date.now()), 'yyyy-MM-dd');
+        // Use current date as fallback if joiningDate doesn't exist
+        const joinDate = (m as any).joiningDate || format(new Date(), 'yyyy-MM-dd');
         const month = format(parseISO(joinDate), 'yyyy-MM');
         membersByMonth[month] = (membersByMonth[month] || 0) + 1;
     });
