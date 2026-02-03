@@ -7,7 +7,8 @@ import { TransactionType, StaffSalary } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
-import { exportTSV } from '../utils/downloadUtils';
+import { downloadBlob } from '../utils/downloadUtils';
+import * as XLSX from 'xlsx';
 
 const EXPENSE_CATEGORIES = [
     'Office Expenses (कार्यालयीन खर्च)',
@@ -266,7 +267,13 @@ const Expenses = () => {
             s.remarks || '-'
         ]);
 
-        exportTSV(headers, rows, `Salary_${monthName}_${year}.csv`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Salary");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+        downloadBlob(blob, `Salary_${monthName}_${year}.xlsx`);
     };
 
     const handleShareSalary = async () => {

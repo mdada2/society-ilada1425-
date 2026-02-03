@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import {
   BarChart3,
   Wallet,
@@ -17,7 +18,7 @@ import { useApp } from '../context/AppContext';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { useNavigate, useParams } from 'react-router-dom';
 import SecurityPinModal from '../components/SecurityPinModal';
-import { downloadBlob, exportTSV } from '../utils/downloadUtils';
+import { downloadBlob } from '../utils/downloadUtils';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
@@ -914,7 +915,12 @@ const Reports = () => {
         ]);
 
         // Export using shared utility for proper Excel Unicode support
-        exportTSV(headers, rows, `NPA_Summary_${format(new Date(), 'yyyy-MM-dd')}`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "NPA Summary");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `NPA_Summary_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
       };
 
       // Share Function
@@ -1303,7 +1309,12 @@ const Reports = () => {
           item.count,
           item.percentage
         ]);
-        exportTSV(headers, rows, `Gender_Summary_${format(new Date(), 'dd-MM-yyyy')}`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Gender Summary");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Gender_Summary_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
       };
 
       const handleShareGenderSummary = async () => {
@@ -1428,7 +1439,12 @@ const Reports = () => {
           item.gender,
           item.count
         ]);
-        exportTSV(headers, rows, `Gender_Category_${format(new Date(), 'dd-MM-yyyy')}`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Gender-Category Summary");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Gender_Category_Summary_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
       };
 
       const handleShareGenderCategory = async () => {
@@ -1542,7 +1558,12 @@ const Reports = () => {
           item.other,
           item.total
         ]);
-        exportTSV(headers, rows, `Gender_Village_${format(new Date(), 'dd-MM-yyyy')}`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Gender-Village Summary");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Gender_Village_Summary_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
       };
 
       const handleShareGenderVillage = async () => {
@@ -1707,7 +1728,12 @@ const Reports = () => {
           item.totalLoanInterest,
           item.totalFD
         ]);
-        exportTSV(headers, rows, `Gender_Financial_${format(new Date(), 'dd-MM-yyyy')}`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Gender Financial");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Gender_Financial_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
       };
 
       const handleShareGenderFinancial = async () => {

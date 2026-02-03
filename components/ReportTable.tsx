@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Download, Share2, Search, Calendar, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { exportTSV } from '../utils/downloadUtils';
+import { downloadBlob } from '../utils/downloadUtils';
+import * as XLSX from 'xlsx';
 
 export interface Column<T> {
     header: string;
@@ -81,14 +82,17 @@ function ReportTable<T extends { id?: string | number }>({
 
         const headers = columns.map(c => c.header);
         const rows = data.map(item =>
-            columns.map(col => {
-                const val = (item as any)[col.accessorKey];
-                return val;
-            })
+            columns.map(col => (item as any)[col.accessorKey] ?? '')
         );
 
-        // Use shared TSV utility for better Marathi text compatibility
-        exportTSV(headers, rows, `${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Report");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+        const fileName = `${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+        downloadBlob(blob, fileName);
     };
 
     const handleShare = async () => {

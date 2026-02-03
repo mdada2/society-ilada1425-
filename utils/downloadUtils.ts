@@ -59,4 +59,5 @@ export const downloadBlob = async (blob: Blob, filename: string) => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-    };
+    }
+};
