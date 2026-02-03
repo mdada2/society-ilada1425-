@@ -248,7 +248,49 @@ export const exportCustomDataToExcel = (
     XLSX.writeFile(wb, finalFilename);
 };
 
-// --- 6. Get Export Summary ---
+// --- 6. Export Dispatch Records to Excel ---
+export const exportDispatchesToExcel = (dispatches: any[]): void => {
+    if (dispatches.length === 0) return;
+
+    const data = dispatches.map(d => ({
+        'Date': d.date,
+        'Season': d.season || '',
+        'Mill Name': d.millName,
+        'D.O. No': d.doNumber || '',
+        'T.P. No': d.tpNumber || '',
+        'Truck No': d.truckNumber,
+        'Storage': d.storageSource,
+        'Bags': d.bags,
+        'Weight': d.weight,
+        'New Bags': d.newBagsUsed,
+        'Old Bags': d.oldBagsUsed,
+        'Used Once': d.usedOnceBagsUsed
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    ws['!cols'] = [
+        { wch: 12 }, // Date
+        { wch: 12 }, // Season
+        { wch: 25 }, // Mill Name
+        { wch: 15 }, // D.O. No
+        { wch: 15 }, // T.P. No
+        { wch: 15 }, // Truck No
+        { wch: 15 }, // Storage
+        { wch: 10 }, // Bags
+        { wch: 10 }, // Weight
+        { wch: 10 }, // New Bags
+        { wch: 10 }, // Old Bags
+        { wch: 10 }  // Used Once
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Dispatches');
+    const filename = `Dispatches_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+    XLSX.writeFile(wb, filename);
+};
+
+// --- 7. Get Export Summary ---
 export const getExportSummary = (): string => {
     return `
 📊 **Excel Export Available**

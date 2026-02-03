@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck, Calendar, Filter } from 'lucide-react';
 import { DispatchRecord } from '../types';
 import { downloadBlob } from '../utils/downloadUtils';
+import { exportDispatchesToExcel } from '../services/excelExport';
 
 const Dispatch = () => {
     const { dispatches, addDispatch, updateDispatch, deleteDispatch, paddySeasons, getActiveSeason, settings } = useApp();
@@ -142,28 +143,8 @@ const Dispatch = () => {
         window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     };
 
-    const exportToCSV = () => {
-        const headers = ['Date', 'Season', 'Mill Name', 'D.O. No', 'T.P. No', 'Truck No', 'Storage', 'Bags', 'Weight', 'New Bags', 'Old Bags', 'Used Once'];
-        const csvContent = [
-            headers.join(','),
-            ...filteredDispatches.map(d => [
-                d.date,
-                `"${d.season || ''}"`,
-                `"${d.millName}"`,
-                `"${d.doNumber || ''}"`,
-                `"${d.tpNumber || ''}"`,
-                `"${d.truckNumber}"`,
-                d.storageSource,
-                d.bags,
-                d.weight,
-                d.newBagsUsed,
-                d.oldBagsUsed,
-                d.usedOnceBagsUsed
-            ].join(','))
-        ].join('\n');
-
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8' });
-        downloadBlob(blob, `dispatches_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    const handleExportExcel = () => {
+        exportDispatchesToExcel(filteredDispatches);
     };
 
     // Filter dispatches by season
@@ -314,8 +295,8 @@ const Dispatch = () => {
                             </div>
                         )}
                         {filteredDispatches.length > 0 && (
-                            <button onClick={exportToCSV} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition font-bold shadow-sm">
-                                <Download size={16} /> Export to CSV
+                            <button onClick={handleExportExcel} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white transition font-bold shadow-sm">
+                                <Download size={16} /> Export Excel
                             </button>
                         )}
                     </div>

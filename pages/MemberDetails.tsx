@@ -8,7 +8,8 @@ import { calculateLoanInterest } from '../utils/loanCalculator';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateNarration, generateCreditScore } from '../services/ai';
-import { downloadBlob, exportTSV } from '../utils/downloadUtils';
+import { downloadBlob } from '../utils/downloadUtils';
+import { exportTransactionsToExcel } from '../services/excelExport';
 import { Capacitor } from '@capacitor/core';
 
 const MemberDetails = () => {
@@ -188,21 +189,12 @@ const MemberDetails = () => {
     // ... inside component ...
 
     const handleShareTransactions = async () => {
-        try {
-            const data = generateTransactionsCSVBlob();
-            exportTSV(data.headers, data.rows, `${member.name}_transactions`);
-        } catch (error) {
-            console.error("Export failed:", error);
-            alert("Failed to export transactions. Please try again.");
-        }
+        // Fallback for sharing - still use Excel locally
+        exportTransactionsToExcel(memberTransactions, [member]);
     };
 
     const exportTransactions = () => {
-        const data = generateTransactionsCSVBlob();
-
-        // Use shared TSV utility for better Marathi text compatibility
-        exportTSV(data.headers, data.rows, `${member.name}_transactions`);
-        setTimeout(() => alert("Download complete"), 500);
+        exportTransactionsToExcel(memberTransactions, [member]);
     };
 
     // ...
@@ -697,10 +689,10 @@ const MemberDetails = () => {
                         </button>
                         <button
                             onClick={exportTransactions}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs md:text-sm font-medium no-print"
-                            title="Export CSV"
+                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition text-xs md:text-sm font-medium no-print"
+                            title="Export Excel"
                         >
-                            <Download size={16} /> Export CSV
+                            <Download size={16} /> Export Excel
                         </button>
                     </div>
                 </div>

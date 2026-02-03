@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { downloadBlob } from '../../utils/downloadUtils';
+import { exportFinancialReportToExcel } from '../../services/excelExport';
 
 const Reports = () => {
     const { transactions, members, settings } = useApp();
@@ -200,122 +201,12 @@ const Reports = () => {
         };
     }, [allOutstandingLoans, reportDate]);
 
-    const generateCSVBlob = (data: any[], headers: string[]) => {
-        if (!data.length) return null;
-        const csv = [
-            headers.join(','),
-            ...data.map(row => headers.map(fieldName => JSON.stringify(row[fieldName])).join(','))
-        ].join('\n');
-        return new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const handleExportExcel = () => {
+        exportFinancialReportToExcel(members, transactions);
     };
 
-    const downloadCSV = (data: any[], filename: string) => {
-        if (!data.length) return;
-        const headers = Object.keys(data[0]);
-        const blob = generateCSVBlob(data, headers);
-        if (!blob) return;
-
-        downloadBlob(blob, filename);
-        setTimeout(() => alert("Download complete"), 500);
-    };
-
-    const shareCSV = async (data: any[], filename: string, title: string) => {
-        if (!data.length) return alert("No data to share.");
-        const headers = Object.keys(data[0]);
-        const blob = generateCSVBlob(data, headers);
-        if (!blob) return;
-
-        const file = new File([blob], filename, { type: 'text/csv' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: title,
-                    text: `Here is the ${title} file.`
-                });
-            } catch (e) {
-                console.error(e);
-            }
-        } else {
-            alert("Sharing not supported on this device.");
-        }
-    };
-
-    const generateOutstandingGoshwaraCSVContent = () => {
-        const headers = [
-            "प्रकार",
-            "अल्प मुदत (थकीत) - सभासद", "अल्प मुदत (थकीत) - रक्कम",
-            "अल्प मुदत (चालू) - सभासद", "अल्प मुदत (चालू) - रक्कम",
-            "अल्प मुदत (एकूण) - सभासद", "अल्प मुदत (एकूण) - रक्कम",
-            "मध्यम मुदत (थकीत) - सभासद", "मध्यम मुदत (थकीत) - रक्कम",
-            "मध्यम मुदत (चालू) - सभासद", "मध्यम मुदत (चालू) - रक्कम",
-            "मध्यम मुदत (एकूण) - सभासद", "मध्यम मुदत (एकूण) - रक्कम",
-            "एकूण थकीत व्याज - सभासद", "एकूण थकीत व्याज - रक्कम"
-        ];
-
-        const processRow = (row: any) => {
-            const stTotalCount = row.st_thakit.count + row.st_chalu.count;
-            const stTotalAmount = row.st_thakit.amount + row.st_chalu.amount;
-            const mtTotalCount = row.mt_thakit.count + row.mt_chalu.count;
-            const mtTotalAmount = row.mt_thakit.amount + row.mt_chalu.amount;
-            const totalInterestCount = stTotalCount + mtTotalCount;
-            const totalInterestAmount = row.st_thakit.interest + row.st_chalu.interest + row.mt_thakit.interest + row.mt_chalu.interest;
-
-            return [
-                `"${String(row.label)}"`,
-                row.st_thakit.count, row.st_thakit.amount,
-                row.st_chalu.count, row.st_chalu.amount,
-                stTotalCount, stTotalAmount,
-                row.mt_thakit.count, row.mt_thakit.amount,
-                row.mt_chalu.count, row.mt_chalu.amount,
-                mtTotalCount, mtTotalAmount,
-                totalInterestCount, totalInterestAmount
-            ].map(String).join(",");
-        };
-
-        let csvContent = "";
-
-        // Section 1: Farmer Type
-        csvContent += "कृषकाचे प्रकारानुसार गोषवारा (दिनांक " + String(formatDateDisplay(reportDate)) + " रोजीची स्थिती)\n";
-        csvContent += String(headers.join(",")) + "\n";
-        outstandingGoshwara.farmerTable.forEach(row => {
-            csvContent += String(processRow(row)) + "\n";
-        });
-
-        csvContent += "\n";
-
-        // Section 2: Category
-        csvContent += "सामाजिक प्रवर्गानुसार गोषवारा (दिनांक " + String(formatDateDisplay(reportDate)) + " रोजीची स्थिती)\n";
-        csvContent += String(headers.join(",")) + "\n";
-        outstandingGoshwara.categoryTable.forEach(row => {
-            csvContent += String(processRow(row)) + "\n";
-        });
-
-        return csvContent;
-    };
-
-    const handleExportOutstandingGoshwaraCSV = () => {
-        const csvContent = generateOutstandingGoshwaraCSVContent();
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-
-        downloadBlob(blob, `Outstanding_Goshwara_${format(new Date(), 'dd-MM-yyyy')}.csv`);
-        setTimeout(() => alert("Download complete"), 500);
-    };
-
-    const handleShareOutstandingGoshwaraCSV = async () => {
-        const csvContent = generateOutstandingGoshwaraCSVContent();
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const file = new File([blob], `Outstanding_Goshwara_${format(new Date(), 'dd-MM-yyyy')}.csv`, { type: 'text/csv' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: 'Outstanding Goshwara Report',
-                text: 'Report Summary attached.'
-            });
-        } else {
-            alert("Sharing not supported.");
-        }
+    const handleShareExcel = async () => {
+        exportFinancialReportToExcel(members, transactions);
     };
 
     const handlePrintRef = async (ref: React.RefObject<HTMLDivElement>, filename: string) => {
@@ -524,16 +415,10 @@ const Reports = () => {
                                 </div>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => shareCSV(exportData, `${title.replace(/\s/g, '_')}_${reportDate}.csv`, title)}
-                                        className="flex items-center gap-2 bg-purple-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded hover:bg-purple-700 transition shadow-sm text-sm"
+                                        onClick={handleExportExcel}
+                                        className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded hover:bg-emerald-700 transition shadow-sm text-sm"
                                     >
-                                        <Share2 size={16} /> Share
-                                    </button>
-                                    <button
-                                        onClick={() => downloadCSV(exportData, `${title.replace(/\s/g, '_')}_${reportDate}.csv`)}
-                                        className="flex items-center gap-2 bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded hover:bg-green-700 transition shadow-sm text-sm"
-                                    >
-                                        <Download size={16} /> Export CSV
+                                        <Download size={16} /> Export Excel
                                     </button>
                                 </div>
                             </div>
@@ -591,16 +476,10 @@ const Reports = () => {
                         <div className="space-y-8 animate-fade-in" ref={outstandingSummaryRef}>
                             <div className="flex justify-end no-print gap-2">
                                 <button
-                                    onClick={handleShareOutstandingGoshwaraCSV}
-                                    className="bg-purple-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-purple-700 transition shadow-sm font-bold"
+                                    onClick={handleExportExcel}
+                                    className="bg-emerald-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm font-bold"
                                 >
-                                    <Share2 size={16} /> Share CSV
-                                </button>
-                                <button
-                                    onClick={handleExportOutstandingGoshwaraCSV}
-                                    className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-700 transition shadow-sm font-bold"
-                                >
-                                    <Download size={16} /> Export CSV
+                                    <Download size={16} /> Export Excel
                                 </button>
 
                                 <div className="flex gap-1">
