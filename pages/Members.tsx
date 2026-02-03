@@ -2,12 +2,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, User, Trash2, X, AlertTriangle, Download, Upload, Image as ImageIcon, FileSpreadsheet, Edit3, RotateCcw, ScanLine, Loader2, Camera, Share2, Filter, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Plus, Search, User, Trash2, X, AlertTriangle, Download, Upload, Image as ImageIcon, FileSpreadsheet, Edit3, RotateCcw, ScanLine, Loader2, Camera, Share2, Filter, ChevronLeft, ChevronRight, ArrowLeft, FileText } from 'lucide-react';
 import { Member } from '../types';
 import { calculateLoanInterest } from '../utils/loanCalculator';
 import { format } from 'date-fns';
 import { scanIDCard } from '../services/ai';
-import { downloadBlob, exportTSV } from '../utils/downloadUtils';
+import { downloadBlob } from '../utils/downloadUtils';
+import { exportMembersToExcel } from '../services/excelExport';
+import * as XLSX from 'xlsx';
 
 const Members = () => {
   const { members, addMember, deleteMember, settings, importMembers, updateMembers } = useApp();
@@ -143,22 +145,22 @@ const Members = () => {
     const data = generateDisbursementCSV();
     if (!data) { alert("No disbursed members to export. Please 'Save' at least one loan."); return; }
 
-    // Use shared TSV utility for better Marathi text compatibility
-    exportTSV(data.headers, data.rows, `Loan_Disbursement_${format(new Date(), 'dd-MM-yyyy')}`);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
+    XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
+    XLSX.writeFile(wb, `Loan_Disbursement_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
   };
 
   const handleShareDisbursedList = async () => {
     const data = generateDisbursementCSV();
     if (!data) { alert("No disbursed members to share."); return; }
 
-    // Generate TSV content for sharing
-    const tsvContent = [
-      data.headers.join('\t'),
-      ...data.rows.map(row => row.join('\t'))
-    ].join('\n');
-
-    const blob = new Blob(['\uFEFF' + tsvContent], { type: 'text/csv;charset=utf-8' });
-    const file = new File([blob], `Loan_Disbursement_${format(new Date(), 'dd-MM-yyyy')}.csv`, { type: 'text/csv' });
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
+    XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const file = new File([blob], `Loan_Disbursement_${format(new Date(), 'dd-MM-yyyy')}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
@@ -392,86 +394,17 @@ const Members = () => {
     }
   };
 
-  const handleExportMembers = () => {
-    const membersToExport = filteredMembers;
-    if (membersToExport.length === 0) { alert("No members found to export."); return; }
+  // handleExportMembers and handleShareMembers were already replaced or are being cleaned up
+  // Ensuring only Excel export is used.
 
-    const headers = [
-      "Member No", "Name", "Designation", "Gender", "Village", "Membership Date", "Mobile", "Category", "DOB", "Aadhar",
-      "Savings Balance", "Share Balance", "Original Loan Principal", "Original Loan Date", "Last Loan Principal", "Last Payment Date", "Loan Interest Due (Total)", "Loan Account No", "Loan Type", "Farmer Type", "FD Balance"
-    ];
 
-    const formatDateCSV = (d?: string) => {
-      if (!d) return '';
-      try { return format(new Date(d), 'dd-MM-yyyy'); } catch (e) { return d; }
-    };
-
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const rows = membersToExport.map(m => {
-      let totalInterest = m.loanInterestDue;
-      if (m.loanPrincipal > 0) {
-        const lastDate = m.lastLoanCalculationDate || '2022-04-01';
-        const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true, m.originalLoanDate);
-        totalInterest += accrued;
-      }
-      // Calculate original loan principal from transaction history if available
-      const originalPrincipal = m.originalLoanDate ? m.loanPrincipal : 0; // Simplified - could be enhanced with transaction history
-      return [
-        m.memberNo, m.name, m.designation || 'शेतकरी', m.gender || 'Male', m.village,
-        formatDateCSV(m.membershipDate), `'${m.mobile}`, m.category, formatDateCSV(m.dob), `'${m.aadhar}`,
-        m.savingsBalance, m.shareBalance, originalPrincipal, formatDateCSV(m.originalLoanDate),
-        m.loanPrincipal || 0, formatDateCSV(m.lastLoanCalculationDate), totalInterest,
-        `'${m.loanAccountNo || ''}`, m.loanType || 'Short Term', m.farmerType || 'Small Farmer', m.fdBalance
-      ];
-    });
-
-    exportTSV(headers, rows, `Members_List_${format(new Date(), 'dd-MM-yyyy')}`);
-  };
-
-  const handleShareMembers = async () => {
+  const handleShareMembersExcel = async () => {
     const membersToExport = filteredMembers;
     if (membersToExport.length === 0) { alert("No members to share."); return; }
 
-    const headers = [
-      "Member No", "Name", "Designation", "Gender", "Village", "Membership Date", "Mobile", "Category", "DOB", "Aadhar",
-      "Savings Balance", "Share Balance", "Original Loan Principal", "Original Loan Date", "Last Loan Principal", "Last Payment Date", "Loan Interest Due (Total)", "Loan Account No", "Loan Type", "Farmer Type", "FD Balance"
-    ];
+    const data = exportMembersToExcel(membersToExport, true) as { blob: Blob, fileName: string };
+    const file = new File([data.blob], data.fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-    const formatDateCSV = (d?: string) => {
-      if (!d) return '';
-      try { return format(new Date(d), 'dd-MM-yyyy'); } catch (e) { return d; }
-    };
-
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const rows = membersToExport.map(m => {
-      let totalInterest = m.loanInterestDue;
-      if (m.loanPrincipal > 0) {
-        const lastDate = m.lastLoanCalculationDate || '2022-04-01';
-        const { interest: accrued } = calculateLoanInterest(m.loanPrincipal, lastDate, todayStr, settings.financialYearStart, settings.financialYearEnd, true, m.originalLoanDate);
-        totalInterest += accrued;
-      }
-      // Calculate original loan principal from transaction history if available
-      const originalPrincipal = m.originalLoanDate ? m.loanPrincipal : 0; // Simplified - could be enhanced with transaction history
-      return [
-        m.memberNo, m.name, m.designation || 'शेतकरी', m.gender || 'Male', m.village,
-        formatDateCSV(m.membershipDate), `'${m.mobile}`, m.category, formatDateCSV(m.dob), `'${m.aadhar}`,
-        m.savingsBalance, m.shareBalance, originalPrincipal, formatDateCSV(m.originalLoanDate),
-        m.loanPrincipal || 0, formatDateCSV(m.lastLoanCalculationDate), totalInterest,
-        `'${m.loanAccountNo || ''}`, m.loanType || 'Short Term', m.farmerType || 'Small Farmer', m.fdBalance
-      ];
-    });
-
-    // Generate TSV content for sharing
-    const tsvContent = [
-      headers.join('\t'),
-      ...rows.map(row => row.map(val => String(val ?? '')).join('\t'))
-    ].join('\n');
-
-    const fileName = `Members_List_${format(new Date(), 'dd-MM-yyyy')}.csv`;
-    const blob = new Blob(['\uFEFF' + tsvContent], { type: 'text/csv;charset=utf-8;' });
-    const file = new File([blob], fileName, { type: 'text/csv' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
@@ -485,8 +418,12 @@ const Members = () => {
 
   const handleDownloadTemplate = () => {
     const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
-    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "'9999999999", "OPEN", "01-01-1990", "'123456789012", "50000", "01-04-2024", "50000", "01-04-2024", "0", "'LN001", "Short Term", "'BANK001", "2.5", "0", "0", "0"];
-    exportTSV(headers, [sampleRow], "Import_Template");
+    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0"];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Import_Template.xlsx");
   };
 
   const parseNumberSafe = (val: string) => {
@@ -508,26 +445,25 @@ const Members = () => {
     return undefined;
   };
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        let csv = event.target?.result as string;
-        csv = csv.replace(/^\uFEFF/, '');
-        if (csv.includes('à') || csv.includes('ð') || csv.includes('Ã')) {
-          try {
-            const bytes = new Uint8Array(csv.length);
-            for (let i = 0; i < csv.length; i++) bytes[i] = csv.charCodeAt(i);
-            csv = new TextDecoder('utf-8').decode(bytes);
-          } catch (err) { console.warn("Encoding repair failed."); }
-        }
-        const firstLine = csv.split('\n')[0];
-        let delimiter = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
-        const lines = csv.split(/\r?\n/);
-        const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Convert to JSON with headers as keys
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        if (rows.length === 0) return;
+
+        const headers = (rows[0] as string[]).map(h => String(h || '').trim().toLowerCase());
         const findCol = (possibleNames: string[]) => headers.findIndex(h => possibleNames.includes(h));
+
         const idxMemberNo = findCol(['memberno', 'member no', 'no', 'id', 'no.']);
         const idxName = findCol(['name', 'membername', 'full name', 'fullname', 'member name']);
         if (idxMemberNo === -1 || idxName === -1) {
@@ -567,10 +503,8 @@ const Members = () => {
         const newMembers: Member[] = [];
         const updatedMembers: Member[] = [];
 
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          const values = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
+        for (let i = 1; i < rows.length; i++) {
+          const values = rows[i].map(v => String(v ?? '').trim());
           if (values.length < 2) continue;
           const memberNo = values[idxMemberNo];
           const name = values[idxName];
@@ -701,23 +635,20 @@ const Members = () => {
             '❌ Import Failed: No valid member data found.',
             '',
             'Please check:',
-            '✓ CSV has "MemberNo" and "Name" columns',
+            '✓ File has "MemberNo" and "Name" columns',
             '✓ At least one row with data (not just headers)',
-            '✓ MemberNo and Name are not empty',
-            '',
-            `Rows in file: ${lines.length}`,
-            `Delimiter detected: "${delimiter}"`
+            '✓ MemberNo and Name are not empty'
           ].join('\n');
 
           alert(debugInfo);
         }
       } catch (err) {
         console.error(err);
-        alert("Failed to parse CSV.");
+        alert("Failed to parse file. Please use a valid Excel (.xlsx) or CSV file.");
       }
       if (e.target) e.target.value = '';
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   };
 
   return (
@@ -782,16 +713,16 @@ const Members = () => {
           </button>
 
           <label className="bg-indigo-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition shadow-sm cursor-pointer text-sm">
-            <Upload size={18} /> <span className="hidden sm:inline">Import CSV</span>
-            <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+            <Upload size={18} /> <span className="hidden sm:inline">Import Excel/CSV</span>
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportExcel} className="hidden" />
           </label>
 
-          <button onClick={handleShareMembers} className="bg-purple-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition shadow-sm text-sm">
-            <Share2 size={18} /> <span className="hidden sm:inline">Share</span>
+          <button onClick={handleShareMembersExcel} className="bg-purple-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition shadow-sm text-sm">
+            <Share2 size={18} /> <span className="hidden sm:inline">Share Excel</span>
           </button>
 
-          <button onClick={handleExportMembers} className="bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm text-sm">
-            <Download size={18} /> <span className="hidden sm:inline">Export</span>
+          <button onClick={() => exportMembersToExcel(filteredMembers)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm text-sm">
+            <Download size={18} /> <span className="hidden sm:inline">Export Excel</span>
           </button>
 
           <button onClick={() => setShowAddModal(true)} className="bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition shadow-sm text-sm">

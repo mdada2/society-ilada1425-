@@ -7,20 +7,21 @@ import { format } from 'date-fns';
 // ============================================================================
 
 // --- 1. Export Members to Excel ---
-export const exportMembersToExcel = (members: Member[]): void => {
+export const exportMembersToExcel = (members: Member[], returnBlob: boolean = false): void | { blob: Blob, fileName: string } => {
     // Prepare data for Excel
     const data = members.map(m => ({
-        'Member ID': m.id,
+        'Member ID': m.memberNo,
         'Name': m.name,
         'Mobile': m.mobile,
         'Village': m.village,
         'Gender': m.gender,
+        'Designation': m.designation || 'शेतकरी',
+        'Category': m.category,
         'Savings Balance': m.savingsBalance || 0,
         'Share Balance': m.shareBalance || 0,
         'Loan Principal': m.loanPrincipal || 0,
         'Loan Interest': m.loanInterestDue || 0,
-        'Total Outstanding': (m.loanPrincipal || 0) + (m.loanInterestDue || 0),
-        'Status': (m as any).status || 'Active'
+        'Total Outstanding': (m.loanPrincipal || 0) + (m.loanInterestDue || 0)
     }));
 
     // Create workbook and worksheet
@@ -29,27 +30,34 @@ export const exportMembersToExcel = (members: Member[]): void => {
 
     // Set column widths
     ws['!cols'] = [
-        { wch: 12 }, // Member ID
+        { wch: 10 }, // Member ID
         { wch: 25 }, // Name
         { wch: 12 }, // Mobile
         { wch: 20 }, // Village
         { wch: 10 }, // Gender
+        { wch: 15 }, // Designation
+        { wch: 12 }, // Category
         { wch: 15 }, // Savings Balance
         { wch: 15 }, // Share Balance
         { wch: 15 }, // Loan Principal
         { wch: 15 }, // Loan Interest
-        { wch: 18 }, // Total Outstanding
-        { wch: 10 }  // Status
+        { wch: 18 }  // Total Outstanding
     ];
 
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Members');
 
     // Generate filename with timestamp
-    const filename = `Members_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+    const fileName = `Members_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+
+    if (returnBlob) {
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        return { blob, fileName };
+    }
 
     // Write file
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(wb, fileName);
 };
 
 // --- 2. Export Transactions to Excel ---
