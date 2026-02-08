@@ -1,23 +1,8 @@
-// NO STATIC IMPORTS AT TOP LEVEL TO PREVENT EVALUATION CRASHES
+import { initBot } from './lib/bot-logic';
 
 export default async function handler(req: any, res: any) {
     const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
     console.log('🔗 Bot API Request Received:', req.method);
-
-    // Dynamic import to catch potential evaluation crashes
-    let botLogic: any;
-    try {
-        botLogic = await import('./lib/bot-logic');
-    } catch (importError: any) {
-        console.error('❌ Critical Import Error:', importError.message);
-        return res.status(200).json({
-            status: 'import_failed',
-            error: importError.message,
-            stack: importError.stack
-        });
-    }
-
-    const { initBot } = botLogic;
 
     if (req.method === 'POST') {
         try {

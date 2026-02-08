@@ -655,3 +655,11 @@ ${member.designation ? `👔 पद: ${member.designation}` : ''}
     });
     console.log('✅ All Bot Handlers Registered Successfully!');
 }
+
+// Local Execution Guard (Only runs if manually executed via ts-node)
+if (!process.env.VERCEL && (import.meta.url.includes(process.argv[1]) || process.argv[1].endsWith('bot-logic.ts'))) {
+    console.log('🏠 Local Execution Detected - Starting Bot...');
+    initBot().catch(err => {
+        console.error('❌ Failed to start bot locally:', err);
+    });
+}
