@@ -1,4 +1,4 @@
-import { bot } from '../server/telegram-bot';
+import { initBot } from '../server/telegram-bot';
 
 export default async function handler(req: any, res: any) {
     const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
@@ -7,10 +7,7 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'POST') {
         try {
-            if (!BOT_TOKEN) {
-                console.error('❌ VITE_TELEGRAM_BOT_TOKEN is missing!');
-                return res.status(200).json({ error: 'Token missing', status: 'critical' });
-            }
+            const { bot } = await initBot();
 
             if (!bot) {
                 console.error('❌ Bot instance not initialized!');
@@ -28,9 +25,18 @@ export default async function handler(req: any, res: any) {
         }
     } else {
         // Status check for GET requests
+        let botReady = false;
+        try {
+            const { bot } = await initBot();
+            botReady = !!bot;
+        } catch (e) {
+            console.error('Status check init failed:', e);
+        }
+
+        // Status check for GET requests
         return res.status(200).json({
             status: 'running',
-            bot_ready: !!bot,
+            bot_ready: botReady,
             token_configured: !!BOT_TOKEN,
             env: process.env.VERCEL ? 'vercel' : 'local',
             timestamp: new Date().toISOString()

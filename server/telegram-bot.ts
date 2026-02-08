@@ -9,21 +9,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     dotenv.config({ path: '.env.local' });
 }
 
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyAp3IzvsP7WM_ek4-wKvUTq7P7LHdaCR6k",
-    authDomain: "society-ilada.firebaseapp.com",
-    projectId: "society-ilada",
-    storageBucket: "society-ilada.firebasestorage.app",
-    messagingSenderId: "681551898740",
-    appId: "1:681551898740:web:4210df21e473809d80c921"
-};
-
-// Initialize Firebase safely (avoid duplicate app error)
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// In-memory types (Firestore sessions will use this structure)
+// In-memory types
 interface UserSession {
     chatId: number;
     memberId?: string;
@@ -33,40 +19,54 @@ interface UserSession {
     awaitingMemberNo?: boolean;
 }
 
-// Initialize Gemini AI safely
-let genAIInstance: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-    genAIInstance = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-}
-const genAI = genAIInstance;
-
 // Bot token
 const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '';
-
-// Initialize bot safely
-let botInstance: TelegramBot | null = null;
 const IS_VERCEL = process.env.VERCEL === '1';
 
-try {
-    if (BOT_TOKEN) {
-        botInstance = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
-        if (!IS_VERCEL) {
-            console.log('🤖 Society Mitra Telegram Bot Started (Polling Mode)!');
-        } else {
-            console.log('🌐 Society Mitra Telegram Bot Initialized (Webhook Mode)!');
+// Single entry point for initialization
+let initializedBot: TelegramBot | null = null;
+let db: any = null;
+
+export async function initBot() {
+    if (initializedBot) return { bot: initializedBot, db };
+
+    console.log('🏁 Starting Bot Initialization Flow...');
+
+    try {
+        // 1. Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAp3IzvsP7WM_ek4-wKvUTq7P7LHdaCR6k",
+            authDomain: "society-ilada.firebaseapp.com",
+            projectId: "society-ilada",
+            storageBucket: "society-ilada.firebasestorage.app",
+            messagingSenderId: "681551898740",
+            appId: "1:681551898740:web:4210df21e473809d80c921"
+        };
+
+        const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        console.log('✅ Firebase Initialized');
+
+        // 2. Initialize Bot
+        if (!BOT_TOKEN) {
+            throw new Error('VITE_TELEGRAM_BOT_TOKEN is missing');
         }
-        // Register all handlers safely
-        setupBotHandlers(botInstance);
-    } else {
-        console.warn('⚠️ BOT_TOKEN is missing. Bot will not be initialized.');
+
+        initializedBot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
+        console.log(`✅ Bot Instance Created (Polling: ${!IS_VERCEL})`);
+
+        // 3. Setup Handlers
+        setupBotHandlers(initializedBot, db);
+        console.log('✅ Handlers Registered');
+
+        return { bot: initializedBot, db };
+    } catch (error: any) {
+        console.error('❌ CRITICAL INITIALIZATION ERROR:', error.message);
+        throw error;
     }
-} catch (error: any) {
-    console.error('❌ Error initializing Telegram Bot:', error.message);
 }
 
-export const bot = botInstance as TelegramBot;
-
-function setupBotHandlers(bot: TelegramBot) {
+function setupBotHandlers(bot: TelegramBot, db: any) {
     console.log('🛠️ Registering Bot Handlers...');
 
 
