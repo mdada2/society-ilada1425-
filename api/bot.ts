@@ -7,7 +7,7 @@ export default async function handler(req: any, res: any) {
     // Dynamic import to catch potential evaluation crashes
     let botLogic: any;
     try {
-        botLogic = await import('../server/telegram-bot');
+        botLogic = await import('./lib/bot-logic');
     } catch (importError: any) {
         console.error('❌ Critical Import Error:', importError.message);
         return res.status(200).json({

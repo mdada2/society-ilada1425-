@@ -10,7 +10,7 @@
     "build:android": "npm run build && npx cap sync android",
     "open:android": "npx cap open android",
     "sync:android": "npx cap sync android",
-    "telegram-bot": "ts-node server/telegram-bot.ts"
+    "telegram-bot": "ts-node api/lib/bot-logic.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
