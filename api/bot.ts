@@ -5,7 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 
 // --- CONFIGURATION & STATE ---
 const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '';
-const IS_VERCEL = process.env.VERCEL === '1';
+const IS_VERCEL = !!process.env.VERCEL;
 
 let initializedBot: TelegramBot | null = null;
 let db: any = null;
@@ -38,7 +38,7 @@ async function initBot() {
         db = getFirestore(app);
 
         if (process.env.GEMINI_API_KEY) {
-            genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+            genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         }
 
         if (!BOT_TOKEN) throw new Error('BOT_TOKEN missing');
@@ -104,19 +104,38 @@ function setupBotHandlers(bot: TelegramBot, db: any) {
 // --- VERCEL HANDLER ---
 export default async function handler(req: any, res: any) {
     if (req.method === 'POST') {
+        console.log('📩 Telegram Update Received:', JSON.stringify(req.body));
         try {
             const { bot } = await initBot();
+
+            if (!req.body || !req.body.update_id) {
+                console.warn('⚠️ Invalid body received');
+                return res.status(200).json({ status: 'invalid_body' });
+            }
+
             await bot.processUpdate(req.body);
+            console.log('✅ Update processed successfully');
             return res.status(200).send('OK');
         } catch (error: any) {
+            console.error('❌ Error processing update:', error.message);
             return res.status(200).json({ error: error.message });
         }
     }
 
-    // Status Check
+    // Status Check with Webhook Info
     try {
-        await initBot();
-        return res.status(200).json({ status: 'running', vercel: true });
+        const { bot } = await initBot();
+        const webhookInfo = await bot.getWebHookInfo();
+
+        return res.status(200).json({
+            status: 'running',
+            vercel: true,
+            webhook_configured: !!webhookInfo.url,
+            webhook_url: webhookInfo.url,
+            pending_updates: webhookInfo.pending_update_count,
+            last_error: webhookInfo.last_error_message,
+            timestamp: new Date().toISOString()
+        });
     } catch (e: any) {
         return res.status(200).json({ status: 'error', message: e.message });
     }
