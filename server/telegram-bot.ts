@@ -39,21 +39,27 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 // Bot token
 const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '';
 
-if (!BOT_TOKEN) {
-    console.error('❌ TELEGRAM_BOT_TOKEN not found in environment variables');
-    // Don't exit on Vercel, just log it. Local polling will still fail gracefully.
-    if (!process.env.VERCEL) process.exit(1);
-}
-
-// Initialize bot with conditions
+// Initialize bot safely
+let botInstance: TelegramBot | null = null;
 const IS_VERCEL = process.env.VERCEL === '1';
-export const bot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
 
-if (!IS_VERCEL) {
-    console.log('🤖 Society Mitra Telegram Bot Started (Polling Mode)!');
-} else {
-    console.log('🌐 Society Mitra Telegram Bot Initialized (Webhook Mode)!');
+try {
+    if (BOT_TOKEN) {
+        botInstance = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
+        if (!IS_VERCEL) {
+            console.log('🤖 Society Mitra Telegram Bot Started (Polling Mode)!');
+        } else {
+            console.log('🌐 Society Mitra Telegram Bot Initialized (Webhook Mode)!');
+        }
+    } else {
+        console.warn('⚠️ BOT_TOKEN is missing. Bot will not be initialized.');
+    }
+} catch (error: any) {
+    console.error('❌ Error initializing Telegram Bot:', error.message);
 }
+
+export const bot = botInstance as TelegramBot;
+
 
 // Session persistence in Firestore
 async function getSession(chatId: number): Promise<UserSession | null> {
