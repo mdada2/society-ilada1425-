@@ -15,7 +15,7 @@
         "moduleResolution": "node"
     },
     "include": [
-        "server/**/*"
+        "./**/*"
     ],
     "exclude": [
         "node_modules",
