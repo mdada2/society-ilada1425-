@@ -143,7 +143,9 @@ const Reports = () => {
           settings.financialYearStart,
           settings.financialYearEnd,
           false, // Show interest in reports - don't hide for first FY
-          m.originalLoanDate // Pass original loan date
+          m.originalLoanDate, // Pass original loan date
+          settings.firstYearInterestRate || 6,
+          settings.subsequentYearInterestRate || 12
         );
         accruedInterest = result.interest;
       }
@@ -748,7 +750,9 @@ const Reports = () => {
               settings.financialYearStart,
               settings.financialYearEnd,
               false, // Show interest in reports
-              m.originalLoanDate
+              m.originalLoanDate,
+              settings.firstYearInterestRate || 6,
+              settings.subsequentYearInterestRate || 12
             );
             accruedInterest = result.interest;
           }
@@ -777,7 +781,9 @@ const Reports = () => {
               settings.financialYearStart,
               settings.financialYearEnd,
               false,
-              m.originalLoanDate
+              m.originalLoanDate,
+              settings.firstYearInterestRate || 6,
+              settings.subsequentYearInterestRate || 12
             );
             accruedInterest = result.interest;
           }
@@ -1665,7 +1671,9 @@ const Reports = () => {
               settings.financialYearStart,
               settings.financialYearEnd,
               true,
-              m.originalLoanDate
+              m.originalLoanDate,
+              settings.firstYearInterestRate || 6,
+              settings.subsequentYearInterestRate || 12
             );
             memberInterest += accrued;
           }

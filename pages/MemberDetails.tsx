@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { ArrowLeft, Edit, Save, X, Info, CreditCard, Plus, User, Camera, ChevronDown, ChevronUp, FileText, Minus, Wallet, TrendingUp, Sparkles, Loader2, Trash2, AlertCircle, Share2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { TransactionType, AccountType, Member } from '../types';
@@ -16,6 +17,7 @@ const MemberDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { getMember, transactions, updateMember, deleteTransaction, settings } = useApp();
+    const { showConfirm } = useDialog();
     const member = getMember(id || '');
 
     // Edit Mode State
@@ -68,7 +70,9 @@ const MemberDetails = () => {
                 settings.financialYearStart,
                 settings.financialYearEnd,
                 true, // Hide interest during first FY
-                member.originalLoanDate // Pass original loan date for first FY calculation
+                member.originalLoanDate, // Pass original loan date for first FY calculation
+                settings.firstYearInterestRate || 6,
+                settings.subsequentYearInterestRate || 12
             );
 
             setAccruedInterest(interest);
@@ -92,8 +96,21 @@ const MemberDetails = () => {
         return Math.max(0, (member ? (member.loanPrincipal || 0) : 0) + totalInterestToShow);
     }, [member, totalInterestToShow]);
 
-    const handleResetInterest = () => {
-        if (!member || !window.confirm('व्याज ₹0 करायचे आहे का? (Reset Loan Interest Due to ₹0?)')) return;
+    const handleResetInterest = async () => {
+        if (!member) return;
+
+        const confirmed = await showConfirm({
+            title: 'Reset Loan Interest to ₹0?',
+            titleMr: 'कर्जाचे व्याज ₹0 करायचे?',
+            message: 'This will reset the loan interest due to ₹0. This action can be undone by recalculating interest.',
+            messageMr: 'यामुळे कर्जाचे देय व्याज ₹0 होईल. पुन्हा गणना करून हे पूर्ववत करता येईल.',
+            icon: '🔄',
+            confirmText: 'Reset to ₹0',
+            confirmTextMr: '₹0 करा',
+            confirmColor: 'amber'
+        });
+
+        if (!confirmed) return;
 
         // Reset both loanInterestDue AND lastLoanCalculationDate to make total interest ₹0
         const today = format(new Date(), 'yyyy-MM-dd');

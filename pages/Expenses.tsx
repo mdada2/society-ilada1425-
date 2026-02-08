@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { format } from 'date-fns';
 import { Receipt, Plus, PieChart as PieIcon, Trash2, X, TrendingDown, Eye, AlertCircle, Sparkles, CheckCircle, Users, Calendar, CreditCard, FileText, Download, Share2 } from 'lucide-react';
 import { TransactionType, StaffSalary } from '../types';
@@ -42,6 +43,7 @@ const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4'
 
 const Expenses = () => {
     const { transactions, addTransaction, deleteTransaction, societyBanks, staffSalaries, addStaffSalary, updateStaffSalary, deleteStaffSalary, settings } = useApp();
+    const { showConfirm } = useDialog();
 
     // Tab State
     const [activeTab, setActiveTab] = useState<'expenses' | 'salary'>('expenses');
@@ -417,7 +419,19 @@ const Expenses = () => {
                                                         <div className="text-[9px] text-slate-400 uppercase font-black">{t.bankId ? 'Bank' : 'Cash'}</div>
                                                     </td>
                                                     <td className="p-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => window.confirm('Delete?') && deleteTransaction(t.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
+                                                        <button onClick={async () => {
+                                                            const confirmed = await showConfirm({
+                                                                title: 'Delete Expense?',
+                                                                titleMr: 'खर्च हटवायचा?',
+                                                                message: 'This expense record will be permanently deleted.',
+                                                                messageMr: 'हा खर्च रेकॉर्ड कायमचा हटवला जाईल.',
+                                                                icon: '🗑️',
+                                                                confirmText: 'Delete',
+                                                                confirmTextMr: 'हटवा',
+                                                                confirmColor: 'red'
+                                                            });
+                                                            if (confirmed) deleteTransaction(t.id);
+                                                        }} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
                                                     </td>
                                                 </tr>
                                             ))}

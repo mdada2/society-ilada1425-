@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { DialogProvider } from './context/DialogContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
@@ -611,9 +612,11 @@ const MainLayout = () => {
 const App = () => {
   return (
     <AppProvider>
-      <HashRouter>
-        <MainLayout />
-      </HashRouter>
+      <DialogProvider>
+        <HashRouter>
+          <MainLayout />
+        </HashRouter>
+      </DialogProvider>
     </AppProvider>
   );
 };

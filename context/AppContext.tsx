@@ -228,8 +228,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsSyncing(true);
     try {
       const timestamp = Date.now();
+
+      // Prepare settings for sync - exclude interest rates if not locked
+      let settingsToSync = { ...settings };
+      if (!settings.interestRatesLocked) {
+        // Remove interest rate fields from sync if not locked
+        const { firstYearInterestRate, subsequentYearInterestRate, ...restSettings } = settingsToSync;
+        settingsToSync = restSettings;
+      }
+
       const sanitizedData = JSON.parse(JSON.stringify({
-        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings, lastUpdated: timestamp
+        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries,
+        settings: settingsToSync,
+        lastUpdated: timestamp
       }));
       await setDoc(doc(db, "societies", "ilada_main"), sanitizedData);
       lastCloudTimestamp.current = timestamp;

@@ -76,7 +76,10 @@ const Reports = () => {
                 reportDate,
                 settings.financialYearStart,
                 settings.financialYearEnd,
-                false // Show interest in reports (NPA/defaulters need to see accumulated interest)
+                false, // Show interest in reports (NPA/defaulters need to see accumulated interest)
+                undefined,
+                settings.firstYearInterestRate || 6,
+                settings.subsequentYearInterestRate || 12
             );
 
             const totalInterest = m.loanInterestDue + accrued;

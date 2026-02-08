@@ -239,6 +239,9 @@ export interface AppSettings {
   openaiApiKey?: string;
   claudeApiKey?: string;
   selectedAiProvider?: 'gemini' | 'openai' | 'claude';
+  firstYearInterestRate?: number;      // Interest rate for first financial year (default: 6%)
+  subsequentYearInterestRate?: number; // Interest rate for subsequent years (default: 12%)
+  interestRatesLocked?: boolean;       // Lock to prevent accidental changes to interest rates
 }
 
 export interface LocalSettings {

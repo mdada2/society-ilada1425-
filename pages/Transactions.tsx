@@ -107,7 +107,17 @@ const Transactions = () => {
 
             if (selectedMember.loanPrincipal > 0) {
                 const safeLastDate = selectedMember.lastLoanCalculationDate || '2022-04-01';
-                const result = calculateLoanInterest(selectedMember.loanPrincipal, safeLastDate, date, settings.financialYearStart, settings.financialYearEnd, false, selectedMember.originalLoanDate);
+                const result = calculateLoanInterest(
+                    selectedMember.loanPrincipal,
+                    safeLastDate,
+                    date,
+                    settings.financialYearStart,
+                    settings.financialYearEnd,
+                    false,
+                    selectedMember.originalLoanDate,
+                    settings.firstYearInterestRate || 6,
+                    settings.subsequentYearInterestRate || 12
+                );
                 setNewPeriodInterest(result.interest);
                 setLoanBreakdown(result.breakdown);
 

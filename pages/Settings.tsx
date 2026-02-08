@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { Lock, Moon, Sun, Monitor, Download, HardDrive, CalendarRange, Loader2, Check, AlertTriangle, AlertCircle, Copy, CloudDownload, RefreshCw, Sliders, Bot, ToggleLeft, ToggleRight, Smartphone, Cloud, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { ThemeMode } from '../types';
 import { format } from 'date-fns';
@@ -8,6 +9,7 @@ import { useGoogleDrive } from '../utils/googleDrive';
 
 const Settings = () => {
     const { settings, localSettings, updateSettings, updateLocalSettings, restoreFromCloud, cloudPermissionError } = useApp();
+    const { showConfirm } = useDialog();
     const [newPin, setNewPin] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isRestoringCloud, setIsRestoringCloud] = useState(false);
@@ -78,8 +80,18 @@ const Settings = () => {
     };
 
     const handleCloudRestore = async () => {
-        const confirmMsg = "Current data will be replaced. Proceed?";
-        if (window.confirm(confirmMsg)) {
+        const confirmed = await showConfirm({
+            title: 'Restore from Cloud?',
+            titleMr: 'Cloud वरून पुनर्संचयित करा?',
+            message: 'Current data will be REPLACED. This action cannot be undone.',
+            messageMr: 'सध्याचा डेटा बदलला जाईल. ही क्रिया पूर्ववत करता येणार नाही.',
+            icon: '☁️',
+            confirmText: 'Restore',
+            confirmTextMr: 'पुनर्संचयित करा',
+            confirmColor: 'amber'
+        });
+
+        if (confirmed) {
             setIsRestoringCloud(true); setIsLoading(true);
             const success = await restoreFromCloud();
             if (success) { alert("Restore Successful!"); window.location.reload(); }
@@ -432,6 +444,183 @@ const Settings = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="date" value={settings.financialYearStart} onChange={(e) => handleFYUpdate('start', e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
                     <input type="date" value={settings.financialYearEnd} onChange={(e) => handleFYUpdate('end', e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                </div>
+            </div>
+
+            {/* Loan Interest Policy Section */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-lg flex items-center gap-2 text-slate-800 dark:text-white">
+                        <CalendarRange size={20} /> Loan Interest Policy (कर्ज व्याज धोरण)
+                    </h3>
+
+                    {/* Lock/Unlock Toggle */}
+                    <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium ${settings.interestRatesLocked ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                            {settings.interestRatesLocked ? '🔒 Locked' : '🔓 Unlocked'}
+                        </span>
+                        <button
+                            onClick={async () => {
+                                if (!settings.interestRatesLocked) {
+                                    // Locking - just lock it
+                                    updateSettings({ interestRatesLocked: true });
+                                } else {
+                                    // Unlocking - require confirmation
+                                    const confirmed = await showConfirm({
+                                        title: 'Unlock Interest Rates?',
+                                        titleMr: 'व्याज दर Unlock करायचे?',
+                                        message: 'Changes will affect all future loan calculations.',
+                                        messageMr: 'बदल केल्यास भविष्यातील सर्व कर्ज गणनेवर परिणाम होईल.',
+                                        icon: '🔓',
+                                        confirmText: 'Unlock',
+                                        confirmTextMr: 'Unlock करा',
+                                        confirmColor: 'amber'
+                                    });
+                                    if (confirmed) {
+                                        updateSettings({ interestRatesLocked: false });
+                                    }
+                                }
+                            }}
+                            className={`px-4 py-2 rounded-lg font-bold transition-all shadow-sm flex items-center gap-2 ${settings.interestRatesLocked
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50'
+                                : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
+                                }`}
+                        >
+                            {settings.interestRatesLocked ? '🔓 Unlock' : '🔒 Lock'}
+                        </button>
+                    </div>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 italic">
+                    💡 सदस्यांच्या कर्जावरील व्याज दर येथे सेट करा. बदल फक्त भविष्यातील गणनेवर लागू होतील.
+                </p>
+
+                {settings.interestRatesLocked && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-start gap-2">
+                        <span className="text-red-600 dark:text-red-400 text-xl">🔒</span>
+                        <div>
+                            <p className="text-sm font-bold text-red-700 dark:text-red-300">व्याज दर Lock आहेत</p>
+                            <p className="text-xs text-red-600 dark:text-red-400">बदल करण्यासाठी वरील "Unlock" बटण दाबा</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* First Year Interest Rate */}
+                    <div className={`p-4 rounded-lg border transition-all ${settings.interestRatesLocked
+                        ? 'bg-slate-100 dark:bg-slate-700/50 border-slate-300 dark:border-slate-600 opacity-60'
+                        : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        }`}>
+                        <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                            पहिल्या आर्थिक वर्षाचा व्याज दर (%)
+                        </label>
+                        <p className="text-[10px] text-slate-500 mb-2">First Financial Year Interest Rate</p>
+                        <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            disabled={settings.interestRatesLocked}
+                            value={settings.firstYearInterestRate ?? 6}
+                            onChange={async (e) => {
+                                const value = parseFloat(e.target.value);
+                                if (value >= 0 && value <= 100) {
+                                    const confirmed = await showConfirm({
+                                        title: 'Change First Year Interest Rate?',
+                                        titleMr: 'पहिल्या वर्षाचा व्याज दर बदलवायचा?',
+                                        message: `Set first year interest rate to ${value}%? This will apply to future loans only.`,
+                                        messageMr: `पहिल्या वर्षाचा व्याज दर ${value}% करायचा? हा बदल फक्त नवीन कर्जांवर लागू होईल.`,
+                                        icon: '⚠️',
+                                        confirmText: 'Change',
+                                        confirmTextMr: 'बदला',
+                                        confirmColor: 'blue'
+                                    });
+                                    if (confirmed) {
+                                        updateSettings({ firstYearInterestRate: value });
+                                    }
+                                } else {
+                                    alert('व्याज दर 0 ते 100% च्या दरम्यान असावा');
+                                }
+                            }}
+                            className={`w-full p-2 border dark:border-slate-600 rounded text-center text-xl font-bold transition-all ${settings.interestRatesLocked
+                                ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                                : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white'
+                                }`}
+                        />
+                        <p className="text-xs text-slate-500 mt-2 text-center">Default: 6%</p>
+                    </div>
+
+                    {/* Subsequent Years Interest Rate */}
+                    <div className={`p-4 rounded-lg border transition-all ${settings.interestRatesLocked
+                        ? 'bg-slate-100 dark:bg-slate-700/50 border-slate-300 dark:border-slate-600 opacity-60'
+                        : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                        }`}>
+                        <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                            नंतरच्या वर्षांचा व्याज दर (%)
+                        </label>
+                        <p className="text-[10px] text-slate-500 mb-2">Subsequent Years Interest Rate</p>
+                        <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            disabled={settings.interestRatesLocked}
+                            value={settings.subsequentYearInterestRate ?? 12}
+                            onChange={async (e) => {
+                                const value = parseFloat(e.target.value);
+                                if (value >= 0 && value <= 100) {
+                                    const confirmed = await showConfirm({
+                                        title: 'Change Subsequent Years Rate?',
+                                        titleMr: 'नंतरच्या वर्षांचा व्याज दर बदलवायचा?',
+                                        message: `Set subsequent years rate to ${value}%? This will apply to future loans only.`,
+                                        messageMr: `नंतरच्या वर्षांचा व्याज दर ${value}% करायचा? हा बदल फक्त नवीन कर्जांवर लागू होईल.`,
+                                        icon: '⚠️',
+                                        confirmText: 'Change',
+                                        confirmTextMr: 'बदला',
+                                        confirmColor: 'blue'
+                                    });
+                                    if (confirmed) {
+                                        updateSettings({ subsequentYearInterestRate: value });
+                                    }
+                                } else {
+                                    alert('व्याज दर 0 ते 100% च्या दरम्यान असावा');
+                                }
+                            }}
+                            className={`w-full p-2 border dark:border-slate-600 rounded text-center text-xl font-bold transition-all ${settings.interestRatesLocked
+                                ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                                : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white'
+                                }`}
+                        />
+                        <p className="text-xs text-slate-500 mt-2 text-center">Default: 12%</p>
+                    </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                        <AlertTriangle size={14} />
+                        <span><strong>सूचना:</strong> व्याज दर बदलल्यास फक्त भविष्यातील गणनांवर परिणाम होईल. जुन्या व्याजाची पुनर्गणना होणार नाही.</span>
+                    </p>
+                </div>
+
+                {/* Sync-on-Lock Info */}
+                <div className={`mt-3 p-3 rounded-lg border flex items-start gap-2 ${settings.interestRatesLocked
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                    }`}>
+                    <span className="text-lg">{settings.interestRatesLocked ? '☁️' : '📱'}</span>
+                    <div className="flex-1">
+                        {settings.interestRatesLocked ? (
+                            <>
+                                <p className="text-sm font-bold text-green-700 dark:text-green-300">Cloud Sync सक्षम आहे</p>
+                                <p className="text-xs text-green-600 dark:text-green-400">व्याज दर सर्व devices वर sync होतील</p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm font-bold text-blue-700 dark:text-blue-300">Local-Only मोड</p>
+                                <p className="text-xs text-blue-600 dark:text-blue-400">बदल फक्त या device वर राहतील. Lock केल्यावरच Cloud वर sync होतील.</p>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
