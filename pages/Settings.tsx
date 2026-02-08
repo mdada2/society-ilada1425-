@@ -177,7 +177,18 @@ const Settings = () => {
             return;
         }
 
-        if (!window.confirm("This will OVERWRITE all current data with the backup from Google Drive. Are you sure?")) {
+        const confirmed = await showConfirm({
+            title: 'Restore from Google Drive?',
+            titleMr: 'Google Drive वरून पुनर्संचयित करा?',
+            message: 'This will OVERWRITE all current data with the backup from Google Drive. This action cannot be undone!',
+            messageMr: 'हे सध्याचा सर्व डेटा Google Drive च्या backup ने बदलेल. ही क्रिया पूर्ववत करता येणार नाही!',
+            icon: '☁️',
+            confirmText: 'Restore from Drive',
+            confirmTextMr: 'Drive वरून पुनर्संचयित करा',
+            confirmColor: 'red'
+        });
+
+        if (!confirmed) {
             return;
         }
 

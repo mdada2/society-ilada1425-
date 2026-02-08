@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { format } from 'date-fns';
 import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck, Calendar, Filter } from 'lucide-react';
 import { DispatchRecord } from '../types';
@@ -9,6 +10,7 @@ import { exportDispatchesToExcel } from '../services/excelExport';
 
 const Dispatch = () => {
     const { dispatches, addDispatch, updateDispatch, deleteDispatch, paddySeasons, getActiveSeason, settings } = useApp();
+    const { showConfirm } = useDialog();
 
     // Season state
     const [seasonFilter, setSeasonFilter] = useState<string>('all');
@@ -51,13 +53,23 @@ const Dispatch = () => {
         setUsedOnceBagsUsed(0);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Total bags check
         const totalBagsAllocated = Number(newBagsUsed) + Number(oldBagsUsed) + Number(usedOnceBagsUsed);
         if (totalBagsAllocated !== Number(bags)) {
-            if (!confirm(`Warning: Total bags (${bags}) doesn't match the sum of bag types (${totalBagsAllocated}). Proceed anyway?`)) {
+            const confirmed = await showConfirm({
+                title: 'Bag Count Mismatch',
+                titleMr: 'पोत्यांची संख्या जुळत नाही',
+                message: `Total bags (${bags}) doesn't match the sum of bag types (${totalBagsAllocated}). Do you want to proceed anyway?`,
+                messageMr: `एकूण पोते (${bags}) आणि पोत्यांची बेरीज (${totalBagsAllocated}) जुळत नाही. तरीही पुढे जायचे?`,
+                icon: '⚠️',
+                confirmText: 'Proceed Anyway',
+                confirmTextMr: 'तरीही पुढे जा',
+                confirmColor: 'amber'
+            });
+            if (!confirmed) {
                 return;
             }
         }
@@ -143,8 +155,18 @@ const Dispatch = () => {
         window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         exportDispatchesToExcel(filteredDispatches);
+        await showConfirm({
+            title: 'Export Successful!',
+            titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+            message: `Successfully exported ${filteredDispatches.length} dispatch records to Excel file.`,
+            messageMr: `${filteredDispatches.length} डिस्पॅच रेकॉर्ड एक्सेल फाईलमध्ये यशस्वीपणे एक्सपोर्ट झाले.`,
+            icon: '✅',
+            confirmText: 'OK',
+            confirmTextMr: 'ठीक आहे',
+            confirmColor: 'green'
+        });
     };
 
     // Filter dispatches by season

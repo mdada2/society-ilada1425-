@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, User, Trash2, X, AlertTriangle, Download, Upload, Image as ImageIcon, FileSpreadsheet, Edit3, RotateCcw, ScanLine, Loader2, Camera, Share2, Filter, ChevronLeft, ChevronRight, ArrowLeft, FileText } from 'lucide-react';
 import { Member } from '../types';
@@ -13,6 +14,7 @@ import * as XLSX from 'xlsx';
 
 const Members = () => {
   const { members, addMember, deleteMember, settings, importMembers, updateMembers } = useApp();
+  const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -445,12 +447,12 @@ const Members = () => {
     return undefined;
   };
 
-  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -618,17 +620,16 @@ const Members = () => {
 
         // Show detailed summary
         if (stats.total > 0) {
-          const summaryLines = [
-            '📊 Import Complete!',
-            '',
-            `✅ ${stats.added} नवीन सभासद जोडले (New members added)`,
-            `🔄 ${stats.updated} सभासद अपडेट केले (Existing members updated)`,
-            stats.csvDuplicates > 0 ? `⚠️ ${stats.csvDuplicates} डुप्लिकेट rows वगळले (Duplicate rows skipped)` : '',
-            '',
-            `📈 एकूण ${stats.total} rows processed`
-          ].filter(line => line !== '').join('\n');
-
-          alert(summaryLines);
+          await showConfirm({
+            title: 'Import Complete!',
+            titleMr: 'इम्पोर्ट पूर्ण झाले!',
+            message: `✅ ${stats.added} new members added${stats.updated > 0 ? `\n🔄 ${stats.updated} members updated` : ''}${stats.csvDuplicates > 0 ? `\n⚠️ ${stats.csvDuplicates} duplicate rows skipped` : ''}\n\n📈 Total ${stats.total} rows processed`,
+            messageMr: `✅ ${stats.added} नवीन सभासद जोडले${stats.updated > 0 ? `\n🔄 ${stats.updated} सभासद अपडेट केले` : ''}${stats.csvDuplicates > 0 ? `\n⚠️ ${stats.csvDuplicates} डुप्लिकेट rows वगळले` : ''}\n\n📈 एकूण ${stats.total} rows processed`,
+            icon: '📊',
+            confirmText: 'OK',
+            confirmTextMr: 'ठीक आहे',
+            confirmColor: 'green'
+          });
         } else {
           // Better error message with debugging info
           const debugInfo = [
@@ -721,7 +722,19 @@ const Members = () => {
             <Share2 size={18} /> <span className="hidden sm:inline">Share Excel</span>
           </button>
 
-          <button onClick={() => exportMembersToExcel(filteredMembers)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm text-sm">
+          <button onClick={async () => {
+            exportMembersToExcel(filteredMembers);
+            await showConfirm({
+              title: 'Export Successful!',
+              titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+              message: `Successfully exported ${filteredMembers.length} members to Excel file.`,
+              messageMr: `${filteredMembers.length} सभासद एक्सेल फाईलमध्ये यशस्वीपणे एक्सपोर्ट झाले.`,
+              icon: '✅',
+              confirmText: 'OK',
+              confirmTextMr: 'ठीक आहे',
+              confirmColor: 'green'
+            });
+          }} className="bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm text-sm">
             <Download size={18} /> <span className="hidden sm:inline">Export Excel</span>
           </button>
 

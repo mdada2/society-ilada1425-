@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import ReportTable, { Column } from '../components/ReportTable';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { useNavigate, useParams } from 'react-router-dom';
 import SecurityPinModal from '../components/SecurityPinModal';
@@ -97,6 +98,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
 
 const Reports = () => {
   const { members, transactions, deleteTransaction, settings } = useApp();
+  const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const { categoryId, subTab } = useParams<{ categoryId: CategoryId; subTab: string }>();
 
@@ -886,7 +888,7 @@ const Reports = () => {
       });
 
       // Export to CSV Function
-      const handleNPASummaryCSV = () => {
+      const handleNPASummaryCSV = async () => {
         // Prepare headers
         const headers = [
           'Category',
@@ -927,6 +929,17 @@ const Reports = () => {
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         downloadBlob(blob, `NPA_Summary_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+        await showConfirm({
+          title: 'Export Successful!',
+          titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+          message: 'NPA Summary report exported successfully to Excel.',
+          messageMr: 'NPA Summary रिपोर्ट एक्सेलमध्ये यशस्वीपणे एक्सपोर्ट झाला.',
+          icon: '✅',
+          confirmText: 'OK',
+          confirmTextMr: 'ठीक आहे',
+          confirmColor: 'green'
+        });
       };
 
       // Share Function
@@ -1308,7 +1321,7 @@ const Reports = () => {
         percentage: '100%'
       });
 
-      const handleExportGenderSummary = () => {
+      const handleExportGenderSummary = async () => {
         const headers = ['लिंग (Gender)', 'संख्या (Count)', 'टक्केवारी (%)'];
         const rows = summaryData.map(item => [
           item.gender,
@@ -1318,9 +1331,18 @@ const Reports = () => {
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Gender Summary");
-        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        downloadBlob(blob, `Gender_Summary_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+        XLSX.writeFile(wb, `Gender_Summary_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+        await showConfirm({
+          title: 'Export Successful!',
+          titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+          message: 'Gender Summary report exported successfully to Excel.',
+          messageMr: 'Gender Summary रिपोर्ट एक्सेलमध्ये यशस्वीपणे एक्सपोर्ट झाला.',
+          icon: '✅',
+          confirmText: 'OK',
+          confirmTextMr: 'ठीक आहे',
+          confirmColor: 'green'
+        });
       };
 
       const handleShareGenderSummary = async () => {
@@ -1437,20 +1459,30 @@ const Reports = () => {
         isGrandTotal: true
       });
 
-      const handleExportGenderCategory = () => {
-        const headers = ['अ. क्र.', 'प्रवर्ग (Category)', 'लिंग (Gender)', 'संख्या (Count)'];
+      const handleExportGenderCategory = async () => {
+        const headers = ['वर्ग (Category)', 'लिंग (Gender)', 'संख्या (Count)'];
         const rows = crossTabData.map(item => [
-          item.id || '',
           item.category,
           item.gender,
           item.count
         ]);
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Gender-Category Summary");
+        XLSX.utils.book_append_sheet(wb, ws, "Gender by Category");
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        downloadBlob(blob, `Gender_Category_Summary_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+        downloadBlob(blob, `Gender_by_Category_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+        await showConfirm({
+          title: 'Export Successful!',
+          titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+          message: 'Gender by Category report exported successfully to Excel.',
+          messageMr: 'Gender by Category रिपोर्ट एक्सेलमध्ये यशस्वीपणे एक्सपोर्ट झाला.',
+          icon: '✅',
+          confirmText: 'OK',
+          confirmTextMr: 'ठीक आहे',
+          confirmColor: 'green'
+        });
       };
 
       const handleShareGenderCategory = async () => {
@@ -1554,7 +1586,7 @@ const Reports = () => {
       };
       villageData.push(grandTotal);
 
-      const handleExportGenderVillage = () => {
+      const handleExportGenderVillage = async () => {
         const headers = ['अ. क्र.', 'गाव (Village)', 'पुरुष (Male)', 'महिला (Female)', 'इतर (Other)', 'एकूण (Total)'];
         const rows = villageData.map(item => [
           item.id || '',
@@ -1570,6 +1602,17 @@ const Reports = () => {
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         downloadBlob(blob, `Gender_Village_Summary_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+
+        await showConfirm({
+          title: 'Export Successful!',
+          titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+          message: 'Gender by Village report exported successfully to Excel.',
+          messageMr: 'Gender by Village रिपोर्ट एक्सेलमध्ये यशस्वीपणे एक्सपोर्ट झाला.',
+          icon: '✅',
+          confirmText: 'OK',
+          confirmTextMr: 'ठीक आहे',
+          confirmColor: 'green'
+        });
       };
 
       const handleShareGenderVillage = async () => {
@@ -1718,7 +1761,7 @@ const Reports = () => {
       };
       financialData.push(grandTotal);
 
-      const handleExportGenderFinancial = () => {
+      const handleExportGenderFinancial = async () => {
         const headers = [
           'लिंग (Gender)', 'संख्या', 'एकूण शेअर', 'सरासरी शेअर',
           'एकूण बचत', 'सरासरी बचत', 'एकूण कर्ज', 'सरासरी कर्ज',
@@ -1742,6 +1785,17 @@ const Reports = () => {
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         downloadBlob(blob, `Gender_Financial_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+
+        await showConfirm({
+          title: 'Export Successful!',
+          titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+          message: 'Gender Financial report exported successfully to Excel.',
+          messageMr: 'Gender Financial रिपोर्ट एक्सेलमध्ये यशस्वीपणे एक्सपोर्ट झाला.',
+          icon: '✅',
+          confirmText: 'OK',
+          confirmTextMr: 'ठीक आहे',
+          confirmColor: 'green'
+        });
       };
 
       const handleShareGenderFinancial = async () => {
