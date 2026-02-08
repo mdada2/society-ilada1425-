@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import { GoogleGenAI } from '@google/genai';
 import * as dotenv from 'dotenv';
 
@@ -9,7 +9,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     dotenv.config({ path: '.env.local' });
 }
 
-// Firebase configuration (matching services/firebase.ts)
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAp3IzvsP7WM_ek4-wKvUTq7P7LHdaCR6k",
     authDomain: "society-ilada.firebaseapp.com",
@@ -19,8 +19,8 @@ const firebaseConfig = {
     appId: "1:681551898740:web:4210df21e473809d80c921"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase safely (avoid duplicate app error)
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // In-memory types (Firestore sessions will use this structure)
@@ -33,8 +33,12 @@ interface UserSession {
     awaitingMemberNo?: boolean;
 }
 
-// Initialize Gemini AI
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+// Initialize Gemini AI safely
+let genAIInstance: GoogleGenAI | null = null;
+if (process.env.GEMINI_API_KEY) {
+    genAIInstance = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+}
+const genAI = genAIInstance;
 
 // Bot token
 const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '';
