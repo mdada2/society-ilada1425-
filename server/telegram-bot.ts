@@ -4,10 +4,7 @@ import { getFirestore, doc, getDoc, setDoc, getDocs, collection, query, where } 
 import { GoogleGenAI } from '@google/genai';
 import * as dotenv from 'dotenv';
 
-// Load environment variables (Only locally)
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    dotenv.config({ path: '.env.local' });
-}
+// NO TOP-LEVEL SIDE EFFECTS ALLOWED FOR VERCEL COMPATibility
 
 // In-memory types
 interface UserSession {
