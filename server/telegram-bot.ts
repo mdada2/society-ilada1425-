@@ -26,9 +26,10 @@ const IS_VERCEL = process.env.VERCEL === '1';
 // Single entry point for initialization
 let initializedBot: TelegramBot | null = null;
 let db: any = null;
+let genAI: GoogleGenAI | null = null;
 
 export async function initBot() {
-    if (initializedBot) return { bot: initializedBot, db };
+    if (initializedBot) return { bot: initializedBot, db, genAI };
 
     console.log('🏁 Starting Bot Initialization Flow...');
 
@@ -47,7 +48,13 @@ export async function initBot() {
         db = getFirestore(app);
         console.log('✅ Firebase Initialized');
 
-        // 2. Initialize Bot
+        // 2. Initialize Gemini AI
+        if (process.env.GEMINI_API_KEY) {
+            genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            console.log('✅ Gemini AI Initialized');
+        }
+
+        // 3. Initialize Bot
         if (!BOT_TOKEN) {
             throw new Error('VITE_TELEGRAM_BOT_TOKEN is missing');
         }
@@ -55,11 +62,11 @@ export async function initBot() {
         initializedBot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
         console.log(`✅ Bot Instance Created (Polling: ${!IS_VERCEL})`);
 
-        // 3. Setup Handlers
+        // 4. Setup Handlers
         setupBotHandlers(initializedBot, db);
         console.log('✅ Handlers Registered');
 
-        return { bot: initializedBot, db };
+        return { bot: initializedBot, db, genAI };
     } catch (error: any) {
         console.error('❌ CRITICAL INITIALIZATION ERROR:', error.message);
         throw error;
