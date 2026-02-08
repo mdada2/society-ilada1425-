@@ -1,16 +1,39 @@
 import { bot } from '../server/telegram-bot';
 
 export default async function handler(req: any, res: any) {
+    const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
+
+    console.log('🔗 Bot API Request Received:', req.method);
+
     if (req.method === 'POST') {
         try {
+            if (!BOT_TOKEN) {
+                console.error('❌ VITE_TELEGRAM_BOT_TOKEN is missing!');
+                return res.status(200).json({ error: 'Token missing', status: 'critical' });
+            }
+
+            if (!bot) {
+                console.error('❌ Bot instance not initialized!');
+                return res.status(200).json({ error: 'Bot not ready', status: 'critical' });
+            }
+
+            console.log('📩 Update received from Telegram');
+
             // Process the Telegram update
             await bot.processUpdate(req.body);
-            res.status(200).send('OK');
-        } catch (error) {
-            console.error('Error processing update:', error);
-            res.status(500).send('Error');
+            return res.status(200).send('OK');
+        } catch (error: any) {
+            console.error('❌ Error in API handler:', error.message);
+            return res.status(200).json({ error: error.message, status: 'error' });
         }
     } else {
-        res.status(200).send('Society Mitra AI Bot is running!');
+        // Status check for GET requests
+        return res.status(200).json({
+            status: 'running',
+            bot_ready: !!bot,
+            token_configured: !!BOT_TOKEN,
+            env: process.env.VERCEL ? 'vercel' : 'local',
+            timestamp: new Date().toISOString()
+        });
     }
 }

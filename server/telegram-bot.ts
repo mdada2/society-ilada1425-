@@ -4,8 +4,10 @@ import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { GoogleGenAI } from '@google/genai';
 import * as dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config({ path: '.env.local' });
+// Load environment variables (Only locally)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    dotenv.config({ path: '.env.local' });
+}
 
 // Firebase configuration (matching services/firebase.ts)
 const firebaseConfig = {
@@ -39,7 +41,8 @@ const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '';
 
 if (!BOT_TOKEN) {
     console.error('❌ TELEGRAM_BOT_TOKEN not found in environment variables');
-    process.exit(1);
+    // Don't exit on Vercel, just log it. Local polling will still fail gracefully.
+    if (!process.env.VERCEL) process.exit(1);
 }
 
 // Initialize bot with conditions
