@@ -36,17 +36,16 @@ const db = initializeFirestore(app, {
   cacheSizeBytes: 40000000 // 40 MB cache
 });
 
-// Enable offline persistence
-// This allows the app to work offline and sync when connection is restored
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    // Multiple tabs open, persistence can only be enabled in one tab at a time
-    console.warn('Firebase persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    // The current browser doesn't support persistence
-    console.warn('Firebase persistence not supported in this browser');
-  }
-});
+// Enable offline persistence (Browser only)
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Firebase persistence failed: Multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Firebase persistence not supported in this browser');
+    }
+  });
+}
 
 // Initialize Auth
 export const auth = getAuth(app);
