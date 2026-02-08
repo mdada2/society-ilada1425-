@@ -42,10 +42,15 @@ if (!BOT_TOKEN) {
     process.exit(1);
 }
 
-// Initialize bot
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+// Initialize bot with conditions
+const IS_VERCEL = process.env.VERCEL === '1';
+export const bot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
 
-console.log('🤖 Society Mitra Telegram Bot Started!');
+if (!IS_VERCEL) {
+    console.log('🤖 Society Mitra Telegram Bot Started (Polling Mode)!');
+} else {
+    console.log('🌐 Society Mitra Telegram Bot Initialized (Webhook Mode)!');
+}
 
 // Session persistence in Firestore
 async function getSession(chatId: number): Promise<UserSession | null> {
