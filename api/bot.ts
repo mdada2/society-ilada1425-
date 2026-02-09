@@ -34,6 +34,13 @@ async function initBot() {
     }
 
     console.log('🔧 Initializing bot (cold start)...');
+    console.log('📊 Environment check:');
+    console.log('  - VITE_TELEGRAM_BOT_TOKEN:', process.env.VITE_TELEGRAM_BOT_TOKEN ? 'SET ✅' : 'MISSING ❌');
+    console.log('  - TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'SET ✅' : 'MISSING ❌');
+    console.log('  - GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'SET ✅' : 'MISSING ❌');
+    console.log('  - VERCEL:', process.env.VERCEL ? 'SET ✅' : 'MISSING ❌');
+    console.log('  - BOT_TOKEN value:', BOT_TOKEN ? `${BOT_TOKEN.substring(0, 10)}...` : 'EMPTY ❌');
+
     const firebaseConfig = {
         apiKey: "AIzaSyAp3IzvsP7WM_ek4-wKvUTq7P7LHdaCR6k",
         authDomain: "society-ilada.firebaseapp.com",
@@ -50,7 +57,11 @@ async function initBot() {
         genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     }
 
-    if (!BOT_TOKEN) throw new Error('BOT_TOKEN missing');
+    if (!BOT_TOKEN) {
+        const error = 'BOT_TOKEN missing - neither VITE_TELEGRAM_BOT_TOKEN nor TELEGRAM_BOT_TOKEN are set';
+        console.error('❌', error);
+        throw new Error(error);
+    }
 
     initializedBot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
     console.log('🤖 TelegramBot instance created, setting up handlers...');
