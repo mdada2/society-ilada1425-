@@ -158,11 +158,12 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             return await bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
         }
 
-        // B. Command/Button Logic (Handle slash commands or exact button text)
+        // B. Command/Button Logic (Handle slash commands or button text)
         if (lcText.startsWith('/') || lcText.includes('माहिती') || lcText.includes('शिल्लक') || lcText.includes('कर्ज')) {
             let type: 'info' | 'balance' | 'loan' = 'info';
-            if (lcText.includes('balance') || lcText.includes('शिल्लक')) type = 'balance';
-            else if (lcText.includes('loan') || lcText.includes('कर्ज')) type = 'loan';
+            if (lcText.startsWith('/balance') || lcText.includes('शिल्लक')) type = 'balance';
+            else if (lcText.startsWith('/loan') || lcText.includes('कर्ज')) type = 'loan';
+            else if (lcText.startsWith('/myinfo') || lcText.includes('माहिती')) type = 'info';
             else type = 'info';
 
             if (!session?.memberId) return await bot.sendMessage(chatId, "⚠️ आधी /start करून नोंदणी करा.");
@@ -178,8 +179,14 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
                 await saveSession({ ...session, viewingMemberId: null });
             }
 
-            const m = (data?.members || []).find((mem: any) => mem.id === targetId || mem.memberNo?.toString() === targetId);
-            if (!m) return await bot.sendMessage(chatId, "❌ माहिती सापडली नाही.");
+            const m = (data?.members || []).find((mem: any) =>
+                mem.id?.toString() === targetId?.toString() ||
+                mem.memberNo?.toString() === targetId?.toString()
+            );
+            if (!m) {
+                console.log(`❌ Member NOT found for targetId: ${targetId}`);
+                return await bot.sendMessage(chatId, "❌ माहिती सापडली नाही.");
+            }
 
             const total = (m.savingsBalance || 0) + (m.shareBalance || 0) + (m.fdBalance || 0);
             const principal = m.loanPrincipal || 0;
