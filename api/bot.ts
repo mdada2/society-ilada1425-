@@ -129,8 +129,9 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
         const [session, data] = await Promise.all([getSession(), getSocietyData()]);
 
         // A. Search logic (PRIORITY: Specific name-based inquiries)
-        // Skip search if it looks like a "My Info" command to avoid regex collision
-        const nameMatch = (lcText.includes('माझी') || lcText.includes('तुमची')) ? null : text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
+        // Skip search if it looks like a button command to avoid regex collision
+        const isButton = lcText.includes('माझी') || lcText.includes('तुमची') || lcText.includes('कर्ज माहिती') || lcText.includes('मदत');
+        const nameMatch = isButton ? null : text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
         if (nameMatch) {
             const searchTerms = nameMatch[1].toLowerCase().trim().split(/\s+/);
             const matches = (data?.members || []).filter((m: any) => {
