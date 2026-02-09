@@ -146,16 +146,23 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
         if (text.startsWith('/') || !text) return;
 
         const chatId = msg.chat.id;
+        console.log('💬 Message received:', text, 'from chat:', chatId);
+
         // Start typing immediately
         bot.sendChatAction(chatId, 'typing');
 
         const [session, data] = await Promise.all([getSession(chatId), getSocietyData()]);
+        console.log('📊 Session:', session ? 'Found' : 'Not found');
+        console.log('📊 Data:', data ? `Loaded (${data.members?.length || 0} members)` : 'Not loaded');
 
         // A. Search logic
         const nameMatch = text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
         if (nameMatch) {
+            console.log('🔍 Name search triggered:', nameMatch[1]);
             const search = nameMatch[1].toLowerCase().trim();
             const matches = (data?.members || []).filter((m: any) => m.name?.toLowerCase().includes(search));
+            console.log('🔍 Search results:', matches.length, 'matches found');
+
             if (matches.length === 0) return bot.sendMessage(chatId, "❌ सापडले नाही.");
             if (matches.length > 1) return bot.sendMessage(chatId, "⚠️ अनेक सदस्य सापडले. पूर्ण नाव वापरा.");
             const m = matches[0];
@@ -164,7 +171,12 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
 
         // B. Registration
         if (session?.awaitingMemberNo || /^\d+$/.test(text)) {
+            console.log('🔢 Member number lookup:', text);
+            console.log('🔢 Awaiting member no:', session?.awaitingMemberNo);
+
             const member = (data?.members || []).find((m: any) => m.memberNo?.toString().trim() === text);
+            console.log('🔢 Member found:', member ? `Yes (${member.name})` : 'No');
+
             if (member) {
                 await saveSession(chatId, { chatId, awaitingMemberNo: false, memberId: member.id, name: member.name, memberNo: member.memberNo });
                 return bot.sendMessage(chatId, `✅ नोंदणी यशस्वी! नमस्कार ${member.name}.`);
@@ -172,6 +184,8 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
                 return bot.sendMessage(chatId, "❌ सदस्य सापडला नाही.");
             }
         }
+
+        console.log('⚠️ No handler matched for message:', text);
     });
 }
 
