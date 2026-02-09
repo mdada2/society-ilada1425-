@@ -109,11 +109,19 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
         if (!m) return await bot.sendMessage(chatId, "❌ माहिती सापडली नाही.");
 
         const total = (m.savingsBalance || 0) + (m.shareBalance || 0) + (m.fdBalance || 0);
-        const loanTotal = (m.loanPrincipal || 0) + (m.loanInterestDue || 0);
+        const principal = m.loanPrincipal || 0;
+        const interest = m.loanInterestDue || 0;
+        const loanTotal = principal + interest;
 
         if (type === 'myinfo' as any) await bot.sendMessage(chatId, `👤 *नाव:* ${m.name}\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
         if (type === 'balance') await bot.sendMessage(chatId, `💰 *शिल्लक:* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
-        if (type === 'loan') await bot.sendMessage(chatId, m.loanPrincipal === 0 ? "✅ कर्ज नाही." : `🏦 *कर्ज:* ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
+        if (type === 'loan') {
+            if (principal === 0 && interest === 0) {
+                await bot.sendMessage(chatId, "✅ कर्ज नाही.");
+            } else {
+                await bot.sendMessage(chatId, `🏦 *मुद्दल:* ${formatCurrency(principal)}\n📈 *व्याज:* ${formatCurrency(interest)}\n💰 *एकूण कर्ज:* ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
+            }
+        }
     } else if (text) {
         // Natural Language or Registration
         bot.sendChatAction(chatId, 'typing');
@@ -127,7 +135,19 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             if (matches.length === 0) return await bot.sendMessage(chatId, "❌ सापडले नाही.");
             if (matches.length > 1) return await bot.sendMessage(chatId, "⚠️ अनेक सदस्य सापडले. पूर्ण नाव वापरा.");
             const m = matches[0];
-            return await bot.sendMessage(chatId, `👤 *${m.name}*\n🏘️ गाव: ${m.village || 'N/A'}\n🏦 कर्ज: ${formatCurrency((m.loanPrincipal || 0) + (m.loanInterestDue || 0))}`, { parse_mode: 'Markdown' });
+            const principal = m.loanPrincipal || 0;
+            const interest = m.loanInterestDue || 0;
+            const loanTotal = principal + interest;
+
+            let msg = `👤 *${m.name}*\n🏘️ गाव: ${m.village || 'N/A'}\n`;
+            if (principal === 0 && interest === 0) {
+                msg += `✅ कर्ज नाही.`;
+            } else {
+                msg += `🏦 मुद्दल: ${formatCurrency(principal)}\n`;
+                msg += `📈 व्याज: ${formatCurrency(interest)}\n`;
+                msg += `💰 एकूण कर्ज: ${formatCurrency(loanTotal)}`;
+            }
+            return await bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
         }
 
         // B. Registration
