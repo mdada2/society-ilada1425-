@@ -130,8 +130,11 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
         // A. Search logic (PRIORITY: Specific name-based inquiries)
         const nameMatch = text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
         if (nameMatch) {
-            const search = nameMatch[1].toLowerCase().trim();
-            const matches = (data?.members || []).filter((m: any) => m.name?.toLowerCase().includes(search));
+            const searchTerms = nameMatch[1].toLowerCase().trim().split(/\s+/);
+            const matches = (data?.members || []).filter((m: any) => {
+                const memberName = m.name?.toLowerCase() || '';
+                return searchTerms.every(term => memberName.includes(term));
+            });
             if (matches.length === 0) return await bot.sendMessage(chatId, "❌ सापडले नाही.");
             if (matches.length > 1) return await bot.sendMessage(chatId, "⚠️ अनेक सदस्य सापडले. पूर्ण नाव वापरा.");
             const m = matches[0];
@@ -166,13 +169,13 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             const interest = m.loanInterestDue || 0;
             const loanTotal = principal + interest;
 
-            if (type === 'info') await bot.sendMessage(chatId, `👤 *नाव:* ${m.name}\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
-            if (type === 'balance') await bot.sendMessage(chatId, `💰 *शिल्लक:* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
+            if (type === 'info') await bot.sendMessage(chatId, `👤 *तुमची माहिती (${m.name}):*\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
+            if (type === 'balance') await bot.sendMessage(chatId, `💰 *तुमची शिल्लक (${m.name}):* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
             if (type === 'loan') {
                 if (principal === 0 && interest === 0) {
-                    await bot.sendMessage(chatId, "✅ कर्ज नाही.");
+                    await bot.sendMessage(chatId, `✅ *${m.name}*, तुमच्यावर कोणतेही कर्ज नाही.`);
                 } else {
-                    await bot.sendMessage(chatId, `🏦 *मुद्दल:* ${formatCurrency(principal)}\n📈 *व्याज:* ${formatCurrency(interest)}\n💰 *एकूण कर्ज:* ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
+                    await bot.sendMessage(chatId, `🏦 *तुमचे कर्ज (${m.name}):*\n🔹 मुद्दल: ${formatCurrency(principal)}\n🔹 व्याज: ${formatCurrency(interest)}\n🔸 एकूण: ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
                 }
             }
             return;
