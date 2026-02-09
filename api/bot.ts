@@ -22,6 +22,7 @@ interface UserSession {
     name?: string;
     isAdmin?: boolean;
     awaitingMemberNo?: boolean;
+    viewingMemberId?: string | null;
 }
 
 // --- FAST INITIALIZATION ---
@@ -128,7 +129,8 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
         const [session, data] = await Promise.all([getSession(), getSocietyData()]);
 
         // A. Search logic (PRIORITY: Specific name-based inquiries)
-        const nameMatch = text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
+        // Skip search if it looks like a "My Info" command to avoid regex collision
+        const nameMatch = (lcText.includes('माझी') || lcText.includes('तुमची')) ? null : text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
         if (nameMatch) {
             const searchTerms = nameMatch[1].toLowerCase().trim().split(/\s+/);
             const matches = (data?.members || []).filter((m: any) => {
@@ -141,6 +143,9 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             const principal = m.loanPrincipal || 0;
             const interest = m.loanInterestDue || 0;
             const loanTotal = principal + interest;
+
+            // Set contextual focus so following button taps show THIS person's info
+            await saveSession({ ...session, viewingMemberId: m.id });
 
             let msg = `👤 *${m.name}*\n🏘️ गाव: ${m.village || 'N/A'}\n`;
             if (principal === 0 && interest === 0) {
@@ -161,7 +166,19 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             else type = 'info';
 
             if (!session?.memberId) return await bot.sendMessage(chatId, "⚠️ आधी /start करून नोंदणी करा.");
-            const m = (data?.members || []).find((mem: any) => mem.id === session.memberId || mem.memberNo?.toString() === session.memberId);
+
+            // Determine WHO to show: context focus (viewingMemberId) or self (memberId)
+            // If they click "My Info" (माझी माहिती), we reset focus to self
+            let targetId = session.viewingMemberId || session.memberId;
+            let isSelf = targetId === session.memberId;
+
+            if (type === 'info' && lcText.includes('माहिती')) {
+                targetId = session.memberId;
+                isSelf = true;
+                await saveSession({ ...session, viewingMemberId: null });
+            }
+
+            const m = (data?.members || []).find((mem: any) => mem.id === targetId || mem.memberNo?.toString() === targetId);
             if (!m) return await bot.sendMessage(chatId, "❌ माहिती सापडली नाही.");
 
             const total = (m.savingsBalance || 0) + (m.shareBalance || 0) + (m.fdBalance || 0);
@@ -169,13 +186,15 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             const interest = m.loanInterestDue || 0;
             const loanTotal = principal + interest;
 
-            if (type === 'info') await bot.sendMessage(chatId, `👤 *तुमची माहिती (${m.name}):*\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
-            if (type === 'balance') await bot.sendMessage(chatId, `💰 *तुमची शिल्लक (${m.name}):* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
+            const prefix = isSelf ? "तुमची" : `त्यांची (${m.name})`;
+
+            if (type === 'info') await bot.sendMessage(chatId, `👤 *${prefix} माहिती:*\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
+            if (type === 'balance') await bot.sendMessage(chatId, `💰 *${prefix} शिल्लक:* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
             if (type === 'loan') {
                 if (principal === 0 && interest === 0) {
-                    await bot.sendMessage(chatId, `✅ *${m.name}*, तुमच्यावर कोणतेही कर्ज नाही.`);
+                    await bot.sendMessage(chatId, `✅ *${m.name}*, यांच्यावर कोणतेही कर्ज नाही.`);
                 } else {
-                    await bot.sendMessage(chatId, `🏦 *तुमचे कर्ज (${m.name}):*\n🔹 मुद्दल: ${formatCurrency(principal)}\n🔹 व्याज: ${formatCurrency(interest)}\n🔸 एकूण: ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
+                    await bot.sendMessage(chatId, `🏦 *${prefix} कर्ज:*\n🔹 मुद्दल: ${formatCurrency(principal)}\n🔹 व्याज: ${formatCurrency(interest)}\n🔸 एकूण: ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
                 }
             }
             return;
