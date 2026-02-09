@@ -14,7 +14,7 @@ let globalSocietyCache: any = null;
 let lastCacheUpdate = 0;
 const CACHE_TTL = 120000; // 2 minutes
 
-const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '';
 const IS_VERCEL = !!process.env.VERCEL;
 
 interface UserSession {
@@ -166,40 +166,72 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
 
 // --- VERCEL HANDLER ---
 export default async function handler(req: any, res: any) {
-    if (req.method === 'POST') {
-        console.log('📨 Webhook POST received:', JSON.stringify(req.body, null, 2));
-        try {
-            const { bot } = await initBot();
-            console.log('✅ Bot initialized, processing update...');
+    // Always set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
 
-            if (!req.body || !req.body.update_id) {
-                console.error('❌ Invalid webhook body');
-                return res.status(200).json({ error: 'invalid_body' });
+    if (req.method === 'POST') {
+        console.log('📨 Webhook POST received');
+        console.log('Body:', JSON.stringify(req.body, null, 2));
+
+        try {
+            // Initialize bot
+            const { bot } = await initBot();
+            console.log('✅ Bot initialized');
+
+            // Validate webhook body
+            if (!req.body || typeof req.body !== 'object') {
+                console.error('❌ Invalid webhook body - not an object');
+                return res.status(200).send('OK'); // Still return 200 to Telegram
             }
 
-            await bot.processUpdate(req.body);
-            console.log('✅ Update processed successfully');
+            if (!req.body.update_id) {
+                console.error('❌ Invalid webhook body - missing update_id');
+                return res.status(200).send('OK'); // Still return 200 to Telegram
+            }
+
+            console.log('📝 Processing update ID:', req.body.update_id);
+
+            // Process the update - wrap in try-catch to prevent crashes
+            try {
+                await bot.processUpdate(req.body);
+                console.log('✅ Update processed successfully');
+            } catch (processError: any) {
+                console.error('❌ Error processing update:', processError.message);
+                console.error('Stack:', processError.stack);
+                // Don't throw - just log and continue
+            }
+
+            // ALWAYS return 200 OK to Telegram
             return res.status(200).send('OK');
-        } catch (e: any) {
-            console.error('❌ Handler error:', e.message, e.stack);
-            return res.status(200).json({ error: e.message });
+
+        } catch (initError: any) {
+            console.error('❌ Initialization error:', initError.message);
+            console.error('Stack:', initError.stack);
+            // STILL return 200 OK to prevent Telegram from marking webhook as failed
+            return res.status(200).send('OK');
         }
     }
 
-    // Diagnostics
+    // GET request - diagnostics
     try {
         const { bot } = await initBot();
         const webhookInfo = await bot.getWebHookInfo();
-        res.status(200).json({
+        return res.status(200).json({
             status: 'running',
             webhook_url: webhookInfo.url,
             pending_updates: webhookInfo.pending_update_count,
             last_error: webhookInfo.last_error_message,
+            last_error_date: webhookInfo.last_error_date,
             cache: !!globalSocietyCache,
             timestamp: new Date().toISOString()
         });
     } catch (e: any) {
         console.error('❌ Diagnostics error:', e.message);
-        res.status(200).json({ status: 'error', message: e.message });
+        return res.status(200).json({
+            status: 'error',
+            message: e.message,
+            stack: e.stack
+        });
     }
 }
