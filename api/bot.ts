@@ -50,6 +50,15 @@ async function initBot() {
     // We just process updates passed to the handler.
     initializedBot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
 
+    // Set command menu (next to input field)
+    initializedBot.setMyCommands([
+        { command: 'start', description: 'सुरू करा / नोंदणी' },
+        { command: 'myinfo', description: 'माझी माहिती' },
+        { command: 'balance', description: 'माझी शिल्लक' },
+        { command: 'loan', description: 'कर्ज माहिती' },
+        { command: 'help', description: 'मदत' }
+    ]).catch(e => console.error('Menu error:', e));
+
     return { bot: initializedBot, db, genAI };
 }
 
@@ -94,14 +103,32 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
     // 3. Command Decision Logic
     console.log(`📩 Processing [${chatId}]: ${text}`);
 
+    const menuKeyboard = {
+        keyboard: [
+            [{ text: '👤 माझी माहिती' }, { text: '💰 माझी शिल्लक' }],
+            [{ text: '🏦 कर्ज माहिती' }, { text: '❓ मदत' }]
+        ],
+        resize_keyboard: true
+    };
+
     if (lcText === '/start') {
         await saveSession({ chatId, awaitingMemberNo: true });
-        await bot.sendMessage(chatId, "🙏 नमस्कार! कृपया तुमचा *सदस्य क्रमांक* पाठवा (उदा: 101).", { parse_mode: 'Markdown' });
-    } else if (lcText === '/help') {
-        await bot.sendMessage(chatId, "📚 /myinfo, /balance, /loan\n💬 किंवा विचारा: *'प्रदीप चे कर्ज'*", { parse_mode: 'Markdown' });
-    } else if (['/myinfo', '/balance', '/loan'].includes(lcText)) {
+        await bot.sendMessage(chatId, "🙏 नमस्कार! कृपया तुमचा *सदस्य क्रमांक* पाठवा (उदा: 101).", {
+            parse_mode: 'Markdown',
+            reply_markup: { remove_keyboard: true } // Hide during reg
+        });
+    } else if (lcText === '/help' || text === '❓ मदत') {
+        await bot.sendMessage(chatId, "📚 खालील पर्यायांवर क्लिक करा किंवा विचारा: *'प्रदीप चे कर्ज'*", {
+            parse_mode: 'Markdown',
+            reply_markup: menuKeyboard
+        });
+    } else if (['/myinfo', '/balance', '/loan', '👤 माझी माहिती', '💰 माझी शिल्लक', '🏦 कर्ज माहिती'].includes(lcText) || ['👤 माझी माहिती', '💰 माझी शिल्लक', '🏦 कर्ज माहिती'].includes(text)) {
         bot.sendChatAction(chatId, 'typing');
-        const type = text.substring(1) as 'info' | 'balance' | 'loan';
+        let type: 'info' | 'balance' | 'loan' = 'info';
+        if (lcText.includes('balance') || text.includes('शिल्लक')) type = 'balance';
+        if (lcText.includes('loan') || text.includes('कर्ज')) type = 'loan';
+        if (lcText.includes('myinfo') || text.includes('माहिती')) type = 'info';
+
         const [session, data] = await Promise.all([getSession(), getSocietyData()]);
 
         if (!session?.memberId) return await bot.sendMessage(chatId, "⚠️ आधी /start करून नोंदणी करा.");
@@ -155,7 +182,9 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             const member = (data?.members || []).find((m: any) => m.memberNo?.toString().trim() === text);
             if (member) {
                 await saveSession({ chatId, awaitingMemberNo: false, memberId: member.id, name: member.name, memberNo: member.memberNo });
-                return await bot.sendMessage(chatId, `✅ नोंदणी यशस्वी! नमस्कार ${member.name}.`);
+                return await bot.sendMessage(chatId, `✅ नोंदणी यशस्वी! नमस्कार ${member.name}.`, {
+                    reply_markup: menuKeyboard
+                });
             } else if (session?.awaitingMemberNo) {
                 return await bot.sendMessage(chatId, "❌ सदस्य सापडला नाही.");
             }
