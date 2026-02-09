@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { format } from 'date-fns';
 import { ShoppingBag, Save, Copy, Share2, Trash2, Edit, Plus, Settings, X, Archive, AlertCircle, Check, Calculator, IndianRupee, ArrowRight, ShieldCheck, Warehouse, Lock, Unlock, ChevronUp, ChevronDown, Calendar, Filter } from 'lucide-react';
 import { PaddyPurchaseRecord, PaddySeason } from '../types';
+import { Share } from '@capacitor/share';
 
 const PaddyPurchase = () => {
     const { paddyPurchases, addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase, paddySeasons, addPaddySeason, updatePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason, settings, updateSettings } = useApp();
@@ -1021,15 +1022,15 @@ const PaddyPurchase = () => {
                                         navigator.clipboard.writeText(generateShareText(record, paddyPurchases));
                                         alert("Copied to clipboard!");
                                     }} className="p-2 text-slate-500 hover:text-blue-600 transition" title="Copy Info"><Copy size={18} /></button>
-                                    <button onClick={() => {
-                                        if (navigator.share) {
-                                            navigator.share({
+                                    <button onClick={async () => {
+                                        try {
+                                            await Share.share({
                                                 title: `Paddy Purchase - ${record.centerName}`,
-                                                text: generateShareText(record, paddyPurchases)
-                                            }).catch(console.error);
-                                        } else {
-                                            navigator.clipboard.writeText(generateShareText(record, paddyPurchases));
-                                            alert("Sharing not supported, copied to clipboard instead.");
+                                                text: generateShareText(record, paddyPurchases),
+                                                dialogTitle: 'Share Paddy Purchase Info'
+                                            });
+                                        } catch (error) {
+                                            console.error('Share failed:', error);
                                         }
                                     }} className="p-2 text-slate-500 hover:text-green-600 transition" title="Share Info"><Share2 size={18} /></button>
                                     <button onClick={() => handleEdit(record)} className="p-2 text-slate-500 hover:text-amber-600 transition" title="Edit Entry"><Edit size={18} /></button>
