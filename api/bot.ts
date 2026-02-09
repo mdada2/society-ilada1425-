@@ -60,6 +60,7 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
     const msg = update.message;
     const chatId = msg.chat.id;
     const text = (msg.text || '').trim();
+    const lcText = text.toLowerCase();
 
     const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
 
@@ -93,12 +94,12 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
     // 3. Command Decision Logic
     console.log(`📩 Processing [${chatId}]: ${text}`);
 
-    if (text === '/start') {
+    if (lcText === '/start') {
         await saveSession({ chatId, awaitingMemberNo: true });
         await bot.sendMessage(chatId, "🙏 नमस्कार! कृपया तुमचा *सदस्य क्रमांक* पाठवा (उदा: 101).", { parse_mode: 'Markdown' });
-    } else if (text === '/help') {
+    } else if (lcText === '/help') {
         await bot.sendMessage(chatId, "📚 /myinfo, /balance, /loan\n💬 किंवा विचारा: *'प्रदीप चे कर्ज'*", { parse_mode: 'Markdown' });
-    } else if (['/myinfo', '/balance', '/loan'].includes(text)) {
+    } else if (['/myinfo', '/balance', '/loan'].includes(lcText)) {
         bot.sendChatAction(chatId, 'typing');
         const type = text.substring(1) as 'info' | 'balance' | 'loan';
         const [session, data] = await Promise.all([getSession(), getSocietyData()]);
