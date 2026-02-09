@@ -80,16 +80,32 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
         const now = Date.now();
         if (globalSocietyCache && (now - lastCacheUpdate < CACHE_TTL)) {
             console.log('⚡ Using Warm Cache');
+            console.log('📊 Cached members count:', globalSocietyCache.members?.length || 0);
             return globalSocietyCache;
         }
+
         console.log('📡 Fetching Fresh Data from Firestore...');
-        const snap = await getDoc(doc(firestore, "societies", "ilada_main"));
-        if (snap.exists()) {
-            globalSocietyCache = snap.data();
-            lastCacheUpdate = now;
-            return globalSocietyCache;
+        try {
+            const snap = await getDoc(doc(firestore, "societies", "ilada_main"));
+            console.log('📡 Firestore response - exists:', snap.exists());
+
+            if (snap.exists()) {
+                const data = snap.data();
+                console.log('📊 Members in Firestore:', data.members?.length || 0);
+                console.log('📊 Sample member:', data.members?.[0] ? `${data.members[0].name} (#${data.members[0].memberNo})` : 'None');
+
+                globalSocietyCache = data;
+                lastCacheUpdate = now;
+                return globalSocietyCache;
+            } else {
+                console.error('❌ Firestore document "societies/ilada_main" does not exist!');
+                return null;
+            }
+        } catch (error: any) {
+            console.error('❌ Error fetching society data:', error.message);
+            console.error('Stack:', error.stack);
+            return null;
         }
-        return null;
     }
 
     async function getSession(chatId: number): Promise<UserSession | null> {
