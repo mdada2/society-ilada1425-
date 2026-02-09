@@ -63,8 +63,14 @@ async function initBot() {
         throw new Error(error);
     }
 
-    initializedBot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
-    console.log('🤖 TelegramBot instance created, setting up handlers...');
+    // Create bot with proper webhook configuration for Vercel
+    const botOptions = IS_VERCEL
+        ? { webHook: true } // Webhook mode for Vercel
+        : { polling: true }; // Polling mode for local development
+
+    initializedBot = new TelegramBot(BOT_TOKEN, botOptions);
+    console.log('🤖 TelegramBot instance created (mode:', IS_VERCEL ? 'webhook' : 'polling', ')');
+    console.log('🎯 Setting up bot handlers...');
     setupBotHandlers(initializedBot, db);
     console.log('✅ Bot initialization complete');
 
