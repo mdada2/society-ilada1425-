@@ -122,41 +122,12 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             parse_mode: 'Markdown',
             reply_markup: menuKeyboard
         });
-    } else if (lcText.startsWith('/') || lcText.includes('माहिती') || lcText.includes('शिल्लक') || lcText.includes('कर्ज')) {
-        // This block handles both slash commands and button taps (which contain the words above)
-        bot.sendChatAction(chatId, 'typing');
-
-        let type: 'info' | 'balance' | 'loan' = 'info';
-        if (lcText.includes('balance') || lcText.includes('शिल्लक')) type = 'balance';
-        else if (lcText.includes('loan') || lcText.includes('कर्ज')) type = 'loan';
-        else type = 'info';
-
-        const [session, data] = await Promise.all([getSession(), getSocietyData()]);
-
-        if (!session?.memberId) return await bot.sendMessage(chatId, "⚠️ आधी /start करून नोंदणी करा.");
-        const m = (data?.members || []).find((mem: any) => mem.id === session.memberId || mem.memberNo?.toString() === session.memberId);
-        if (!m) return await bot.sendMessage(chatId, "❌ माहिती सापडली नाही.");
-
-        const total = (m.savingsBalance || 0) + (m.shareBalance || 0) + (m.fdBalance || 0);
-        const principal = m.loanPrincipal || 0;
-        const interest = m.loanInterestDue || 0;
-        const loanTotal = principal + interest;
-
-        if (type === 'info') await bot.sendMessage(chatId, `👤 *नाव:* ${m.name}\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
-        if (type === 'balance') await bot.sendMessage(chatId, `💰 *शिल्लक:* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
-        if (type === 'loan') {
-            if (principal === 0 && interest === 0) {
-                await bot.sendMessage(chatId, "✅ कर्ज नाही.");
-            } else {
-                await bot.sendMessage(chatId, `🏦 *मुद्दल:* ${formatCurrency(principal)}\n📈 *व्याज:* ${formatCurrency(interest)}\n💰 *एकूण कर्ज:* ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
-            }
-        }
     } else if (text) {
-        // Natural Language or Registration
+        // Generalized handling for messages
         bot.sendChatAction(chatId, 'typing');
         const [session, data] = await Promise.all([getSession(), getSocietyData()]);
 
-        // A. Search logic
+        // A. Search logic (PRIORITY: Specific name-based inquiries)
         const nameMatch = text.match(/(.+?)\s*(यांचे|यांची|यांचा|चे|ची|चा|)\s*(कर्ज|बचत|माहिती|लोन|balance|loan|karj|bajat)/i);
         if (nameMatch) {
             const search = nameMatch[1].toLowerCase().trim();
@@ -179,7 +150,35 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             return await bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
         }
 
-        // B. Registration
+        // B. Command/Button Logic (Handle slash commands or exact button text)
+        if (lcText.startsWith('/') || lcText.includes('माहिती') || lcText.includes('शिल्लक') || lcText.includes('कर्ज')) {
+            let type: 'info' | 'balance' | 'loan' = 'info';
+            if (lcText.includes('balance') || lcText.includes('शिल्लक')) type = 'balance';
+            else if (lcText.includes('loan') || lcText.includes('कर्ज')) type = 'loan';
+            else type = 'info';
+
+            if (!session?.memberId) return await bot.sendMessage(chatId, "⚠️ आधी /start करून नोंदणी करा.");
+            const m = (data?.members || []).find((mem: any) => mem.id === session.memberId || mem.memberNo?.toString() === session.memberId);
+            if (!m) return await bot.sendMessage(chatId, "❌ माहिती सापडली नाही.");
+
+            const total = (m.savingsBalance || 0) + (m.shareBalance || 0) + (m.fdBalance || 0);
+            const principal = m.loanPrincipal || 0;
+            const interest = m.loanInterestDue || 0;
+            const loanTotal = principal + interest;
+
+            if (type === 'info') await bot.sendMessage(chatId, `👤 *नाव:* ${m.name}\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
+            if (type === 'balance') await bot.sendMessage(chatId, `💰 *शिल्लक:* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
+            if (type === 'loan') {
+                if (principal === 0 && interest === 0) {
+                    await bot.sendMessage(chatId, "✅ कर्ज नाही.");
+                } else {
+                    await bot.sendMessage(chatId, `🏦 *मुद्दल:* ${formatCurrency(principal)}\n📈 *व्याज:* ${formatCurrency(interest)}\n💰 *एकूण कर्ज:* ${formatCurrency(loanTotal)}`, { parse_mode: 'Markdown' });
+                }
+            }
+            return;
+        }
+
+        // C. Registration (Member number lookup)
         if (session?.awaitingMemberNo || /^\d+$/.test(text)) {
             const member = (data?.members || []).find((m: any) => m.memberNo?.toString().trim() === text);
             if (member) {
