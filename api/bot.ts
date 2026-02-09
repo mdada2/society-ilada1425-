@@ -122,12 +122,14 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
             parse_mode: 'Markdown',
             reply_markup: menuKeyboard
         });
-    } else if (['/myinfo', '/balance', '/loan', '👤 माझी माहिती', '💰 माझी शिल्लक', '🏦 कर्ज माहिती'].includes(lcText) || ['👤 माझी माहिती', '💰 माझी शिल्लक', '🏦 कर्ज माहिती'].includes(text)) {
+    } else if (lcText.startsWith('/') || lcText.includes('माहिती') || lcText.includes('शिल्लक') || lcText.includes('कर्ज')) {
+        // This block handles both slash commands and button taps (which contain the words above)
         bot.sendChatAction(chatId, 'typing');
+
         let type: 'info' | 'balance' | 'loan' = 'info';
-        if (lcText.includes('balance') || text.includes('शिल्लक')) type = 'balance';
-        if (lcText.includes('loan') || text.includes('कर्ज')) type = 'loan';
-        if (lcText.includes('myinfo') || text.includes('माहिती')) type = 'info';
+        if (lcText.includes('balance') || lcText.includes('शिल्लक')) type = 'balance';
+        else if (lcText.includes('loan') || lcText.includes('कर्ज')) type = 'loan';
+        else type = 'info';
 
         const [session, data] = await Promise.all([getSession(), getSocietyData()]);
 
@@ -140,7 +142,7 @@ async function handleBotUpdate(bot: TelegramBot, firestore: any, update: any) {
         const interest = m.loanInterestDue || 0;
         const loanTotal = principal + interest;
 
-        if (type === 'myinfo' as any) await bot.sendMessage(chatId, `👤 *नाव:* ${m.name}\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
+        if (type === 'info') await bot.sendMessage(chatId, `👤 *नाव:* ${m.name}\n🔢 *क्र:* ${m.memberNo}\n🏘️ *गाव:* ${m.village || 'N/A'}`, { parse_mode: 'Markdown' });
         if (type === 'balance') await bot.sendMessage(chatId, `💰 *शिल्लक:* ${formatCurrency(total)}`, { parse_mode: 'Markdown' });
         if (type === 'loan') {
             if (principal === 0 && interest === 0) {
