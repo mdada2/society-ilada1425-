@@ -28,8 +28,12 @@ interface UserSession {
 
 // --- FAST INITIALIZATION ---
 async function initBot() {
-    if (initializedBot) return { bot: initializedBot, db, genAI };
+    if (initializedBot) {
+        console.log('♻️ Reusing existing bot instance (warm start)');
+        return { bot: initializedBot, db, genAI };
+    }
 
+    console.log('🔧 Initializing bot (cold start)...');
     const firebaseConfig = {
         apiKey: "AIzaSyAp3IzvsP7WM_ek4-wKvUTq7P7LHdaCR6k",
         authDomain: "society-ilada.firebaseapp.com",
@@ -49,13 +53,16 @@ async function initBot() {
     if (!BOT_TOKEN) throw new Error('BOT_TOKEN missing');
 
     initializedBot = new TelegramBot(BOT_TOKEN, { polling: !IS_VERCEL });
+    console.log('🤖 TelegramBot instance created, setting up handlers...');
     setupBotHandlers(initializedBot, db);
+    console.log('✅ Bot initialization complete');
 
     return { bot: initializedBot, db, genAI };
 }
 
 // --- OPTIMIZED HANDLERS ---
 function setupBotHandlers(bot: TelegramBot, firestore: any) {
+    console.log('🎯 Setting up bot handlers...');
     const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
 
     async function getSocietyData() {
@@ -90,12 +97,14 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
     // --- COMMAND FLOWS ---
 
     bot.onText(/^\/start$/, async (msg) => {
+        console.log('🚀 /start command received from', msg.chat.id);
         const chatId = msg.chat.id;
         await saveSession(chatId, { chatId, awaitingMemberNo: true });
         bot.sendMessage(chatId, "🙏 नमस्कार! कृपया तुमचा *सदस्य क्रमांक* पाठवा (उदा: 101).", { parse_mode: 'Markdown' });
     });
 
     bot.onText(/^\/help$/, (msg) => {
+        console.log('📚 /help command received from', msg.chat.id);
         bot.sendMessage(msg.chat.id, "📚 /myinfo, /balance, /loan\n💬 किंवा विचारा: *'प्रदीप चे कर्ज'*", { parse_mode: 'Markdown' });
     });
 
@@ -158,15 +167,39 @@ function setupBotHandlers(bot: TelegramBot, firestore: any) {
 // --- VERCEL HANDLER ---
 export default async function handler(req: any, res: any) {
     if (req.method === 'POST') {
+        console.log('📨 Webhook POST received:', JSON.stringify(req.body, null, 2));
         try {
             const { bot } = await initBot();
+            console.log('✅ Bot initialized, processing update...');
+
+            if (!req.body || !req.body.update_id) {
+                console.error('❌ Invalid webhook body');
+                return res.status(200).json({ error: 'invalid_body' });
+            }
+
             await bot.processUpdate(req.body);
+            console.log('✅ Update processed successfully');
             return res.status(200).send('OK');
-        } catch (e: any) { return res.status(200).send('ERR'); }
+        } catch (e: any) {
+            console.error('❌ Handler error:', e.message, e.stack);
+            return res.status(200).json({ error: e.message });
+        }
     }
 
     // Diagnostics
-    initBot().then(() => {
-        res.status(200).json({ status: 'warpspeed_active', cache: !!globalSocietyCache });
-    }).catch(e => res.status(200).send('INIT_ERR'));
+    try {
+        const { bot } = await initBot();
+        const webhookInfo = await bot.getWebHookInfo();
+        res.status(200).json({
+            status: 'running',
+            webhook_url: webhookInfo.url,
+            pending_updates: webhookInfo.pending_update_count,
+            last_error: webhookInfo.last_error_message,
+            cache: !!globalSocietyCache,
+            timestamp: new Date().toISOString()
+        });
+    } catch (e: any) {
+        console.error('❌ Diagnostics error:', e.message);
+        res.status(200).json({ status: 'error', message: e.message });
+    }
 }
