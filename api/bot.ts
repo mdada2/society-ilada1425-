@@ -14,7 +14,7 @@ let globalSocietyCache: any = null;
 let lastCacheUpdate = 0;
 const CACHE_TTL = 120000; // 2 minutes
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '';
+const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
 const IS_VERCEL = !!process.env.VERCEL;
 
 interface UserSession {
