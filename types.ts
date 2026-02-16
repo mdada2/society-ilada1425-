@@ -175,6 +175,7 @@ export interface Member {
   farmerType?: 'Small Farmer' | 'Large Farmer';
   mobile: string;
   aadhar: string;
+  farmerId: string;
   photoUrl?: string;
   signatureUrl?: string;
   isActive: boolean;

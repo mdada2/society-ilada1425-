@@ -65,6 +65,7 @@ const Members = () => {
     loanInterestDue: 0,
     fdBalance: 0,
     photoUrl: '',
+    farmerId: '',
     membershipDate: format(new Date(), 'yyyy-MM-dd')
   });
 
@@ -321,6 +322,7 @@ const Members = () => {
       farmerType: newMember.farmerType || 'Small Farmer',
       mobile: newMember.mobile || '',
       aadhar: newMember.aadhar || '',
+      farmerId: newMember.farmerId || '',
       photoUrl: newMember.photoUrl,
       isActive: true,
       shareBalance: 0,
@@ -334,7 +336,7 @@ const Members = () => {
 
     addMember(member);
     setShowAddModal(false);
-    setNewMember({ category: 'OPEN', gender: 'Male', farmerType: 'Small Farmer', designation: 'शेतकरी', photoUrl: '', membershipDate: format(new Date(), 'yyyy-MM-dd') });
+    setNewMember({ category: 'OPEN', gender: 'Male', farmerType: 'Small Farmer', designation: 'शेतकरी', photoUrl: '', farmerId: '', membershipDate: format(new Date(), 'yyyy-MM-dd') });
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -419,8 +421,8 @@ const Members = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
-    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0"];
+    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
+    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0"];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -480,6 +482,7 @@ const Members = () => {
         const idxCategory = findCol(['category', 'caste']);
         const idxDOB = findCol(['dob', 'date of birth', 'birthdate']);
         const idxAadhar = findCol(['aadhar', 'uid']);
+        const idxFarmerId = findCol(['farmerid', 'farmer id', 'kisan id', 'farmer no']);
         const idxOriginalLoanPrin = findCol(['originalloanprincipal', 'original loan principal', 'original principal', 'original loan amount']);
         const idxOriginalLoanDate = findCol(['originalloandate', 'original loan date', 'original date']);
         const idxLastLoanPrin = findCol(['lastloanprincipal', 'last loan principal', 'current principal', 'remaining principal', 'loanprincipal', 'loan principal', 'loan amount', 'principal', 'loan']);
@@ -563,6 +566,7 @@ const Members = () => {
               category: mergeField(existing.category, idxCategory !== -1 ? ((values[idxCategory] || 'OPEN') as any) : 'OPEN') as any,
               dob: mergeField(existing.dob, idxDOB !== -1 ? (values[idxDOB] || '') : '') as string,
               aadhar: mergeField(existing.aadhar, idxAadhar !== -1 ? (values[idxAadhar] || '') : '') as string,
+              farmerId: mergeField(existing.farmerId, idxFarmerId !== -1 ? (values[idxFarmerId] || '') : '') as string,
               bankAccountNo: mergeField(existing.bankAccountNo, idxBankAcc !== -1 ? (values[idxBankAcc] || '') : '') as string,
               landArea: mergeField(existing.landArea, idxLand !== -1 ? (values[idxLand] || '') : '') as string,
               loanAccountNo: mergeField(existing.loanAccountNo, idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '') as string,
@@ -588,6 +592,7 @@ const Members = () => {
               category: idxCategory !== -1 ? ((values[idxCategory] || 'OPEN') as any) : 'OPEN',
               dob: idxDOB !== -1 ? (values[idxDOB] || '') : '',
               aadhar: idxAadhar !== -1 ? (values[idxAadhar] || '') : '',
+              farmerId: idxFarmerId !== -1 ? (values[idxFarmerId] || '') : '',
               bankAccountNo: idxBankAcc !== -1 ? (values[idxBankAcc] || '') : '',
               landArea: idxLand !== -1 ? (values[idxLand] || '') : '',
               loanAccountNo: idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '',
@@ -1078,6 +1083,7 @@ const Members = () => {
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Category</label><select className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.category} onChange={e => setNewMember({ ...newMember, category: e.target.value as any })}><option value="OPEN">OPEN</option><option value="OBC">OBC</option><option value="SC">SC</option><option value="ST">ST</option></select></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Farmer Type</label><select className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.farmerType || 'Small Farmer'} onChange={e => setNewMember({ ...newMember, farmerType: e.target.value as any })}><option value="Small Farmer">Small Farmer (लघु कृषक)</option><option value="Large Farmer">Large Farmer (मोठे कृषक)</option></select></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Aadhar No</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.aadhar || ''} onChange={e => setNewMember({ ...newMember, aadhar: e.target.value })} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Farmer ID (शेतकरी आयडी)</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.farmerId || ''} onChange={e => setNewMember({ ...newMember, farmerId: e.target.value })} placeholder="12+ digit Farmer ID" minLength={12} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Bank Acc No</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.bankAccountNo || ''} onChange={e => setNewMember({ ...newMember, bankAccountNo: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Loan Acc No</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.loanAccountNo || ''} onChange={e => setNewMember({ ...newMember, loanAccountNo: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Land (Ha.R)</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.landArea || ''} onChange={e => setNewMember({ ...newMember, landArea: e.target.value })} /></div>
