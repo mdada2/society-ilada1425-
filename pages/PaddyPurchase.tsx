@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { format } from 'date-fns';
-import { ShoppingBag, Save, Copy, Share2, Trash2, Edit, Plus, Settings, X, Archive, AlertCircle, Check, Calculator, IndianRupee, ArrowRight, ShieldCheck, Warehouse, Lock, Unlock, ChevronUp, ChevronDown, Calendar, Filter } from 'lucide-react';
+import { ShoppingBag, Save, Copy, Share2, Trash2, Edit, Plus, Settings, X, Archive, AlertCircle, Check, Calculator, IndianRupee, ArrowRight, ShieldCheck, Warehouse, Lock, Unlock, ChevronUp, ChevronDown, Calendar, Filter, Download } from 'lucide-react';
 import { PaddyPurchaseRecord, PaddySeason } from '../types';
 import { Share } from '@capacitor/share';
+import html2canvas from 'html2canvas';
 
 const PaddyPurchase = () => {
     const { paddyPurchases, addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase, paddySeasons, addPaddySeason, updatePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason, settings, updateSettings } = useApp();
@@ -14,6 +15,9 @@ const PaddyPurchase = () => {
     const [showCalculator, setShowCalculator] = useState(false);
     const [showSeasonModal, setShowSeasonModal] = useState(false);
     const [seasonFilter, setSeasonFilter] = useState<string>('all'); // 'all' or season code
+
+    // Ref for Recent Records Image Download
+    const recentRecordsRef = useRef<HTMLDivElement>(null);
 
     // Storage Capacities (Synced from Global Settings)
     const godownCapacity = settings.paddySettings?.godownCapacity || 10000;
@@ -111,16 +115,46 @@ const PaddyPurchase = () => {
     };
 
     const handleShare = async (r: PaddyPurchaseRecord) => {
-        const text = generateShareText(r);
-        if (navigator.share) {
+        const shareText = generateShareText(r, paddyPurchases);
+        try {
+            await Share.share({
+                title: `Paddy Purchase - ${r.centerName}`,
+                text: shareText,
+                dialogTitle: 'Share Paddy Purchase Record'
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+            // Fallback to clipboard
+            navigator.clipboard.writeText(shareText);
+            alert('📋 Copied to clipboard!');
+        }
+    };
+
+    // Image Download Handler (JPG/PNG)
+    const handleDownloadRecordsImage = async (imageFormat: 'jpeg' | 'png' = 'jpeg') => {
+        if (recentRecordsRef.current) {
             try {
-                await navigator.share({
-                    title: 'Paddy Purchase Record',
-                    text: text
+                const canvas = await html2canvas(recentRecordsRef.current, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false
                 });
-            } catch (e) { console.error(e); }
-        } else {
-            handleCopy(r);
+
+                const mimeType = imageFormat === 'png' ? 'image/png' : 'image/jpeg';
+                const imgData = canvas.toDataURL(mimeType, 0.9);
+
+                // Create download link
+                const link = document.createElement('a');
+                link.href = imgData;
+                link.download = `Paddy_Purchase_Records_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.${imageFormat}`;
+                link.click();
+
+                setTimeout(() => alert(`✅ ${imageFormat.toUpperCase()} Image downloaded!`), 500);
+            } catch (error) {
+                console.error('Image Download Error:', error);
+                alert('Failed to download image. Please try again.');
+            }
         }
     };
 
@@ -959,25 +993,43 @@ const PaddyPurchase = () => {
             </div >
 
             <div className="space-y-4">
-                <div className="flex justify-between items-center border-b dark:border-slate-700 pb-2">
+                <div className="flex flex-wrap justify-between items-center border-b dark:border-slate-700 pb-2 gap-2">
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white">Recent Records</h3>
-                    {paddySeasons.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <Filter size={16} className="text-slate-500" />
-                            <select
-                                value={seasonFilter}
-                                onChange={(e) => setSeasonFilter(e.target.value)}
-                                className="px-3 py-1 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                                <option value="all">सर्व हंगाम (All Seasons)</option>
-                                {paddySeasons.map(s => (
-                                    <option key={s.id} value={s.code}>
-                                        {s.code} - {s.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {/* Download Buttons */}
+                        <button
+                            onClick={() => handleDownloadRecordsImage('jpeg')}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs md:text-sm font-medium flex items-center gap-1 transition shadow-sm"
+                            title="Download as JPG"
+                        >
+                            <Download size={16} /> JPG
+                        </button>
+                        <button
+                            onClick={() => handleDownloadRecordsImage('png')}
+                            className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs md:text-sm font-medium flex items-center gap-1 transition shadow-sm"
+                            title="Download as PNG"
+                        >
+                            <Download size={16} /> PNG
+                        </button>
+                        {/* Season Filter */}
+                        {paddySeasons.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <Filter size={16} className="text-slate-500" />
+                                <select
+                                    value={seasonFilter}
+                                    onChange={(e) => setSeasonFilter(e.target.value)}
+                                    className="px-3 py-1 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="all">सर्व हंगाम (All Seasons)</option>
+                                    {paddySeasons.map(s => (
+                                        <option key={s.id} value={s.code}>
+                                            {s.code} - {s.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 {filteredPurchases.length === 0 ? <p className="text-slate-500 text-center py-8">No records found.</p> : [...filteredPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 50).map(record => {
                     // Dynamic Calculation Context for this record
@@ -1124,6 +1176,84 @@ const PaddyPurchase = () => {
                     </div>
                 )
             }
+
+            {/* Hidden Container for Beautiful Image Export */}
+            <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px' }}>
+                <div ref={recentRecordsRef} className="bg-white p-8 space-y-4">
+                    <h2 className="text-6xl font-bold text-center text-slate-800 mb-6">खरेदी केंद्र ईळदा</h2>
+                    {[...filteredPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10).map((record, index) => {
+                        // Calculate running totals up to this record
+                        const relevantRecords = filteredPurchases.filter(r => r.timestamp <= record.timestamp);
+                        const totalGodown = relevantRecords.reduce((sum, r) => sum + (r.godownBags || 0), 0);
+                        const totalShed = relevantRecords.reduce((sum, r) => sum + (r.shedBags || 0), 0);
+                        const totalOpen = relevantRecords.reduce((sum, r) => sum + (r.openBags || 0), 0);
+                        const totalRecBags = totalGodown + totalShed + totalOpen;
+
+                        const totalGodownW = relevantRecords.reduce((sum, r) => sum + (r.godownWeight || 0), 0);
+                        const totalShedW = relevantRecords.reduce((sum, r) => sum + (r.shedWeight || 0), 0);
+                        const totalOpenW = relevantRecords.reduce((sum, r) => sum + (r.openWeight || 0), 0);
+                        const totalRecWeight = totalGodownW + totalShedW + totalOpenW;
+
+                        // Individual record's reusable bags (for display, not cumulative)
+                        const recordOldBags = (record.godownBags || 0) + (record.shedBags || 0) + (record.openBags || 0);
+                        const recordOldWeight = (record.godownWeight || 0) + (record.shedWeight || 0) + (record.openWeight || 0);
+
+                        return (
+                            <div key={record.id} className="border-2 border-slate-300 rounded-lg p-4 bg-slate-50 shadow-md">
+                                {/* Date Header */}
+                                <div className="bg-blue-100 px-4 py-4 rounded-md mb-5">
+                                    <p className="text-4xl font-bold text-slate-800">दिनांक: {format(new Date(record.date), 'dd/MM/yyyy')}</p>
+                                </div>
+
+                                {/* Member Stats */}
+                                <div className="border-l-4 border-blue-500 pl-5 mb-5">
+                                    <p className="text-3xl font-medium">आदि सभासद :- {record.tribalMembers || 0}</p>
+                                    <p className="text-3xl font-medium">गैर आदि सभा :- {record.nonTribalMembers || 0}</p>
+                                    <p className="text-4xl font-bold">एकूण सभासद :- {(record.tribalMembers || 0) + (record.nonTribalMembers || 0)}</p>
+                                </div>
+
+                                {/* Purchase Details */}
+                                <div className="space-y-2 mb-5">
+                                    <p className="text-3xl">• नविन पोते :- {record.newBags || 0}</p>
+                                    <p className="text-3xl">• वजन :- {(record.newWeight || 0).toFixed(2)}</p>
+                                    <p className="text-3xl">• जुने पोते :- {recordOldBags}</p>
+                                    <p className="text-3xl font-bold text-green-700">• वजन :- {recordOldWeight.toFixed(2)}</p>
+                                    <p className="text-3xl">• एकदा वापरलेला :- {record.usedOnceBags || 0}</p>
+                                    <p className="text-3xl">• वजन :- {(record.usedOnceWeight || 0).toFixed(2)}</p>
+                                </div>
+
+                                {/* Totals */}
+                                <div className="border-l-4 border-green-600 pl-5 mb-5 bg-green-50 py-4">
+                                    <p className="text-4xl font-bold">एकूण पोते:- {totalRecBags}</p>
+                                    <p className="text-4xl font-bold text-green-700">एकूण वजन:- {totalRecWeight.toFixed(2)}</p>
+                                </div>
+
+                                {/* Storage Details */}
+                                <div className="border-l-4 border-purple-500 pl-5 space-y-4">
+                                    <div>
+                                        <p className="font-bold text-3xl">गोदामात खरेदी</p>
+                                        <p className="text-2xl">• पोते :- {totalGodown}</p>
+                                        <p className="text-2xl">• वजन :- {totalGodownW.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-3xl">शेडमध्ये खरेदी</p>
+                                        <p className="text-2xl">• पोते :- {totalShed}</p>
+                                        <p className="text-2xl">• वजन :- {totalShedW.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-3xl">उघड्यावर खरेदी</p>
+                                        <p className="text-2xl">• पोते :- {totalOpen}</p>
+                                        <p className="text-2xl">• वजन :- {totalOpenW.toFixed(2)}</p>
+                                    </div>
+                                </div>
+
+                                {/* Timestamp */}
+                                <p className="text-right text-lg text-slate-500 mt-5">{format(new Date(record.timestamp), 'h:mm a')}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
         </div >
     );
 };
