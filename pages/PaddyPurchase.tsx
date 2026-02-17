@@ -1194,9 +1194,15 @@ const PaddyPurchase = () => {
                         const totalOpenW = relevantRecords.reduce((sum, r) => sum + (r.openWeight || 0), 0);
                         const totalRecWeight = totalGodownW + totalShedW + totalOpenW;
 
-                        // Individual record's reusable bags (for display, not cumulative)
-                        const recordOldBags = (record.godownBags || 0) + (record.shedBags || 0) + (record.openBags || 0);
-                        const recordOldWeight = (record.godownWeight || 0) + (record.shedWeight || 0) + (record.openWeight || 0);
+                        // Calculate cumulative New and Used bags/weight
+                        const cumulativeNew = relevantRecords.reduce((sum, r) => sum + (r.newBags || 0), 0);
+                        const cumulativeNewWeight = relevantRecords.reduce((sum, r) => sum + (r.newWeight || 0), 0);
+                        const cumulativeUsed = relevantRecords.reduce((sum, r) => sum + (r.usedOnceBags || 0), 0);
+                        const cumulativeUsedWeight = relevantRecords.reduce((sum, r) => sum + (r.usedOnceWeight || 0), 0);
+
+                        // Derive Old bags as: Total Storage - New - Used (matching WhatsApp share logic)
+                        const derivedOldBags = totalRecBags - cumulativeNew - cumulativeUsed;
+                        const derivedOldWeight = totalRecWeight - cumulativeNewWeight - cumulativeUsedWeight;
 
                         return (
                             <div key={record.id} className="border-2 border-slate-300 rounded-lg p-4 bg-slate-50 shadow-md">
@@ -1214,12 +1220,12 @@ const PaddyPurchase = () => {
 
                                 {/* Purchase Details */}
                                 <div className="space-y-2 mb-5">
-                                    <p className="text-3xl">• नविन पोते :- {record.newBags || 0}</p>
-                                    <p className="text-3xl">• वजन :- {(record.newWeight || 0).toFixed(2)}</p>
-                                    <p className="text-3xl">• जुने पोते :- {recordOldBags}</p>
-                                    <p className="text-3xl font-bold text-green-700">• वजन :- {recordOldWeight.toFixed(2)}</p>
-                                    <p className="text-3xl">• एकदा वापरलेला :- {record.usedOnceBags || 0}</p>
-                                    <p className="text-3xl">• वजन :- {(record.usedOnceWeight || 0).toFixed(2)}</p>
+                                    <p className="text-3xl">• नविन पोते :- {cumulativeNew}</p>
+                                    <p className="text-3xl">• वजन :- {cumulativeNewWeight.toFixed(2)}</p>
+                                    <p className="text-3xl">• जुने पोते :- {derivedOldBags}</p>
+                                    <p className="text-3xl font-bold text-green-700">• वजन :- {derivedOldWeight.toFixed(2)}</p>
+                                    <p className="text-3xl">• एकदा वापरलेला :- {cumulativeUsed}</p>
+                                    <p className="text-3xl">• वजन :- {cumulativeUsedWeight.toFixed(2)}</p>
                                 </div>
 
                                 {/* Totals */}
