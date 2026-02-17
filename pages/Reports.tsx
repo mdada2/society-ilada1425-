@@ -2280,12 +2280,12 @@ const Reports = () => {
   if (!selectedCategory) {
     // Grid View
     return (
-      <div className="p-4 md:p-8 pb-24 animate-fade-in">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+      <div className="p-2 md:p-4 pb-24 animate-fade-in">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
           <FileText className="text-blue-600" /> Reports Center
         </h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {REPORT_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
