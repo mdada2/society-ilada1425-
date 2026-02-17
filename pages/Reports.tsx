@@ -344,7 +344,7 @@ const Reports = () => {
 
           <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
             <h3 className="text-lg font-bold mb-2">Profit & Loss Chart (नफा-तोटा चार्ट)</h3>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-bold text-green-600">Income (Interest Received/Due)</span>
@@ -2280,12 +2280,12 @@ const Reports = () => {
   if (!selectedCategory) {
     // Grid View
     return (
-      <div className="p-2 md:p-4 pb-24 animate-fade-in">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
+      <div className="pt-0 px-1 pb-24 animate-fade-in">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-0 flex items-center gap-2">
           <FileText className="text-blue-600" /> Reports Center
         </h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           {REPORT_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -2357,7 +2357,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-2 pb-24 bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 overflow-auto p-1 pb-24 bg-slate-50 dark:bg-slate-900">
         {renderContent()}
       </div>
 

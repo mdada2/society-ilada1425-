@@ -81,7 +81,7 @@ const InventoryEntry = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 pb-24">
+        <div className="pt-0 px-1 pb-24">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                 <PackagePlus className="text-emerald-600" /> Inventory Entry (स्टॉक नोंदणी)
             </h2>

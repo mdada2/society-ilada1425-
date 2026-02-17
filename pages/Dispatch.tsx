@@ -176,7 +176,7 @@ const Dispatch = () => {
     }, [seasonFilter, dispatches]);
 
     return (
-        <div className="p-4 md:p-6 pb-24">
+        <div className="pt-0 px-1 pb-24">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                 <Truck className="text-blue-600" /> Dispatch (मिलला माल पाठवणे)
             </h2>

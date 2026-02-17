@@ -326,7 +326,7 @@ const Transactions = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 max-w-5xl mx-auto pb-40 w-full overflow-x-hidden">
+        <div className="pt-0 px-1 max-w-5xl mx-auto pb-40 w-full overflow-x-hidden">
             <style>{`
                 /* RECENT TABLE BASE STYLES */
                 .recent-table { width: 100%; border-collapse: collapse; }
@@ -384,7 +384,7 @@ const Transactions = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2 px-0 sm:px-2">
                 <div className="md:col-span-2 space-y-3 flex flex-col items-start md:block">
                     {/* Form Container - Full width on mobile */}
-                    <div className="bg-white dark:bg-slate-800 p-3 md:p-5 rounded-md shadow-sm border dark:border-slate-700 w-full">
+                    <div className="bg-white dark:bg-slate-800 p-2 rounded-md shadow-sm border dark:border-slate-700 w-full">
                         <form onSubmit={handleSubmit} className="space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <div>
@@ -435,7 +435,7 @@ const Transactions = () => {
 
                             {/* Funds Section for Loan Credit */}
                             {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && (
-                                <div className="p-2 md:p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 space-y-2 animate-fade-in">
+                                <div className="p-1 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 space-y-2 animate-fade-in">
                                     <h4 className="font-bold text-indigo-800 dark:text-indigo-400 text-[11px] md:text-sm flex items-center gap-2 mb-1">
                                         <FundIcon size={14} /> वार्षिक निधी कपात (FY Fund Collection)
                                     </h4>
@@ -523,9 +523,9 @@ const Transactions = () => {
 
                 <div className="space-y-3 flex flex-col items-start md:block">
                     {/* Receipt Preview - Full width on mobile */}
-                    <div className="bg-white dark:bg-slate-800 p-3 md:p-5 rounded-md shadow-sm border dark:border-slate-700 lg:sticky lg:top-6 w-full border-t-4 border-t-red-500">
+                    <div className="bg-white dark:bg-slate-800 p-2 rounded-md shadow-sm border dark:border-slate-700 lg:sticky lg:top-6 w-full border-t-4 border-t-red-500">
                         <h3 className="font-bold text-slate-400 dark:text-white mb-3 flex items-center gap-2 text-sm md:text-base">{lastSavedTransaction ? <CheckCircle className="text-green-500" /> : <Calculator className="text-blue-500" />}{lastSavedTransaction ? 'Last Saved Receipt' : 'Receipt Preview'}</h3>
-                        <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 p-2 md:p-4 rounded-lg bg-slate-50 dark:bg-slate-900 overflow-x-auto min-h-[140px]">
+                        <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 p-1 rounded-lg bg-slate-50 dark:bg-slate-900 overflow-x-auto min-h-[140px]">
                             <div className="text-center mb-2 border-b border-slate-200 dark:border-slate-700 pb-2"><h4 className="font-bold text-slate-400 dark:text-white text-lg">Society Ilada</h4><p className="text-xs text-slate-500 dark:text-slate-400">Date: {formatDateDisplay(previewData.date)}</p></div>
                             <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
                                 <div className="flex justify-between"><span>Member:</span><span className="font-bold">{previewData.memberName || 'General'}</span></div>

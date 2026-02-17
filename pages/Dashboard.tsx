@@ -147,7 +147,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 pb-28 bg-ios-gray-50 dark:bg-black min-h-screen">
+        <div className="pt-0 px-1 pb-28 bg-ios-gray-50 dark:bg-black min-h-screen">
             {/* Print Only Header */}
             <div className="hidden print:block text-center mb-2 border-b-2 border-black pb-4">
                 <h1 className="text-3xl font-bold text-black">Society Ilada</h1>
@@ -155,7 +155,7 @@ const Dashboard = () => {
                 <p className="text-sm mt-1">Date: {format(new Date(), 'dd-MM-yyyy')}</p>
             </div>
 
-            <div className="flex justify-between items-center mb-1 print:hidden">
+            <div className="flex justify-between items-center mb-0 print:hidden">
                 <div className="flex items-center gap-3">
                     <h2 className="text-3xl font-bold text-ios-gray-900 dark:text-white">Dashboard</h2>
                 </div>
@@ -163,7 +163,7 @@ const Dashboard = () => {
             </div>
 
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-1 print:grid-cols-2 print:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1 mb-0 print:grid-cols-2 print:gap-4">
                 {/* Members */}
                 <Link to="/members" className="ios-card p-5 rounded-ios-xl hover:shadow-ios-md transition-all duration-200 ios-touch group relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Users size={80} /></div>
@@ -202,10 +202,10 @@ const Dashboard = () => {
                 </Link>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
                 {/* Main Chart Section */}
                 <div className="lg:col-span-2 ios-card p-6 rounded-ios-2xl min-w-0 print:border-black print:shadow-none">
-                    <div className="flex justify-between items-center mb-1">
+                    <div className="flex justify-between items-center mb-0">
                         <h3 className="text-lg font-semibold text-ios-gray-900 dark:text-white flex items-center gap-2">
                             {chartType === 'bar' && <BarChart3 size={20} className="text-ios-blue" />}
                             {chartType === 'pie' && <PieChartIcon size={20} className="text-ios-blue" />}
