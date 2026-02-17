@@ -246,7 +246,7 @@ const Settings = () => {
     const lastBackupStr = settings.lastBackupDate ? format(new Date(settings.lastBackupDate), 'dd-MM-yyyy HH:mm a') : 'Never';
 
     return (
-        <div className="p-6 max-w-2xl mx-auto relative pb-24">
+        <div className="p-6 md:pt-1 max-w-2xl mx-auto relative pb-24">
             {isLoading && !isRestoringCloud && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-fade-in border border-slate-200 dark:border-slate-700">

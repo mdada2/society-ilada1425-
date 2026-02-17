@@ -326,7 +326,7 @@ const Transactions = () => {
     };
 
     return (
-        <div className="pt-0 px-1 max-w-5xl mx-auto pb-40 w-full overflow-x-hidden">
+        <div className="pt-0 md:pt-1 px-1 max-w-5xl mx-auto pb-40 w-full overflow-x-hidden">
             <style>{`
                 /* RECENT TABLE BASE STYLES */
                 .recent-table { width: 100%; border-collapse: collapse; }

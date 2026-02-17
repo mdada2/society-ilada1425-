@@ -281,7 +281,7 @@ const MemberDetails = () => {
     };
 
     return (
-        <div className="pt-0 px-1 max-w-6xl mx-auto w-full pb-40"> {/* Increased bottom padding */}
+        <div className="pt-0 md:pt-1 px-1 max-w-6xl mx-auto w-full pb-40"> {/* Increased bottom padding */}
             {/* Header & Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3 no-print">
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">

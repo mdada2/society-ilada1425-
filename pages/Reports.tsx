@@ -2280,7 +2280,7 @@ const Reports = () => {
   if (!selectedCategory) {
     // Grid View
     return (
-      <div className="pt-0 px-1 pb-24 animate-fade-in">
+      <div className="pt-0 md:pt-1 px-1 pb-24 animate-fade-in">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-0 flex items-center gap-2">
           <FileText className="text-blue-600" /> Reports Center
         </h1>

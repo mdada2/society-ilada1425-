@@ -57,7 +57,7 @@ const LoanCalculatorPage = () => {
     };
 
     return (
-        <div className="p-6 max-w-2xl mx-auto">
+        <div className="p-6 md:pt-1 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white flex items-center gap-2">
                 <Calculator className="text-blue-600" /> Calculators
             </h2>

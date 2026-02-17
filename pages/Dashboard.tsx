@@ -147,7 +147,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="pt-0 px-1 pb-28 bg-ios-gray-50 dark:bg-black min-h-screen">
+        <div className="pt-0 md:pt-1 px-1 pb-28 bg-ios-gray-50 dark:bg-black min-h-screen">
             {/* Print Only Header */}
             <div className="hidden print:block text-center mb-2 border-b-2 border-black pb-4">
                 <h1 className="text-3xl font-bold text-black">Society Ilada</h1>
