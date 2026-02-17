@@ -256,10 +256,10 @@ const Settings = () => {
                 </div>
             )}
 
-            <h2 className="text-2xl font-bold mb-8 text-slate-800 dark:text-white">Settings</h2>
+            <h2 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white">Settings</h2>
 
             {cloudPermissionError && (
-                <div className="bg-red-50 dark:bg-red-900/30 p-6 rounded-xl border-2 border-red-500 shadow-lg mb-8">
+                <div className="bg-red-50 dark:bg-red-900/30 p-3 rounded-xl border-2 border-red-500 shadow-lg mb-2">
                     <div className="flex items-center gap-3 text-red-700 dark:text-red-400 mb-4">
                         <AlertTriangle size={28} />
                         <h3 className="text-lg font-black uppercase">Firebase Rules Error!</h3>
@@ -273,7 +273,7 @@ const Settings = () => {
             )}
 
             {/* Local Visual Preferences (Does NOT Sync to Cloud) */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white">
                     <Monitor size={20} /> Device Settings (स्थानिक - Local)
                 </h3>
@@ -298,7 +298,7 @@ const Settings = () => {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-3 gap-4 mb-2">
                     <button onClick={() => changeTheme('light')} className={`p-3 rounded-lg border flex flex-col items-center gap-2 ${localSettings.theme === 'light' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-slate-700 dark:border-blue-400' : 'border-slate-200 dark:border-slate-600'}`}><Sun size={24} />Light</button>
                     <button onClick={() => changeTheme('dark')} className={`p-3 rounded-lg border flex flex-col items-center gap-2 ${localSettings.theme === 'dark' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-slate-700 dark:border-blue-400' : 'border-slate-200 dark:border-slate-600'}`}><Moon size={24} />Dark</button>
                     <button onClick={() => changeTheme('system')} className={`p-3 rounded-lg border flex flex-col items-center gap-2 ${localSettings.theme === 'system' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-slate-700 dark:border-blue-400' : 'border-slate-200 dark:border-slate-600'}`}><Monitor size={24} />System</button>
@@ -334,7 +334,7 @@ const Settings = () => {
             </div>
 
             {/* Syncable Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white">
                     <HardDrive size={20} /> Data Backup (Cloud Synced)
                 </h3>
@@ -357,7 +357,7 @@ const Settings = () => {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 mb-6 overflow-hidden relative p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 mb-2 overflow-hidden relative p-6">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><CloudDownload size={20} className="text-indigo-600" /> Sync from Cloud</h3>
                 <button onClick={handleCloudRestore} disabled={isLoading} className={`w-full py-4 rounded-xl font-black uppercase tracking-widest shadow-lg transition flex items-center justify-center gap-3 ${isRestoringCloud ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
                     {isRestoringCloud ? <RefreshCw size={24} className="animate-spin" /> : <CloudDownload size={24} />}
@@ -366,18 +366,18 @@ const Settings = () => {
             </div>
 
             {/* Google Drive Backup Section */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6 relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                     <Cloud size={100} />
                 </div>
 
-                <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-slate-800 dark:text-white relative z-10">
+                <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-slate-800 dark:text-white relative z-10">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Drive" className="w-6 h-6" />
                     Google Account Backup
                 </h3>
 
                 {/* Account Status */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 mb-6 border dark:border-slate-600 relative z-10">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 mb-2 border dark:border-slate-600 relative z-10">
                     {!accessToken ? (
                         <div className="flex items-center justify-between">
                             <div>
@@ -450,7 +450,7 @@ const Settings = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><CalendarRange size={20} /> Current Financial Year</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="date" value={settings.financialYearStart} onChange={(e) => handleFYUpdate('start', e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
@@ -459,7 +459,7 @@ const Settings = () => {
             </div>
 
             {/* Loan Interest Policy Section */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-lg flex items-center gap-2 text-slate-800 dark:text-white">
                         <CalendarRange size={20} /> Loan Interest Policy (कर्ज व्याज धोरण)
@@ -636,7 +636,7 @@ const Settings = () => {
             </div>
 
             {/* AI Configuration Section */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><Bot size={20} /> Society Mitra AI Configuration</h3>
 
                 {/* Provider Selection */}
@@ -806,7 +806,7 @@ const Settings = () => {
                 </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><Smartphone size={20} /> App Information</h3>
                 <div className="space-y-3">
                     <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -836,7 +836,7 @@ const Settings = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><Lock size={20} /> Security</h3>
                 <div className="flex items-end gap-4">
                     <input type="text" className="flex-1 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value)} placeholder="New PIN" />
@@ -848,3 +848,4 @@ const Settings = () => {
 };
 
 export default Settings;
+

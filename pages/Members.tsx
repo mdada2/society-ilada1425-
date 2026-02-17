@@ -701,7 +701,7 @@ const Members = () => {
             }
         }
       `}</style>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -750,7 +750,7 @@ const Members = () => {
       </div>
 
       {/* Smart Search & Filters */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 mb-6 flex gap-3 items-center">
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 mb-2 flex gap-3 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input type="text" placeholder="Search Name, No, Mobile..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition" />
@@ -769,8 +769,8 @@ const Members = () => {
       {/* Filter Modal */}
       {showFilterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowFilterModal(false)}>
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl animate-fade-in-up border dark:border-slate-700" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-3">
+          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl w-full max-w-md shadow-2xl animate-fade-in-up border dark:border-slate-700" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-2 border-b dark:border-slate-700 pb-3">
               <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                 <Filter size={20} className="text-blue-600" /> Filter Members
               </h3>
@@ -799,7 +799,7 @@ const Members = () => {
       )}
 
       {/* Tab Navigation */}
-      <div className="flex gap-4 mb-6 border-b dark:border-slate-700">
+      <div className="flex gap-4 mb-2 border-b dark:border-slate-700">
         <button
           onClick={() => setActiveTab('list')}
           className={`pb-3 px-4 font-bold text-lg transition border-b-2 ${activeTab === 'list' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
@@ -946,8 +946,8 @@ const Members = () => {
 
           {/* Disbursement Form Area */}
           {selectedMemberIds.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-indigo-100 dark:border-slate-700">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-indigo-100 dark:border-slate-700">
+              <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-xl text-slate-800 dark:text-white">Loan Disbursement Details</h3>
                 <div className="flex gap-2">
                   <button onClick={handleExportDisbursedList} className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">
@@ -1046,8 +1046,8 @@ const Members = () => {
       {/* Add Member Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto shadow-2xl border dark:border-slate-700">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-3 w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto shadow-2xl border dark:border-slate-700">
+            <div className="flex justify-between items-center mb-2">
               <h3 className="text-xl font-bold text-slate-800 dark:text-white">Add New Member</h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-500 hover:text-slate-800 dark:hover:text-white"><X size={24} /></button>
             </div>
@@ -1096,8 +1096,8 @@ const Members = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-sm m-4 shadow-2xl border border-red-100 dark:border-red-900">
-            <div className="text-center mb-6"><div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600"><AlertTriangle size={32} /></div><h3 className="text-xl font-bold text-slate-800 dark:text-white">Confirm Deletion</h3><p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Enter Security PIN to delete this member.</p></div>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-3 w-full max-w-sm m-4 shadow-2xl border border-red-100 dark:border-red-900">
+            <div className="text-center mb-2"><div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600"><AlertTriangle size={32} /></div><h3 className="text-xl font-bold text-slate-800 dark:text-white">Confirm Deletion</h3><p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Enter Security PIN to delete this member.</p></div>
             <div className="space-y-4"><input type="password" autoFocus className="w-full p-3 text-center text-2xl tracking-widest border dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none" placeholder="PIN" maxLength={4} value={deletePin} onChange={e => setDeletePin(e.target.value)} />{deleteError && <p className="text-red-500 text-center text-sm font-medium">{deleteError}</p>}
               <div className="flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-2 border dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button><button onClick={confirmDelete} className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">Delete</button></div>
             </div>
@@ -1109,3 +1109,4 @@ const Members = () => {
 };
 
 export default Members;
+

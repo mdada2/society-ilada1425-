@@ -82,11 +82,11 @@ const InventoryEntry = () => {
 
     return (
         <div className="p-4 md:p-6 pb-24">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                 <PackagePlus className="text-emerald-600" /> Inventory Entry (स्टॉक नोंदणी)
             </h2>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-8">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <div className="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-700">
                     <h3 className="font-bold text-lg text-slate-700 dark:text-white">
                         {editingId ? "Edit Entry (नोंद बदला)" : "New Stock Entry (नवीन स्टॉक/ॲडजस्टमेंट)"}
@@ -193,8 +193,8 @@ const InventoryEntry = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
-                        <div className="text-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-3 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
+                        <div className="text-center mb-2">
                             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                                 <ShieldCheck size={32} />
                             </div>
@@ -238,3 +238,4 @@ const InventoryEntry = () => {
 };
 
 export default InventoryEntry;
+

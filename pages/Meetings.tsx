@@ -598,7 +598,7 @@ const Meetings = () => {
 
   return (
     <div className="p-4 md:p-6 pb-24">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
           <Handshake className="text-blue-600" /> Meetings & Resolutions
         </h2>
@@ -613,13 +613,13 @@ const Meetings = () => {
 
       {activeTab === 'notice' && (
         <div className="animate-fade-in space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700">
-              <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2 flex items-center gap-2 border-b dark:border-slate-700 pb-2">
                 <ClipboardList className="text-purple-600" /> नोटीस माहिती भरा (Notice Details)
               </h3>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-2">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">जा. क्र. (Outward No)</label>
                   <div className="flex items-center">
@@ -648,7 +648,7 @@ const Meetings = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-2">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">सभेचा प्रकार</label>
                   <select value={noticeMeetingType} onChange={e => setNoticeMeetingType(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white">
@@ -764,7 +764,7 @@ const Meetings = () => {
 
       {activeTab === 'board' && (
         <div className="animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
             <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200">
               <h3 className="font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">
                 <Briefcase size={20} /> Executive Board (कार्यकारी संचालक मंडळ)
@@ -802,7 +802,7 @@ const Meetings = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[550px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 h-[550px]">
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 flex flex-col overflow-hidden">
               <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                 <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Select From Members</h4>
@@ -837,8 +837,8 @@ const Meetings = () => {
 
       {activeTab === 'allowance' && (
         <div className="animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 mb-6">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
+            <div className="flex justify-between items-center mb-2">
               <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2"><Banknote className="text-green-600" /> बैठक भत्ता (Meeting Allowance)</h3>
               <div className="flex gap-2">
                 {isEditingRates ? (
@@ -878,7 +878,7 @@ const Meetings = () => {
           {allowanceMeetingId ? (
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 overflow-x-auto">
               <div ref={allowanceRef} className="bg-white dark:bg-slate-800 p-8 min-w-[900px] text-black dark:text-white">
-                <div className="text-center mb-8 border-b pb-4">
+                <div className="text-center mb-2 border-b pb-4">
                   <h2 className="text-xl font-bold mb-1">{SOCIETY_FULL_NAME}</h2>
                   <h3 className="text-lg font-bold underline">Meeting Allowance Voucher (बैठक भत्ता बिल)</h3>
                   <p className="text-sm text-slate-500 mt-2">Meeting: {meetings.find(m => m.id === allowanceMeetingId)?.title} | Date: {formatDateMarathi(meetings.find(m => m.id === allowanceMeetingId)?.date || '')}</p>
@@ -936,13 +936,13 @@ const Meetings = () => {
 
       {activeTab === 'records' && (
         <div className="animate-fade-in">
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end mb-2">
             <button onClick={() => { setEditingMeetingId(null); setTitle(''); setDate(format(new Date(), 'yyyy-MM-dd')); setVenue(''); setType('Monthly'); setAttendeesCount(0); setSelectedAttendees(new Set()); setResolutions(''); setShowModal(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition shadow-sm font-bold text-sm"><Plus size={18} /> Record New Meeting</button>
           </div>
           {meetings.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border dark:border-slate-700"><Handshake size={48} className="mx-auto text-slate-300 mb-4" /><p className="text-slate-500 dark:text-slate-400">No meeting records found.</p></div>
+            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border dark:border-slate-700"><Handshake size={48} className="mx-auto text-slate-300 mb-2" /><p className="text-slate-500 dark:text-slate-400">No meeting records found.</p></div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-3">
               {meetings.sort((a, b) => b.timestamp - a.timestamp).map(meeting => (
                 <div key={meeting.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 overflow-hidden group">
                   <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 flex justify-between items-center">
@@ -979,10 +979,11 @@ const Meetings = () => {
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] backdrop-blur-sm p-4"><div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up"><div className="text-center mb-6"><div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600"><ShieldCheck size={32} /></div><h3 className="text-xl font-bold text-slate-800 dark:text-white">Security Check</h3><p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Enter Security PIN to delete this record.</p></div><div className="space-y-4"><input type="password" autoFocus className="w-full p-3 text-center text-2xl tracking-widest border dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none" placeholder="PIN" maxLength={4} value={deletePin} onChange={e => setDeletePin(e.target.value)} />{deleteError && <p className="text-red-500 text-center text-sm font-medium">{deleteError}</p>}<div className="flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-2 border dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button><button onClick={confirmDeleteMeeting} className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">Delete</button></div></div></div></div>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] backdrop-blur-sm p-4"><div className="bg-white dark:bg-slate-800 rounded-xl p-3 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up"><div className="text-center mb-2"><div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-2 text-red-600"><ShieldCheck size={32} /></div><h3 className="text-xl font-bold text-slate-800 dark:text-white">Security Check</h3><p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Enter Security PIN to delete this record.</p></div><div className="space-y-4"><input type="password" autoFocus className="w-full p-3 text-center text-2xl tracking-widest border dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none" placeholder="PIN" maxLength={4} value={deletePin} onChange={e => setDeletePin(e.target.value)} />{deleteError && <p className="text-red-500 text-center text-sm font-medium">{deleteError}</p>}<div className="flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-2 border dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button><button onClick={confirmDeleteMeeting} className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">Delete</button></div></div></div></div>
       )}
     </div>
   );
 };
 
 export default Meetings;
+

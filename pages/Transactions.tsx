@@ -381,7 +381,7 @@ const Transactions = () => {
             `}</style>
             <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6 text-slate-400 dark:text-white px-1 text-left">Daily Transaction Entry</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 px-0 sm:px-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2 px-0 sm:px-2">
                 <div className="md:col-span-2 space-y-3 flex flex-col items-start md:block">
                     {/* Form Container - Full width on mobile */}
                     <div className="bg-white dark:bg-slate-800 p-3 md:p-5 rounded-md shadow-sm border dark:border-slate-700 w-full">
@@ -526,7 +526,7 @@ const Transactions = () => {
                     <div className="bg-white dark:bg-slate-800 p-3 md:p-5 rounded-md shadow-sm border dark:border-slate-700 lg:sticky lg:top-6 w-full border-t-4 border-t-red-500">
                         <h3 className="font-bold text-slate-400 dark:text-white mb-3 flex items-center gap-2 text-sm md:text-base">{lastSavedTransaction ? <CheckCircle className="text-green-500" /> : <Calculator className="text-blue-500" />}{lastSavedTransaction ? 'Last Saved Receipt' : 'Receipt Preview'}</h3>
                         <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 p-2 md:p-4 rounded-lg bg-slate-50 dark:bg-slate-900 overflow-x-auto min-h-[140px]">
-                            <div className="text-center mb-4 border-b border-slate-200 dark:border-slate-700 pb-2"><h4 className="font-bold text-slate-400 dark:text-white text-lg">Society Ilada</h4><p className="text-xs text-slate-500 dark:text-slate-400">Date: {formatDateDisplay(previewData.date)}</p></div>
+                            <div className="text-center mb-2 border-b border-slate-200 dark:border-slate-700 pb-2"><h4 className="font-bold text-slate-400 dark:text-white text-lg">Society Ilada</h4><p className="text-xs text-slate-500 dark:text-slate-400">Date: {formatDateDisplay(previewData.date)}</p></div>
                             <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
                                 <div className="flex justify-between"><span>Member:</span><span className="font-bold">{previewData.memberName || 'General'}</span></div>
                                 <div className="flex justify-between"><span>Type:</span><span className={`font-bold ${previewData.type === TransactionType.CREDIT ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{previewData.type === TransactionType.CREDIT ? 'Credit (जमा)' : 'Debit (नावे)'}</span></div>
@@ -642,7 +642,7 @@ const Transactions = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 border dark:border-slate-700 animate-fade-in-up">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-3 border dark:border-slate-700 animate-fade-in-up">
                         <div className="flex flex-col items-center text-center space-y-4">
                             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center">
                                 <Trash2 size={32} />
@@ -672,10 +672,10 @@ const Transactions = () => {
 
             {/* Hidden Receipt Print Template - Fixed width issue by constraining container */}
             <div className="fixed top-0 left-0 w-0 h-0 overflow-hidden opacity-0 pointer-events-none -z-50">
-                <div ref={receiptRef} className="bg-white text-black p-8 w-[148mm] min-h-[210mm] border font-sans">
-                    <div className="text-center border-b-2 border-black pb-4 mb-6"><h1 className="text-2xl font-bold uppercase tracking-wider">Society Ilada</h1><p className="text-sm">Receipt / Slip</p></div>
-                    <div className="flex justify-between mb-6 text-sm"><p>Date: <span className="font-bold">{formatDateDisplay(previewData.date)}</span></p><p>Receipt No: <span className="font-bold">#{previewData.id ? previewData.id.slice(-6) : 'PREVIEW'}</span></p></div>
-                    <div className="space-y-4 mb-8 text-sm">
+                <div ref={receiptRef} className="bg-white text-black p-3 w-[148mm] min-h-[210mm] border font-sans">
+                    <div className="text-center border-b-2 border-black pb-4 mb-2"><h1 className="text-2xl font-bold uppercase tracking-wider">Society Ilada</h1><p className="text-sm">Receipt / Slip</p></div>
+                    <div className="flex justify-between mb-2 text-sm"><p>Date: <span className="font-bold">{formatDateDisplay(previewData.date)}</span></p><p>Receipt No: <span className="font-bold">#{previewData.id ? previewData.id.slice(-6) : 'PREVIEW'}</span></p></div>
+                    <div className="space-y-4 mb-2 text-sm">
                         <div className="flex border-b border-dotted border-gray-400 pb-1"><span className="w-32">Member:</span><span className="font-bold flex-1">{previewData.memberName || 'General'}</span></div>
                         <div className="flex border-b border-dotted border-gray-400 pb-1"><span className="w-32">Type:</span><span className="font-bold flex-1">{previewData.type}</span></div>
                         <div className="flex border-b border-dotted border-gray-400 pb-1"><span className="w-32">Account:</span><span className="font-bold flex-1">{previewData.accountType}</span></div>
@@ -690,3 +690,4 @@ const Transactions = () => {
 };
 
 export default Transactions;
+

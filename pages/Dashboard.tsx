@@ -149,13 +149,13 @@ const Dashboard = () => {
     return (
         <div className="p-4 md:p-6 pb-28 bg-ios-gray-50 dark:bg-black min-h-screen">
             {/* Print Only Header */}
-            <div className="hidden print:block text-center mb-8 border-b-2 border-black pb-4">
+            <div className="hidden print:block text-center mb-2 border-b-2 border-black pb-4">
                 <h1 className="text-3xl font-bold text-black">Society Ilada</h1>
                 <p className="text-slate-600">Dashboard Status Report</p>
                 <p className="text-sm mt-1">Date: {format(new Date(), 'dd-MM-yyyy')}</p>
             </div>
 
-            <div className="flex justify-between items-center mb-6 print:hidden">
+            <div className="flex justify-between items-center mb-2 print:hidden">
                 <div className="flex items-center gap-3">
                     <h2 className="text-3xl font-bold text-ios-gray-900 dark:text-white">Dashboard</h2>
                 </div>
@@ -163,7 +163,7 @@ const Dashboard = () => {
             </div>
 
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 print:grid-cols-2 print:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-2 print:grid-cols-2 print:gap-4">
                 {/* Members */}
                 <Link to="/members" className="ios-card p-5 rounded-ios-xl hover:shadow-ios-md transition-all duration-200 ios-touch group relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Users size={80} /></div>
@@ -202,10 +202,10 @@ const Dashboard = () => {
                 </Link>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 {/* Main Chart Section */}
                 <div className="lg:col-span-2 ios-card p-6 rounded-ios-2xl min-w-0 print:border-black print:shadow-none">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-2">
                         <h3 className="text-lg font-semibold text-ios-gray-900 dark:text-white flex items-center gap-2">
                             {chartType === 'bar' && <BarChart3 size={20} className="text-ios-blue" />}
                             {chartType === 'pie' && <PieChartIcon size={20} className="text-ios-blue" />}
@@ -263,7 +263,7 @@ const Dashboard = () => {
 
                     {/* Bank Accounts List Widget */}
                     <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-2">
                             <h4 className="text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
                                 <Landmark size={16} /> Bank Accounts
                             </h4>
@@ -288,7 +288,7 @@ const Dashboard = () => {
 
                     {/* Quick Actions */}
                     <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700">
-                        <h4 className="text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">Quick Actions</h4>
+                        <h4 className="text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">Quick Actions</h4>
                         <div className="grid grid-cols-2 gap-3">
                             <Link to="/transactions" className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl text-center text-xs font-bold hover:bg-blue-100 transition flex flex-col items-center gap-1">
                                 <IndianRupee size={18} /> New Entry
@@ -305,3 +305,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

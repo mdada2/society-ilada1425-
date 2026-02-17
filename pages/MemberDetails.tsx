@@ -283,7 +283,7 @@ const MemberDetails = () => {
     return (
         <div className="p-4 md:p-6 max-w-6xl mx-auto w-full pb-40"> {/* Increased bottom padding */}
             {/* Header & Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 no-print">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3 no-print">
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
                     <ArrowLeft size={20} /> Back to List
                 </button>
@@ -306,9 +306,9 @@ const MemberDetails = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 p-4 md:p-6 mb-6 print:shadow-none print:border-0 print:bg-white print:text-black">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 p-4 md:p-6 mb-2 print:shadow-none print:border-0 print:bg-white print:text-black">
                 {/* Sticky Header Wrapper */}
-                <div className="sticky top-16 md:top-0 z-20 bg-white dark:bg-slate-800 -mx-4 px-4 md:-mx-6 md:px-6 -mt-4 pt-4 md:-mt-6 md:pt-6 pb-4 border-b dark:border-slate-700 mb-6 shadow-sm print:static print:shadow-none print:border-none print:m-0 print:p-0">
+                <div className="sticky top-16 md:top-0 z-20 bg-white dark:bg-slate-800 -mx-4 px-4 md:-mx-6 md:px-6 -mt-4 pt-4 md:-mt-6 md:pt-6 pb-4 border-b dark:border-slate-700 mb-2 shadow-sm print:static print:shadow-none print:border-none print:m-0 print:p-0">
                     {/* Top Section: Name & Basic Info */}
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div className="flex items-center gap-4 flex-1 w-full">
@@ -405,7 +405,7 @@ const MemberDetails = () => {
                 </div>
 
                 {/* Financial Overview (Interactive Cards) */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6 mb-6 md:mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6 mb-2 md:mb-8">
 
                     {/* Savings Card */}
                     <div className="group p-3 md:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800 print:border-black min-w-0 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer active:scale-95 relative flex flex-col justify-between">
@@ -770,9 +770,9 @@ const MemberDetails = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
                 <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl max-w-sm w-full border dark:border-slate-700 animate-fade-in-up">
-                        <div className="flex flex-col items-center text-center mb-6">
-                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 text-red-600 dark:text-red-500">
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-2xl max-w-sm w-full border dark:border-slate-700 animate-fade-in-up">
+                        <div className="flex flex-col items-center text-center mb-2">
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-2 text-red-600 dark:text-red-500">
                                 <AlertCircle size={32} />
                             </div>
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Delete Transaction?</h3>
@@ -802,13 +802,13 @@ const MemberDetails = () => {
             {/* Hidden Print Container */}
             <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
                 <div ref={printRef} className="bg-white text-black p-10 w-[210mm] min-h-[297mm] flex flex-col font-sans relative">
-                    <div className="text-center border-b-2 border-slate-800 pb-4 mb-6">
+                    <div className="text-center border-b-2 border-slate-800 pb-4 mb-2">
                         <h1 className="text-3xl font-bold uppercase tracking-wider">Society Ilada</h1>
                         <p className="text-sm text-slate-600">Reg. No. 1425 | Management System</p>
                         <div className="mt-2 px-4 py-1 bg-slate-800 text-white inline-block text-sm font-bold rounded">ACCOUNT STATEMENT</div>
                     </div>
 
-                    <div className="flex justify-between mb-8">
+                    <div className="flex justify-between mb-2">
                         <div>
                             <p className="text-xs text-slate-500 uppercase font-bold">Member Details</p>
                             <h2 className="text-xl font-bold">{member.name}</h2>
@@ -826,7 +826,7 @@ const MemberDetails = () => {
 
                     {/* Account Summary Grid */}
                     <div className="mb-8">
-                        <h3 className="text-sm font-bold uppercase border-b border-slate-400 mb-4 pb-1">Financial Summary</h3>
+                        <h3 className="text-sm font-bold uppercase border-b border-slate-400 mb-2 pb-1">Financial Summary</h3>
                         <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                             <div className="flex justify-between border-b border-dotted border-slate-300 pb-1">
                                 <span>Savings Balance</span>
@@ -865,7 +865,7 @@ const MemberDetails = () => {
 
                     {/* Transactions Table */}
                     <div className="flex-1">
-                        <h3 className="text-sm font-bold uppercase border-b border-slate-400 mb-4 pb-1">Recent Transactions (Last 10)</h3>
+                        <h3 className="text-sm font-bold uppercase border-b border-slate-400 mb-2 pb-1">Recent Transactions (Last 10)</h3>
                         <table className="w-full text-sm">
                             <thead className="bg-slate-200">
                                 <tr>

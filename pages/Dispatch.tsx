@@ -177,7 +177,7 @@ const Dispatch = () => {
 
     return (
         <div className="p-4 md:p-6 pb-24">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                 <Truck className="text-blue-600" /> Dispatch (मिलला माल पाठवणे)
             </h2>
 
@@ -197,7 +197,7 @@ const Dispatch = () => {
                 </div>
             )}
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-8">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <div className="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-700">
                     <h3 className="font-bold text-lg text-slate-700 dark:text-white">
                         {editingId ? "Edit Dispatch (नोंद बदला)" : "New Dispatch (नवीन नोंद)"}
@@ -233,7 +233,7 @@ const Dispatch = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border dark:border-slate-700">
                             <h4 className="text-sm font-bold text-slate-500 mb-3 flex items-center gap-2">
                                 <MapPin size={16} /> STORAGE SOURCE
@@ -352,7 +352,7 @@ const Dispatch = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-3">
                                     <div className="text-right">
                                         <div className="font-bold text-slate-800 dark:text-white">{d.bags} Bags</div>
                                         <div className="text-xs text-slate-500">{d.weight} Qtl</div>
@@ -372,8 +372,8 @@ const Dispatch = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
-                        <div className="text-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-3 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
+                        <div className="text-center mb-2">
                             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                                 <ShieldCheck size={32} />
                             </div>
@@ -417,3 +417,4 @@ const Dispatch = () => {
 };
 
 export default Dispatch;
+

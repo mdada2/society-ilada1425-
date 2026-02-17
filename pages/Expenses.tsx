@@ -320,7 +320,7 @@ const Expenses = () => {
 
     return (
         <div className="p-4 md:p-6 pb-24 max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
                 <div>
                     <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
                         <Receipt className="text-red-600" /> Expense Manager
@@ -336,7 +336,7 @@ const Expenses = () => {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex gap-2 mb-6 overflow-x-auto">
+            <div className="flex gap-2 mb-2 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('expenses')}
                     className={`px-6 py-3 rounded-xl font-black text-sm transition-all whitespace-nowrap ${activeTab === 'expenses'
@@ -361,7 +361,7 @@ const Expenses = () => {
             {activeTab === 'expenses' && (
                 <>
                     {/* Budget Tracker & Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                         <div className="md:col-span-2 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border dark:border-slate-700">
                             <div className="flex justify-between items-end mb-2">
                                 <div>
@@ -390,7 +390,7 @@ const Expenses = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                         {/* List Section */}
                         <div className="lg:col-span-2 space-y-4">
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 overflow-hidden">
@@ -444,7 +444,7 @@ const Expenses = () => {
                         {/* Analysis Section */}
                         <div className="space-y-4">
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700">
-                                <h3 className="text-sm font-black uppercase text-slate-500 mb-6 flex items-center gap-2"><PieIcon size={16} /> Spending Split</h3>
+                                <h3 className="text-sm font-black uppercase text-slate-500 mb-2 flex items-center gap-2"><PieIcon size={16} /> Spending Split</h3>
                                 <div className="h-64 w-full">
                                     {chartData.length > 0 && (
                                         <ResponsiveContainer width="100%" height="100%">
@@ -476,7 +476,7 @@ const Expenses = () => {
             {activeTab === 'salary' && (
                 <>
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border dark:border-slate-700">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -515,7 +515,7 @@ const Expenses = () => {
                     </div>
 
                     {/* Filters */}
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border dark:border-slate-700 mb-6">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border dark:border-slate-700 mb-2">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Month</label>
@@ -902,3 +902,4 @@ const Expenses = () => {
 };
 
 export default Expenses;
+

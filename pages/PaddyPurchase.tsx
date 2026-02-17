@@ -468,7 +468,7 @@ const PaddyPurchase = () => {
 
     return (
         <div className="p-4 md:p-6 pb-24 relative">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-2">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <ShoppingBag className="text-amber-600" /> Paddy Purchase (धान खरेदी)
                 </h2>
@@ -554,8 +554,8 @@ const PaddyPurchase = () => {
             {/* SEASON CREATION MODAL */}
             {showSeasonModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-3 border dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-2">
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                 <Calendar className="text-emerald-600" />
                                 नवीन हंगाम तयार करा
@@ -653,7 +653,7 @@ const PaddyPurchase = () => {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {/* Inputs Section */}
                         <div className="space-y-4">
                             <div>
@@ -686,7 +686,7 @@ const PaddyPurchase = () => {
                         </div>
 
                         {/* Results Section */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-blue-950 p-6 rounded-2xl border border-blue-100 dark:border-blue-900 flex flex-col justify-center gap-6 shadow-inner">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-blue-950 p-3 rounded-2xl border border-blue-100 dark:border-blue-900 flex flex-col justify-center gap-3 shadow-inner">
                             <div className="text-center">
                                 <span className="text-xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">एकूण वजन (Total Weight)</span>
                                 <p className={`text-3xl font-black transition-all duration-300 ${calculatedStats.hasInput ? 'text-blue-800 dark:text-white scale-100' : 'text-slate-300 dark:text-slate-700 opacity-30'}`}>
@@ -720,7 +720,7 @@ const PaddyPurchase = () => {
             {/* Settings Panel */}
             {showSettings && (
                 <div className="mb-6 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 animate-fade-in">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-2">
                         <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                             <Archive size={18} className="text-amber-600" /> Storage Capacity Configuration (साठवणूक क्षमता)
                         </h3>
@@ -729,7 +729,7 @@ const PaddyPurchase = () => {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {/* Godown Setting */}
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900">
                             <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
@@ -797,7 +797,7 @@ const PaddyPurchase = () => {
             )}
 
             {/* Input Form */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border dark:border-slate-700 mb-8">
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <div className="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-700">
                     <h3 className="font-bold text-lg text-slate-700 dark:text-white">
                         {editingId ? "Edit Record (माहिती बदला)" : "New Entry (नवीन नोंद)"}
@@ -1135,8 +1135,8 @@ const PaddyPurchase = () => {
             {
                 showDeleteModal && (
                     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-sm p-4">
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
-                            <div className="text-center mb-6">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 w-full max-w-sm shadow-2xl border border-red-100 dark:border-red-900 animate-fade-in-up">
+                            <div className="text-center mb-2">
                                 <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                                     <ShieldCheck size={32} />
                                 </div>
@@ -1179,8 +1179,8 @@ const PaddyPurchase = () => {
 
             {/* Hidden Container for Beautiful Image Export */}
             <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px' }}>
-                <div ref={recentRecordsRef} className="bg-white p-8 space-y-4">
-                    <h2 className="text-6xl font-bold text-center text-slate-800 mb-6">खरेदी केंद्र ईळदा</h2>
+                <div ref={recentRecordsRef} className="bg-white p-3 space-y-4">
+                    <h2 className="text-6xl font-bold text-center text-slate-800 mb-2">खरेदी केंद्र ईळदा</h2>
                     {[...filteredPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10).map((record, index) => {
                         // Calculate running totals up to this record
                         const relevantRecords = filteredPurchases.filter(r => r.timestamp <= record.timestamp);
@@ -1265,3 +1265,4 @@ const PaddyPurchase = () => {
 };
 
 export default PaddyPurchase;
+

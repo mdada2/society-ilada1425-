@@ -212,7 +212,7 @@ const BankAudit = () => {
 
     return (
         <div className="p-4 md:p-6 pb-24">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                         <Landmark className="text-blue-600" /> Bank & Audit Manager
@@ -241,7 +241,7 @@ const BankAudit = () => {
                             <div
                                 key={bank.id}
                                 onClick={() => setSelectedBankForStatement(bank)}
-                                className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700 relative overflow-hidden group transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+                                className="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border dark:border-slate-700 relative overflow-hidden group transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
                             >
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><LandmarkIcon size={80} /></div>
                                 <div className="flex justify-between items-start mb-4">
@@ -286,8 +286,8 @@ const BankAudit = () => {
 
             {activeTab === 'trial' && (
                 <div className="animate-fade-in space-y-6 trial-balance-content">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700">
-                        <div className="text-center mb-8 pb-4 border-b dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border dark:border-slate-700">
+                        <div className="text-center mb-2 pb-4 border-b dark:border-slate-700">
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-wider">Trial Balance (कच्चा ताळेबंद)</h3>
                             <p className="text-sm text-slate-500">Financial Situation as of {format(new Date(), 'dd MMMM yyyy')}</p>
                         </div>
@@ -323,7 +323,7 @@ const BankAudit = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className={`mt-8 p-6 rounded-2xl border-2 flex flex-col md:flex-row items-center justify-between gap-4 ${Math.abs(trialBalance.totalLiab - trialBalance.totalAssets) < 1 ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'}`}>
+                        <div className={`mt-8 p-3 rounded-2xl border-2 flex flex-col md:flex-row items-center justify-between gap-4 ${Math.abs(trialBalance.totalLiab - trialBalance.totalAssets) < 1 ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'}`}>
                             <div className="flex items-center gap-4">
                                 {Math.abs(trialBalance.totalLiab - trialBalance.totalAssets) < 1 ? (
                                     <CheckCircle size={40} className="text-emerald-600" />
@@ -374,8 +374,8 @@ const BankAudit = () => {
             {/* Modals */}
             {showBankModal && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-3 animate-fade-in-up">
+                        <div className="flex justify-between items-center mb-2">
                             <h3 className="text-xl font-bold">{editingBankId ? 'Edit Bank Account' : 'Add Society Bank'}</h3>
                             <button onClick={() => setShowBankModal(false)}><X size={24} /></button>
                         </div>
@@ -405,8 +405,8 @@ const BankAudit = () => {
             {/* Delete Bank Security PIN Modal */}
             {showDeleteBankModal && (
                 <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up">
-                        <div className="text-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-3 animate-fade-in-up">
+                        <div className="text-center mb-2">
                             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                                 <ShieldCheck size={32} />
                             </div>
@@ -435,8 +435,8 @@ const BankAudit = () => {
 
             {showTransferModal && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-3 animate-fade-in-up">
+                        <div className="flex justify-between items-center mb-2">
                             <h3 className="text-xl font-bold">Bank Transfer (नकद ⇄ बँक)</h3>
                             <button onClick={() => setShowTransferModal(false)}><X size={24} /></button>
                         </div>
@@ -465,8 +465,8 @@ const BankAudit = () => {
 
             {showAuditModal && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-3 animate-fade-in-up">
+                        <div className="flex justify-between items-center mb-2">
                             <h3 className="text-xl font-bold">New Audit Note</h3>
                             <button onClick={() => setShowAuditModal(false)}><X size={24} /></button>
                         </div>
@@ -539,3 +539,4 @@ const BankAudit = () => {
 };
 
 export default BankAudit;
+
