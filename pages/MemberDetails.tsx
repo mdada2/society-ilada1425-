@@ -281,7 +281,7 @@ const MemberDetails = () => {
     };
 
     return (
-        <div className="pt-0 md:pt-1 px-1 max-w-6xl mx-auto w-full pb-40"> {/* Increased bottom padding */}
+        <div className="p-4 md:p-6 max-w-6xl mx-auto w-full pb-40"> {/* Increased bottom padding */}
             {/* Header & Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3 no-print">
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
@@ -306,7 +306,7 @@ const MemberDetails = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 p-2 mb-2 print:shadow-none print:border-0 print:bg-white print:text-black">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 p-4 md:p-6 mb-2 print:shadow-none print:border-0 print:bg-white print:text-black">
                 {/* Sticky Header Wrapper */}
                 <div className="sticky top-16 md:top-0 z-20 bg-white dark:bg-slate-800 -mx-4 px-4 md:-mx-6 md:px-6 -mt-4 pt-4 md:-mt-6 md:pt-6 pb-4 border-b dark:border-slate-700 mb-2 shadow-sm print:static print:shadow-none print:border-none print:m-0 print:p-0">
                     {/* Top Section: Name & Basic Info */}
@@ -405,7 +405,7 @@ const MemberDetails = () => {
                 </div>
 
                 {/* Financial Overview (Interactive Cards) */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-1 mb-0">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6 mb-2 md:mb-8">
 
                     {/* Savings Card */}
                     <div className="group p-3 md:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800 print:border-black min-w-0 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer active:scale-95 relative flex flex-col justify-between">

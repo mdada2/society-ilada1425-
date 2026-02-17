@@ -580,7 +580,7 @@ const MainLayout = () => {
   return (
     <div className="flex bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors duration-200">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <div className="flex-1 md:ml-64 flex flex-col w-full transition-all duration-300 print:ml-0 print:w-full overflow-x-hidden pt-24 md:pt-0">
+      <div className="flex-1 md:ml-64 flex flex-col w-full transition-all duration-300 print:ml-0 print:w-full overflow-x-hidden md:pt-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6rem)' }}>
         <div className="md:hidden flex items-center justify-between bg-slate-900 text-white fixed top-0 left-0 right-0 z-50 shadow-md no-print h-24 px-4 w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: '1rem' }}>
           <div className="font-bold text-lg text-blue-400">Society Ilada</div>
           <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-full transition"><Menu size={24} /></button>

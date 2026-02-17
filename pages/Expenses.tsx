@@ -319,7 +319,7 @@ const Expenses = () => {
 
 
     return (
-        <div className="pt-0 md:pt-1 px-1 pb-24 max-w-6xl mx-auto">
+        <div className="p-4 md:p-6 pb-24 max-w-6xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
                 <div>
                     <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">

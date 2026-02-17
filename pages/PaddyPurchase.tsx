@@ -467,7 +467,7 @@ const PaddyPurchase = () => {
     };
 
     return (
-        <div className="pt-0 md:pt-1 px-1 pb-24 relative">
+        <div className="p-4 md:p-6 pb-24 relative">
             <div className="flex justify-between items-center mb-2">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <ShoppingBag className="text-amber-600" /> Paddy Purchase (धान खरेदी)

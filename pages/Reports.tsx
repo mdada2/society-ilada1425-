@@ -342,9 +342,9 @@ const Reports = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
-            <h3 className="text-lg font-bold mb-2">Profit & Loss Chart (नफा-तोटा चार्ट)</h3>
-            <div className="flex flex-col gap-1">
+          <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
+            <h3 className="text-lg font-bold mb-6">Profit & Loss Chart (नफा-तोटा चार्ट)</h3>
+            <div className="flex flex-col gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-bold text-green-600">Income (Interest Received/Due)</span>
@@ -663,15 +663,9 @@ const Reports = () => {
         }
       });
 
-      // Calculate totals for filtered bucket data
-      const npaTotalPrincipal = filteredByBucket.reduce((sum, item) => sum + (item.principal || 0), 0);
-      const npaTotalInterest = filteredByBucket.reduce((sum, item) => sum + (item.interest || 0), 0);
-      const npaGrandTotal = npaTotalPrincipal + npaTotalInterest;
-
       return (
-        <div className="flex flex-col gap-2">
-          {/* Bucket Selection Buttons */}
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-4 h-full">
+          <div className="flex flex-wrap gap-2 pb-2">
             {buckets.map(bucket => (
               <button
                 key={bucket}
@@ -687,38 +681,12 @@ const Reports = () => {
               </button>
             ))}
           </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {/* Principal Card */}
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 rounded-xl shadow-lg">
-              <div className="text-xs opacity-90 mb-1">एकूण मुद्दल</div>
-              <div className="text-2xl font-bold">₹{npaTotalPrincipal.toLocaleString()}</div>
-            </div>
-
-            {/* Interest Card */}
-            <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 rounded-xl shadow-lg">
-              <div className="text-xs opacity-90 mb-1">एकूण व्याज</div>
-              <div className="text-2xl font-bold">₹{npaTotalInterest.toLocaleString()}</div>
-            </div>
-          </div>
-
-          {/* Report Table */}
           <ReportTable
             title={`NPA List - ${activeBucket}`}
             columns={[...columns, { header: 'Overdue Days', accessorKey: 'overdueDays' }]}
             data={filteredByBucket}
             onRowClick={(item) => handleMemberClick(item.id)}
           />
-
-          {/* Footer Totals */}
-          <div className="bg-gray-50 dark:bg-slate-900 p-2 rounded-lg border-t-2 border-gray-200 dark:border-slate-700">
-            <div className="flex flex-col sm:flex-row justify-end gap-4 sm:gap-8 font-bold text-base sm:text-lg">
-              <div className="text-blue-700 dark:text-blue-400">एकूण मुद्दल: ₹{npaTotalPrincipal.toLocaleString()}</div>
-              <div className="text-green-700 dark:text-green-400">एकूण व्याज: ₹{npaTotalInterest.toLocaleString()}</div>
-              <div className="text-purple-700 dark:text-purple-400">Grand Total: ₹{npaGrandTotal.toLocaleString()}</div>
-            </div>
-          </div>
         </div>
       )
     }
@@ -1283,41 +1251,9 @@ const Reports = () => {
     }
 
 
-    // Calculate totals from displayed data
-    const totalPrincipal = displayData.reduce((sum, item) => sum + (item.principal || 0), 0);
-    const totalInterest = displayData.reduce((sum, item) => sum + (item.interest || 0), 0);
-    const grandTotal = totalPrincipal + totalInterest;
 
-    return (
-      <div className="flex flex-col gap-2">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {/* Principal Card */}
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 rounded-xl shadow-lg">
-            <div className="text-xs opacity-90 mb-1">एकूण मुद्दल</div>
-            <div className="text-2xl font-bold">₹{totalPrincipal.toLocaleString()}</div>
-          </div>
 
-          {/* Interest Card */}
-          <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 rounded-xl shadow-lg">
-            <div className="text-xs opacity-90 mb-1">एकूण व्याज</div>
-            <div className="text-2xl font-bold">₹{totalInterest.toLocaleString()}</div>
-          </div>
-        </div>
-
-        {/* Report Table */}
-        <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />
-
-        {/* Footer Totals */}
-        <div className="bg-gray-50 dark:bg-slate-900 p-2 rounded-lg border-t-2 border-gray-200 dark:border-slate-700">
-          <div className="flex flex-col sm:flex-row justify-end gap-4 sm:gap-8 font-bold text-base sm:text-lg">
-            <div className="text-blue-700 dark:text-blue-400">एकूण मुद्दल: ₹{totalPrincipal.toLocaleString()}</div>
-            <div className="text-green-700 dark:text-green-400">एकूण व्याज: ₹{totalInterest.toLocaleString()}</div>
-            <div className="text-purple-700 dark:text-purple-400">Grand Total: ₹{grandTotal.toLocaleString()}</div>
-          </div>
-        </div>
-      </div>
-    );
+    return <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />;
   };
 
   const renderMembership = () => {
@@ -2280,12 +2216,12 @@ const Reports = () => {
   if (!selectedCategory) {
     // Grid View
     return (
-      <div className="pt-0 md:pt-1 px-1 pb-24 animate-fade-in">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-0 flex items-center gap-2">
+      <div className="p-4 md:p-8 pb-24 animate-fade-in">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
           <FileText className="text-blue-600" /> Reports Center
         </h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {REPORT_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -2322,9 +2258,9 @@ const Reports = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
       {/* Top Navigation Bar */}
-      <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 shadow-sm z-10">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
+      <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 shadow-sm z-10">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
             <button onClick={handleBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition text-slate-600 dark:text-slate-300">
               <ArrowLeft size={20} />
             </button>
@@ -2357,7 +2293,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-1 pb-24 bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 overflow-auto p-4 pb-24 bg-slate-50 dark:bg-slate-900">
         {renderContent()}
       </div>
 
