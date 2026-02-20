@@ -6,6 +6,7 @@ import { ShoppingBag, Save, Copy, Share2, Trash2, Edit, Plus, Settings, X, Archi
 import { PaddyPurchaseRecord, PaddySeason } from '../types';
 import { Share } from '@capacitor/share';
 import html2canvas from 'html2canvas';
+import { downloadBlob } from '../utils/downloadUtils';
 
 const PaddyPurchase = () => {
     const { paddyPurchases, addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase, paddySeasons, addPaddySeason, updatePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason, settings, updateSettings } = useApp();
@@ -130,7 +131,7 @@ const PaddyPurchase = () => {
         }
     };
 
-    // Image Download Handler (JPG/PNG)
+    // Image Download Handler (JPG/PNG) - Works on Web and Android
     const handleDownloadRecordsImage = async (imageFormat: 'jpeg' | 'png' = 'jpeg') => {
         if (recentRecordsRef.current) {
             try {
@@ -142,15 +143,15 @@ const PaddyPurchase = () => {
                 });
 
                 const mimeType = imageFormat === 'png' ? 'image/png' : 'image/jpeg';
-                const imgData = canvas.toDataURL(mimeType, 0.9);
+                const quality = imageFormat === 'png' ? undefined : 0.9;
 
-                // Create download link
-                const link = document.createElement('a');
-                link.href = imgData;
-                link.download = `Paddy_Purchase_Records_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.${imageFormat}`;
-                link.click();
-
-                setTimeout(() => alert(`✅ ${imageFormat.toUpperCase()} Image downloaded!`), 500);
+                // Convert canvas to blob for Android compatibility
+                canvas.toBlob(async (blob) => {
+                    if (blob) {
+                        const filename = `Paddy_Purchase_Records_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.${imageFormat}`;
+                        await downloadBlob(blob, filename);
+                    }
+                }, mimeType, quality);
             } catch (error) {
                 console.error('Image Download Error:', error);
                 alert('Failed to download image. Please try again.');
@@ -1179,8 +1180,8 @@ const PaddyPurchase = () => {
 
             {/* Hidden Container for Beautiful Image Export */}
             <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px' }}>
-                <div ref={recentRecordsRef} className="bg-white p-3 space-y-4">
-                    <h2 className="text-6xl font-bold text-center text-slate-800 mb-2">खरेदी केंद्र ईळदा</h2>
+                <div ref={recentRecordsRef} className="bg-white p-4 space-y-4">
+                    <h2 className="text-4xl font-bold text-center text-blue-700 mb-4 border-b-4 border-blue-500 pb-3">खरेदी केंद्र ईळदा</h2>
                     {[...filteredPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10).map((record, index) => {
                         // Calculate running totals up to this record
                         const relevantRecords = filteredPurchases.filter(r => r.timestamp <= record.timestamp);
@@ -1207,54 +1208,54 @@ const PaddyPurchase = () => {
                         return (
                             <div key={record.id} className="border-2 border-slate-300 rounded-lg p-4 bg-slate-50 shadow-md">
                                 {/* Date Header */}
-                                <div className="bg-blue-100 px-4 py-4 rounded-md mb-5">
-                                    <p className="text-4xl font-bold text-slate-800">दिनांक: {format(new Date(record.date), 'dd/MM/yyyy')}</p>
+                                <div className="bg-blue-600 px-4 py-3 rounded-md mb-4">
+                                    <p className="text-3xl font-bold text-white">दिनांक: {format(new Date(record.date), 'dd/MM/yyyy')}</p>
                                 </div>
 
                                 {/* Member Stats */}
-                                <div className="border-l-4 border-blue-500 pl-5 mb-5">
-                                    <p className="text-3xl font-medium">आदि सभासद :- {record.tribalMembers || 0}</p>
-                                    <p className="text-3xl font-medium">गैर आदि सभा :- {record.nonTribalMembers || 0}</p>
-                                    <p className="text-4xl font-bold">एकूण सभासद :- {(record.tribalMembers || 0) + (record.nonTribalMembers || 0)}</p>
+                                <div className="border-l-4 border-orange-500 pl-4 mb-4 bg-orange-50 py-2 rounded-r">
+                                    <p className="text-2xl font-bold text-orange-700">आदि सभासद :- {record.tribalMembers || 0}</p>
+                                    <p className="text-2xl font-bold text-orange-600">गैर आदि सभा :- {record.nonTribalMembers || 0}</p>
+                                    <p className="text-3xl font-bold text-orange-800">एकूण सभासद :- {(record.tribalMembers || 0) + (record.nonTribalMembers || 0)}</p>
                                 </div>
 
                                 {/* Purchase Details */}
-                                <div className="space-y-2 mb-5">
-                                    <p className="text-3xl">• नविन पोते :- {cumulativeNew}</p>
-                                    <p className="text-3xl">• वजन :- {cumulativeNewWeight.toFixed(2)}</p>
-                                    <p className="text-3xl">• जुने पोते :- {derivedOldBags}</p>
-                                    <p className="text-3xl font-bold text-green-700">• वजन :- {derivedOldWeight.toFixed(2)}</p>
-                                    <p className="text-3xl">• एकदा वापरलेला :- {cumulativeUsed}</p>
-                                    <p className="text-3xl">• वजन :- {cumulativeUsedWeight.toFixed(2)}</p>
+                                <div className="space-y-1 mb-4 bg-slate-100 p-3 rounded-lg">
+                                    <p className="text-2xl font-bold text-blue-700">• नविन पोते :- {cumulativeNew}</p>
+                                    <p className="text-2xl font-bold text-blue-600">• वजन :- {cumulativeNewWeight.toFixed(2)}</p>
+                                    <p className="text-2xl font-bold text-amber-700">• जुने पोते :- {derivedOldBags}</p>
+                                    <p className="text-2xl font-bold text-amber-600">• वजन :- {derivedOldWeight.toFixed(2)}</p>
+                                    <p className="text-2xl font-bold text-purple-700">• एकदा वापरलेला :- {cumulativeUsed}</p>
+                                    <p className="text-2xl font-bold text-purple-600">• वजन :- {cumulativeUsedWeight.toFixed(2)}</p>
                                 </div>
 
                                 {/* Totals */}
-                                <div className="border-l-4 border-green-600 pl-5 mb-5 bg-green-50 py-4">
-                                    <p className="text-4xl font-bold">एकूण पोते:- {totalRecBags}</p>
-                                    <p className="text-4xl font-bold text-green-700">एकूण वजन:- {totalRecWeight.toFixed(2)}</p>
+                                <div className="border-l-4 border-green-600 pl-4 mb-4 bg-green-100 py-3 rounded-r">
+                                    <p className="text-3xl font-bold text-green-800">एकूण पोते:- {totalRecBags}</p>
+                                    <p className="text-3xl font-bold text-green-700">एकूण वजन:- {totalRecWeight.toFixed(2)}</p>
                                 </div>
 
                                 {/* Storage Details */}
-                                <div className="border-l-4 border-purple-500 pl-5 space-y-4">
+                                <div className="border-l-4 border-indigo-500 pl-4 space-y-3 bg-indigo-50 py-3 rounded-r">
                                     <div>
-                                        <p className="font-bold text-3xl">गोदामात खरेदी</p>
-                                        <p className="text-2xl">• पोते :- {totalGodown}</p>
-                                        <p className="text-2xl">• वजन :- {totalGodownW.toFixed(2)}</p>
+                                        <p className="font-bold text-2xl text-indigo-800">गोदामात खरेदी</p>
+                                        <p className="text-xl font-bold text-indigo-700">• पोते :- {totalGodown}</p>
+                                        <p className="text-xl font-bold text-indigo-600">• वजन :- {totalGodownW.toFixed(2)}</p>
                                     </div>
                                     <div>
-                                        <p className="font-bold text-3xl">शेडमध्ये खरेदी</p>
-                                        <p className="text-2xl">• पोते :- {totalShed}</p>
-                                        <p className="text-2xl">• वजन :- {totalShedW.toFixed(2)}</p>
+                                        <p className="font-bold text-2xl text-teal-800">शेडमध्ये खरेदी</p>
+                                        <p className="text-xl font-bold text-teal-700">• पोते :- {totalShed}</p>
+                                        <p className="text-xl font-bold text-teal-600">• वजन :- {totalShedW.toFixed(2)}</p>
                                     </div>
                                     <div>
-                                        <p className="font-bold text-3xl">उघड्यावर खरेदी</p>
-                                        <p className="text-2xl">• पोते :- {totalOpen}</p>
-                                        <p className="text-2xl">• वजन :- {totalOpenW.toFixed(2)}</p>
+                                        <p className="font-bold text-2xl text-rose-800">उघड्यावर खरेदी</p>
+                                        <p className="text-xl font-bold text-rose-700">• पोते :- {totalOpen}</p>
+                                        <p className="text-xl font-bold text-rose-600">• वजन :- {totalOpenW.toFixed(2)}</p>
                                     </div>
                                 </div>
 
                                 {/* Timestamp */}
-                                <p className="text-right text-lg text-slate-500 mt-5">{format(new Date(record.timestamp), 'h:mm a')}</p>
+                                <p className="text-right text-lg font-bold text-slate-600 mt-4">{format(new Date(record.timestamp), 'h:mm a')}</p>
                             </div>
                         );
                     })}
