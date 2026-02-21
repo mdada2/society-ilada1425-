@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { SocialLogin } from '@capgo/capacitor-social-login';
+import type { GoogleLoginResponseOnline } from '@capgo/capacitor-social-login';
 
 declare global {
     interface Window {
@@ -38,36 +41,79 @@ export const useGoogleDrive = () => {
     const [isInitialized, setIsInitialized] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Load Google Identity Services Script
-    useEffect(() => {
-        const script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.onload = () => setIsInitialized(true);
-        document.body.appendChild(script);
+    // Check if running on native mobile platform
+    const isNative = Capacitor.isNativePlatform();
+    const initAttempted = useRef(false);
 
-        return () => {
-            document.body.removeChild(script);
-        };
-    }, []);
-
-    // Initialize Token Client
+    // Initialize Google Auth based on platform
     useEffect(() => {
-        if (isInitialized && window.google) {
-            const client = window.google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: (response: GoogleToken) => {
-                    if (response.access_token) {
-                        setAccessToken(response.access_token);
-                        fetchUserProfile(response.access_token);
-                    }
-                },
-            });
-            setTokenClient(client);
+        if (initAttempted.current) return;
+        initAttempted.current = true;
+
+        if (isNative) {
+            // Native mobile initialization using @capgo/capacitor-social-login
+            console.log('[GoogleDrive] Initializing for native platform...');
+            SocialLogin.initialize({
+                google: {
+                    webClientId: CLIENT_ID,
+                    mode: 'online', // We need access token for Drive API
+                }
+            })
+                .then(() => {
+                    console.log('[GoogleDrive] Native SocialLogin initialized successfully');
+                    setIsInitialized(true);
+                })
+                .catch((err: any) => {
+                    console.error('[GoogleDrive] Native SocialLogin init failed:', err);
+                    // Still set initialized to true so web fallback can work
+                    setIsInitialized(true);
+                    setError('Google Auth initialization failed on native');
+                });
+        } else {
+            // Web initialization - load Google Identity Services script
+            console.log('[GoogleDrive] Initializing for web platform...');
+            const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+            if (existingScript) {
+                setIsInitialized(true);
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            script.onload = () => {
+                console.log('[GoogleDrive] Web GIS script loaded');
+                setIsInitialized(true);
+            };
+            script.onerror = () => {
+                console.error('[GoogleDrive] Failed to load GIS script');
+                setError('Failed to load Google Sign-In');
+            };
+            document.body.appendChild(script);
         }
-    }, [isInitialized]);
+    }, [isNative]);
+
+    // Initialize Token Client for web
+    useEffect(() => {
+        if (!isNative && isInitialized && window.google && !tokenClient) {
+            try {
+                const client = window.google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (response: GoogleToken) => {
+                        if (response.access_token) {
+                            setAccessToken(response.access_token);
+                            fetchUserProfile(response.access_token);
+                        }
+                    },
+                });
+                setTokenClient(client);
+            } catch (err) {
+                console.error('[GoogleDrive] Failed to init token client:', err);
+            }
+        }
+    }, [isNative, isInitialized, tokenClient]);
 
     // Save access token to localStorage whenever it changes
     useEffect(() => {
@@ -87,31 +133,6 @@ export const useGoogleDrive = () => {
         }
     }, [user]);
 
-    const login = useCallback(() => {
-        if (tokenClient) {
-            tokenClient.requestAccessToken();
-        } else {
-            setError("Google API not initialized yet.");
-        }
-    }, [tokenClient]);
-
-    const logout = useCallback(() => {
-        const token = accessToken;
-        if (token && window.google) {
-            window.google.accounts.oauth2.revoke(token, () => {
-                setAccessToken(null);
-                setUser(null);
-                localStorage.removeItem('google_drive_token');
-                localStorage.removeItem('google_drive_user');
-            });
-        } else {
-            setAccessToken(null);
-            setUser(null);
-            localStorage.removeItem('google_drive_token');
-            localStorage.removeItem('google_drive_user');
-        }
-    }, [accessToken]);
-
     const fetchUserProfile = async (token: string) => {
         try {
             const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
@@ -124,13 +145,95 @@ export const useGoogleDrive = () => {
                 picture: data.picture,
             });
         } catch (err) {
-            console.error("Failed to fetch user profile", err);
+            console.error("[GoogleDrive] Failed to fetch user profile", err);
         }
     };
 
+    const login = useCallback(async () => {
+        console.log('[GoogleDrive] Login called, isNative:', isNative);
+
+        if (isNative) {
+            // Native Google Sign-In using @capgo/capacitor-social-login
+            try {
+                const result = await SocialLogin.login({
+                    provider: 'google',
+                    options: {
+                        scopes: SCOPES.split(' '),
+                    }
+                });
+                console.log('[GoogleDrive] Native login result:', result);
+
+                // Type guard for online response
+                if (result.result && 'accessToken' in result.result) {
+                    const onlineResult = result.result as GoogleLoginResponseOnline;
+
+                    if (onlineResult.accessToken?.token) {
+                        setAccessToken(onlineResult.accessToken.token);
+                    }
+
+                    if (onlineResult.profile) {
+                        setUser({
+                            name: onlineResult.profile.name || 'Google User',
+                            email: onlineResult.profile.email || '',
+                            picture: onlineResult.profile.imageUrl || ''
+                        });
+                    }
+                } else {
+                    console.error('[GoogleDrive] No access token in result or offline mode');
+                    setError('Login failed: No access token received');
+                }
+            } catch (err: any) {
+                console.error('[GoogleDrive] Native login failed:', err);
+                setError(err.message || 'Login failed');
+            }
+        } else {
+            // Web login using popup
+            if (tokenClient) {
+                try {
+                    tokenClient.requestAccessToken();
+                } catch (err) {
+                    console.error('[GoogleDrive] Web login failed:', err);
+                    setError('Login failed');
+                }
+            } else {
+                setError("Google API not initialized yet. Please wait and try again.");
+            }
+        }
+    }, [isNative, tokenClient]);
+
+    const logout = useCallback(async () => {
+        console.log('[GoogleDrive] Logout called, isNative:', isNative);
+
+        if (isNative) {
+            try {
+                await SocialLogin.logout({ provider: 'google' });
+                console.log('[GoogleDrive] Native logout successful');
+            } catch (err) {
+                console.error('[GoogleDrive] Native logout failed:', err);
+            }
+        } else {
+            // Web logout - revoke token
+            const token = accessToken;
+            if (token && window.google) {
+                try {
+                    window.google.accounts.oauth2.revoke(token, () => {
+                        console.log('[GoogleDrive] Token revoked');
+                    });
+                } catch (err) {
+                    console.error('[GoogleDrive] Token revoke failed:', err);
+                }
+            }
+        }
+
+        // Clear local state
+        setAccessToken(null);
+        setUser(null);
+        localStorage.removeItem('google_drive_token');
+        localStorage.removeItem('google_drive_user');
+    }, [isNative, accessToken]);
+
     /**
-     * Search for a file by name in the App Folder (or root if app folder not specific)
-     * We search for files created by this app (drive.file scope)
+     * Search for a file by name in Google Drive
      */
     const findFile = async (filename: string): Promise<string | null> => {
         if (!accessToken) return null;
@@ -145,13 +248,13 @@ export const useGoogleDrive = () => {
             }
             return null;
         } catch (err) {
-            console.error("Error searching file", err);
+            console.error("[GoogleDrive] Error searching file", err);
             return null;
         }
     };
 
     /**
-     * Upload (Create or Update) a file
+     * Upload (Create or Update) a file to Google Drive
      */
     const uploadFile = async (content: object, filename: string): Promise<boolean> => {
         if (!accessToken) return false;
@@ -167,10 +270,6 @@ export const useGoogleDrive = () => {
         form.append('file', new Blob([fileContent], { type: 'application/json' }));
 
         try {
-            // First check if file exists to update it, or create new
-            // For simplicity in this version, we will just create a new one or overwrite if we find ID
-            // Note: drive.file scope only lets us see files WE created.
-
             const existingFileId = await findFile(filename);
             let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
             let method = 'POST';
@@ -186,13 +285,24 @@ export const useGoogleDrive = () => {
                 body: form,
             });
 
-            return res.status === 200;
+            if (res.status === 200) {
+                console.log('[GoogleDrive] File uploaded successfully');
+                return true;
+            } else {
+                console.error('[GoogleDrive] Upload failed with status:', res.status);
+                const errorText = await res.text();
+                console.error('[GoogleDrive] Error response:', errorText);
+                return false;
+            }
         } catch (err) {
-            console.error("Upload failed", err);
+            console.error("[GoogleDrive] Upload failed", err);
             return false;
         }
     };
 
+    /**
+     * Download a file from Google Drive
+     */
     const downloadFile = async (fileId: string): Promise<any> => {
         if (!accessToken) return null;
         try {
@@ -202,10 +312,21 @@ export const useGoogleDrive = () => {
             const data = await res.json();
             return data;
         } catch (err) {
-            console.error("Download failed", err);
+            console.error("[GoogleDrive] Download failed", err);
             return null;
         }
     };
 
-    return { isInitialized, accessToken, user, login, logout, uploadFile, findFile, downloadFile, error };
+    return {
+        isInitialized,
+        accessToken,
+        user,
+        login,
+        logout,
+        uploadFile,
+        findFile,
+        downloadFile,
+        error,
+        isNative // Expose for debugging
+    };
 };
