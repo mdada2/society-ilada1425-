@@ -2044,19 +2044,21 @@ const Reports = () => {
           const d = new Date(dStr);
           if (!(d >= startDate && d <= endDate)) return false;
 
-          // कर्ज रक्कम निश्चित करा: चालू कर्ज > DEBIT txn > CREDIT txn > 0
+          // कर्ज रक्कम निश्चित करा: चालू कर्ज > DEBIT txn > principalPaid > 0
+          // व्याजासकट रक्कम (repayment amount) वापरू नये - फक्त मुद्दल
           let effectiveAmount = 0;
           if (m.loanPrincipal > 0) {
             effectiveAmount = m.loanPrincipal; // अजून कर्ज बाकी आहे
           } else {
-            // कर्ज परतफेड झाले - transaction मधून रक्कम शोधा
+            // कर्ज परतफेड झाले - transaction मधून फक्त मुद्दल शोधा
             const loanDebitTxn = transactions
               .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             const loanCreditTxn = transactions
               .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-            effectiveAmount = loanDebitTxn?.amount || loanCreditTxn?.amount || 0;
+            // principalPaid वापरा (व्याज वगळून), नसल्यास DEBIT amount वापरा
+            effectiveAmount = loanDebitTxn?.amount || loanCreditTxn?.principalPaid || 0;
           }
 
           if (effectiveAmount === 0) return false;
