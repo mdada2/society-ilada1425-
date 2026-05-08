@@ -2067,7 +2067,7 @@ const Reports = () => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
 
-          // Actual loan amount: DEBIT LOAN txn → CREDIT LOAN txn → current principal
+          // Actual loan amount: DEBIT LOAN txn मधून मुद्दल रक्कम शोधा
           const loanDebitTxn = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -2079,25 +2079,40 @@ const Reports = () => {
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
             : null;
 
-          // कर्ज रक्कम: DEBIT txn > CREDIT txn > current principal
+          // कर्ज रक्कम: फक्त मुद्दल (principalPaid > DEBIT amount > current principal)
+          // व्याजासकट रक्कम दाखवू नये
           const actualLoanAmount = loanDebitTxn?.amount
-            || (isRepaid ? (repaymentTxn?.amount || 0) : m.loanPrincipal);
+            || (isRepaid ? (repaymentTxn?.principalPaid || m.loanPrincipal || 0) : m.loanPrincipal);
 
+          // 31 मार्च 2026 ची कटऑफ तारीख
+          const cutoffDate = new Date('2026-03-31');
           const repaymentDate = repaymentTxn ? repaymentTxn.date : '-';
-          const repaymentAmount = repaymentTxn ? repaymentTxn.amount : 0;
 
-          const days = repaymentTxn ? differenceInDays(new Date(repaymentDate), new Date(loanDate)) : 0;
-          const productValue = actualLoanAmount * days;
+          // परतफेड 31 मार्च पूर्वी झाली का?
+          const repaidBeforeCutoff = repaymentTxn
+            ? new Date(repaymentTxn.date) <= cutoffDate
+            : false;
 
-          const interest3 = (isRepaid && repaymentTxn) ? Math.round((productValue * 0.03) / 365) : null;
-          const interest2_5 = (isRepaid && repaymentTxn) ? Math.round((productValue * 0.025) / 365) : null;
+          // फक्त 31 मार्च पूर्वी परतफेड केलेल्यांना रक्कम दाखवा - व्याज वगळून फक्त मुद्दल
+          const repaymentAmount = repaidBeforeCutoff
+            ? (repaymentTxn?.principalPaid || actualLoanAmount)
+            : 0;
+
+          const days = repaidBeforeCutoff && repaymentTxn
+            ? differenceInDays(new Date(repaymentDate), new Date(loanDate))
+            : 0;
+          const productValue = repaidBeforeCutoff ? (actualLoanAmount * days) : 0;
+
+          // व्याज फक्त 31 मार्च पूर्वी परतफेड झाल्यासच दाखवा
+          const interest3 = repaidBeforeCutoff ? Math.round((productValue * 0.03) / 365) : null;
+          const interest2_5 = repaidBeforeCutoff ? Math.round((productValue * 0.025) / 365) : null;
 
           return {
             id: idx + 1,
             name: m.name,
             loanDate: loanDate,
             loanAmount: actualLoanAmount,
-            repaymentDate: repaymentDate,
+            repaymentDate: repaidBeforeCutoff ? repaymentDate : '-',
             repaymentAmount: repaymentAmount,
             days: days > 0 ? days : 0,
             product: productValue,
