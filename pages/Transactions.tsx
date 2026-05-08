@@ -118,8 +118,22 @@ const Transactions = () => {
                     settings.firstYearInterestRate || 6,
                     settings.subsequentYearInterestRate || 12
                 );
-                setNewPeriodInterest(result.interest);
-                setLoanBreakdown(result.breakdown);
+
+                // चालू वर्षातील नवीन कर्ज आहे का? (Is this a current FY loan?)
+                // उदा. originalLoanDate >= 2025-04-01 असल्यास चालू वर्षाचे कर्ज
+                const isCurrentFYLoan = !!(selectedMember.originalLoanDate &&
+                    selectedMember.originalLoanDate >= settings.financialYearStart);
+
+                // निवडलेली तारीख 31 मार्च किंवा त्यापूर्वी आहे का?
+                // financialYearEnd = "2026-03-31", त्यामुळे date <= financialYearEnd म्हणजे ≤ 31 मार्च
+                const isDateBeforeNewFY = date <= settings.financialYearEnd;
+
+                // जर चालू वर्षाचे कर्ज आणि तारीख 31 मार्च किंवा आधीची असेल तर व्याज शून्य दाखवावे
+                const suppressInterest = isCurrentFYLoan && isDateBeforeNewFY;
+
+                // व्याज display: suppress असल्यास 0 दाखवावे
+                setNewPeriodInterest(suppressInterest ? 0 : result.interest);
+                setLoanBreakdown(suppressInterest ? [] : result.breakdown);
 
                 // Auto-check funds if not already paid this FY
                 if (type === TransactionType.CREDIT && accountType === AccountType.LOAN) {
@@ -128,21 +142,15 @@ const Transactions = () => {
                     setIncludeBuildingFund(needsBuilding);
                     setIncludeJointFund(needsJoint);
 
-                    // चालू वर्षातील नवीन कर्ज आहे का? (Is this a current FY loan?)
-                    const isCurrentFYLoan = !!(selectedMember.originalLoanDate &&
-                        selectedMember.originalLoanDate >= settings.financialYearStart);
+                    const bFund = needsBuilding ? BUILDING_FUND_FIXED : 0;
+                    const jFund = needsJoint ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
 
-                    // निवडलेली तारीख 31 मार्च किंवा त्यापूर्वी आहे का? (Is selected date ≤ March 31, i.e., before FY start?)
-                    const isDateBeforeNewFY = date < settings.financialYearStart;
-
-                    // चालू वर्षाच्या कर्जासाठी 31 मार्च पूर्वीच्या तारखेस Amount auto-fill करू नये
-                    // For current FY loans with date ≤ March 31 → don't auto-fill amount
-                    if (isCurrentFYLoan && isDateBeforeNewFY) {
-                        setAmount(0);
+                    if (suppressInterest) {
+                        // 31 मार्च पूर्वी भरणा: फक्त मुद्दल + निधी, व्याज नाही
+                        setAmount(selectedMember.loanPrincipal + bFund + jFund);
                     } else {
+                        // 1 एप्रिल नंतर: मुद्दल + व्याज + निधी
                         const totalInterest = selectedMember.loanInterestDue + result.interest;
-                        const bFund = needsBuilding ? BUILDING_FUND_FIXED : 0;
-                        const jFund = needsJoint ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
                         setAmount(selectedMember.loanPrincipal + totalInterest + bFund + jFund);
                     }
 
