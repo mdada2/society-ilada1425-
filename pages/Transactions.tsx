@@ -68,6 +68,10 @@ const Transactions = () => {
 
     const [lastSavedTransaction, setLastSavedTransaction] = useState<any>(null);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // कर्ज माफी (Loan Waiver)
+    const [applyWaiver, setApplyWaiver] = useState(false);
+    const WAIVER_THRESHOLD = 500; // ₹500 पर्यंतची बाकी रक्कम माफ करता येईल
     const receiptRef = useRef<HTMLDivElement>(null);
 
     const selectedMember = members.find(m => m.id === memberId);
@@ -268,6 +272,13 @@ const Transactions = () => {
 
                     transaction.details = `${details} ${fundDetails ? `(${fundDetails})` : ''} (Paid Int: ₹${intPaid}, Prin: ₹${prinPaid})`.trim();
 
+                    // कर्ज माफी: उर्वरित रक्कम माफ करायची असल्यास loanPrincipal आणि loanInterestDue शून्य करा
+                    if (applyWaiver && canWaive) {
+                        memberUpdates.loanPrincipal = 0;
+                        memberUpdates.loanInterestDue = 0;
+                        transaction.details = `${transaction.details} (कर्ज माफी: ₹${remainingAfterPayment})`.trim();
+                    }
+
                     if (bFundAmt > 0) {
                         const bBank = societyBanks.find(b => b.accountNo === "15");
                         if (bBank) {
@@ -302,6 +313,7 @@ const Transactions = () => {
             setMemberId('');
             setIncludeBuildingFund(false);
             setIncludeJointFund(false);
+            setApplyWaiver(false);
 
             // Auto hide success msg after 3s
             setTimeout(() => setStatusMsg(null), 3000);
@@ -322,6 +334,12 @@ const Transactions = () => {
     const bFundPreview = (includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
     const jFundPreview = (includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
     const grandTotalPending = selectedMember ? (selectedMember.loanPrincipal + totalInterestDisplay + bFundPreview + jFundPreview) : 0;
+
+    // कर्ज माफी: भरणा केल्यानंतर किती बाकी शिल्लक राहील?
+    const remainingAfterPayment = (accountType === AccountType.LOAN && type === TransactionType.CREDIT && selectedMember && amount > 0)
+        ? Math.max(0, grandTotalPending - amount)
+        : 0;
+    const canWaive = remainingAfterPayment > 0 && remainingAfterPayment <= WAIVER_THRESHOLD;
 
     const previewData = lastSavedTransaction || {
         date, type, accountType, amount, memberName: selectedMember?.name, details: details || '-'
@@ -511,7 +529,19 @@ const Transactions = () => {
 
                                         <div className="flex justify-between font-bold text-sm text-slate-400 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-1 mt-1">
                                             <span>Grand Total:</span>
-                                            <span className="text-red-600 dark:text-red-400">₹{grandTotalPending.toLocaleString()}</span>
+                                            <div className="flex items-center gap-2">
+                                                {accountType === AccountType.LOAN && type === TransactionType.CREDIT && grandTotalPending > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { handleInputChange(setAmount, grandTotalPending); setApplyWaiver(false); }}
+                                                        className="text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded hover:bg-blue-700 flex items-center gap-1 transition font-black"
+                                                        title="Grand Total amount fill करा"
+                                                    >
+                                                        संपूर्ण भरा ↑
+                                                    </button>
+                                                )}
+                                                <span className="text-red-600 dark:text-red-400">₹{grandTotalPending.toLocaleString()}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -521,6 +551,30 @@ const Transactions = () => {
                                 <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Amount (एकूण रक्कम) ₹</label>
                                 <input type="number" required min="1" value={amount || ''} onChange={e => handleInputChange(setAmount, parseFloat(e.target.value))} className="w-full p-2 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none shadow-inner" />
                             </div>
+
+                            {/* कर्ज माफी (Loan Waiver) Option */}
+                            {canWaive && selectedMember && accountType === AccountType.LOAN && type === TransactionType.CREDIT && (
+                                <div className={`p-2 rounded-lg border transition-all animate-fade-in ${applyWaiver ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700'}`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setApplyWaiver(!applyWaiver)}
+                                        className="flex items-center gap-2 w-full text-left"
+                                    >
+                                        {applyWaiver
+                                            ? <CheckSquare size={14} className="text-amber-700 dark:text-amber-400 flex-shrink-0" />
+                                            : <Square size={14} className="text-amber-500 flex-shrink-0" />
+                                        }
+                                        <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                                            बाकी ₹{remainingAfterPayment} माफ करा (Waive Remaining Balance)
+                                        </span>
+                                    </button>
+                                    {applyWaiver && (
+                                        <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 ml-5">
+                                            ✓ भरणा सेव्ह झाल्यावर उर्वरित ₹{remainingAfterPayment} माफ होईल आणि कर्जखाते पूर्णपणे शून्य होईल.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div>
                                 <div className="flex justify-between items-center mb-1">
