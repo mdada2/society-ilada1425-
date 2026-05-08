@@ -2044,25 +2044,33 @@ const Reports = () => {
           const d = new Date(dStr);
           if (!(d >= startDate && d <= endDate)) return false;
 
-          // Actual loan amount: DEBIT LOAN transaction वरून घ्यावे
-          const loanDebitTxn = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-          const actualPrincipal = m.loanPrincipal > 0 ? m.loanPrincipal : (loanDebitTxn?.amount || 0);
-          if (actualPrincipal === 0) return false;
+          // कर्ज रक्कम निश्चित करा: चालू कर्ज > DEBIT txn > CREDIT txn > 0
+          let effectiveAmount = 0;
+          if (m.loanPrincipal > 0) {
+            effectiveAmount = m.loanPrincipal; // अजून कर्ज बाकी आहे
+          } else {
+            // कर्ज परतफेड झाले - transaction मधून रक्कम शोधा
+            const loanDebitTxn = transactions
+              .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+            const loanCreditTxn = transactions
+              .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+            effectiveAmount = loanDebitTxn?.amount || loanCreditTxn?.amount || 0;
+          }
 
-          const matchesThreshold = isAbove ? actualPrincipal > 50000 : actualPrincipal <= 50000;
+          if (effectiveAmount === 0) return false;
+          const matchesThreshold = isAbove ? effectiveAmount > 50000 : effectiveAmount <= 50000;
           return matchesThreshold;
         })
         .map((m, idx) => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
 
-          // Actual loan amount: DEBIT LOAN transaction वरून (original disbursement)
+          // Actual loan amount: DEBIT LOAN txn → CREDIT LOAN txn → current principal
           const loanDebitTxn = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-          const actualLoanAmount = loanDebitTxn?.amount || m.loanPrincipal;
 
           // Actual repayment: सर्वात शेवटचा CREDIT LOAN transaction
           const repaymentTxn = isRepaid
@@ -2070,6 +2078,10 @@ const Reports = () => {
                 .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
             : null;
+
+          // कर्ज रक्कम: DEBIT txn > CREDIT txn > current principal
+          const actualLoanAmount = loanDebitTxn?.amount
+            || (isRepaid ? (repaymentTxn?.amount || 0) : m.loanPrincipal);
 
           const repaymentDate = repaymentTxn ? repaymentTxn.date : '-';
           const repaymentAmount = repaymentTxn ? repaymentTxn.amount : 0;
