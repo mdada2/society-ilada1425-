@@ -128,10 +128,23 @@ const Transactions = () => {
                     setIncludeBuildingFund(needsBuilding);
                     setIncludeJointFund(needsJoint);
 
-                    const totalInterest = selectedMember.loanInterestDue + result.interest;
-                    const bFund = needsBuilding ? BUILDING_FUND_FIXED : 0;
-                    const jFund = needsJoint ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
-                    setAmount(selectedMember.loanPrincipal + totalInterest + bFund + jFund);
+                    // चालू वर्षातील नवीन कर्ज आहे का? (Is this a current FY loan?)
+                    const isCurrentFYLoan = !!(selectedMember.originalLoanDate &&
+                        selectedMember.originalLoanDate >= settings.financialYearStart);
+
+                    // निवडलेली तारीख 31 मार्च किंवा त्यापूर्वी आहे का? (Is selected date ≤ March 31, i.e., before FY start?)
+                    const isDateBeforeNewFY = date < settings.financialYearStart;
+
+                    // चालू वर्षाच्या कर्जासाठी 31 मार्च पूर्वीच्या तारखेस Amount auto-fill करू नये
+                    // For current FY loans with date ≤ March 31 → don't auto-fill amount
+                    if (isCurrentFYLoan && isDateBeforeNewFY) {
+                        setAmount(0);
+                    } else {
+                        const totalInterest = selectedMember.loanInterestDue + result.interest;
+                        const bFund = needsBuilding ? BUILDING_FUND_FIXED : 0;
+                        const jFund = needsJoint ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
+                        setAmount(selectedMember.loanPrincipal + totalInterest + bFund + jFund);
+                    }
 
                     prevFundsRef.current = { building: needsBuilding, joint: needsJoint };
                 }
