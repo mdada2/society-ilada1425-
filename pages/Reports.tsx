@@ -2038,42 +2038,56 @@ const Reports = () => {
 
       const incentiveData = members
         .filter(m => {
-          // Filter by threshold
-          const principal = m.loanPrincipal > 0 ? m.loanPrincipal : (m.originalLoanDate ? 50000 : 0);
-          if (principal === 0) return false;
-
-          const matchesThreshold = isAbove ? principal > 50000 : principal <= 50000;
-          if (!matchesThreshold) return false;
-
-          // Target Year Check
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
+          // Target Year Check: लोन तारीख FY 2025-26 मध्ये असावी
+          const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (!dStr) return false;
           const d = new Date(dStr);
-          return d >= startDate && d <= endDate;
+          if (!(d >= startDate && d <= endDate)) return false;
+
+          // Actual loan amount: DEBIT LOAN transaction वरून घ्यावे
+          const loanDebitTxn = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          const actualPrincipal = m.loanPrincipal > 0 ? m.loanPrincipal : (loanDebitTxn?.amount || 0);
+          if (actualPrincipal === 0) return false;
+
+          const matchesThreshold = isAbove ? actualPrincipal > 50000 : actualPrincipal <= 50000;
+          return matchesThreshold;
         })
         .map((m, idx) => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
 
-          // Mock repayment date within range for demonstration
-          const repaymentDate = isRepaid ? '2025-12-15' : '-';
-          const finalPrincipal = isAbove ? (isRepaid ? 120000 : m.loanPrincipal) : (isRepaid ? 45000 : m.loanPrincipal);
-          const repaymentAmount = isRepaid ? finalPrincipal : 0;
+          // Actual loan amount: DEBIT LOAN transaction वरून (original disbursement)
+          const loanDebitTxn = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          const actualLoanAmount = loanDebitTxn?.amount || m.loanPrincipal;
 
-          const days = isRepaid ? differenceInDays(new Date(repaymentDate), new Date(loanDate)) : 0;
-          const productValue = finalPrincipal * days;
+          // Actual repayment: सर्वात शेवटचा CREDIT LOAN transaction
+          const repaymentTxn = isRepaid
+            ? transactions
+                .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+            : null;
 
-          // Only show interest if repaid within range
-          const interest3 = isRepaid ? Math.round((productValue * 0.03) / 365) : null;
-          const interest2_5 = isRepaid ? Math.round((productValue * 0.025) / 365) : null;
+          const repaymentDate = repaymentTxn ? repaymentTxn.date : '-';
+          const repaymentAmount = repaymentTxn ? repaymentTxn.amount : 0;
+
+          const days = repaymentTxn ? differenceInDays(new Date(repaymentDate), new Date(loanDate)) : 0;
+          const productValue = actualLoanAmount * days;
+
+          const interest3 = (isRepaid && repaymentTxn) ? Math.round((productValue * 0.03) / 365) : null;
+          const interest2_5 = (isRepaid && repaymentTxn) ? Math.round((productValue * 0.025) / 365) : null;
 
           return {
             id: idx + 1,
             name: m.name,
             loanDate: loanDate,
-            loanAmount: finalPrincipal,
+            loanAmount: actualLoanAmount,
             repaymentDate: repaymentDate,
             repaymentAmount: repaymentAmount,
-            days: days,
+            days: days > 0 ? days : 0,
             product: productValue,
             interest3: interest3,
             interest2_5: interest2_5
