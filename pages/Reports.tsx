@@ -2044,21 +2044,23 @@ const Reports = () => {
           const d = new Date(dStr);
           if (!(d >= startDate && d <= endDate)) return false;
 
-          // कर्ज रक्कम निश्चित करा: चालू कर्ज > DEBIT txn > principalPaid > 0
+          // कर्ज रक्कम: मूळ उचल रक्कम = सर्व DEBIT Loan txn ची बेरीज
+          // (Loan Waiver मुळे principalPaid कमी होतो, पण मूळ उचल रक्कम DEBIT txn मध्ये असते)
           // व्याजासकट रक्कम (repayment amount) वापरू नये - फक्त मुद्दल
           let effectiveAmount = 0;
           if (m.loanPrincipal > 0) {
-            effectiveAmount = m.loanPrincipal; // अजून कर्ज बाकी आहे
-          } else {
-            // कर्ज परतफेड झाले - transaction मधून फक्त मुद्दल शोधा
-            const loanDebitTxn = transactions
+            // अजून कर्ज बाकी: सर्व DEBIT txn चा total घ्या (मूळ उचल)
+            const totalDebits = transactions
               .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-            const loanCreditTxn = transactions
-              .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-            // principalPaid वापरा (व्याज वगळून), नसल्यास DEBIT amount वापरा
-            effectiveAmount = loanDebitTxn?.amount || loanCreditTxn?.principalPaid || 0;
+              .reduce((sum, t) => sum + t.amount, 0);
+            effectiveAmount = totalDebits > 0 ? totalDebits : m.loanPrincipal;
+          } else {
+            // कर्ज परतफेड झाले: मूळ DEBIT txn चा total = मूळ उचल रक्कम
+            // Waiver असला तरी DEBIT txn amount बदलत नाही
+            const totalDebits = transactions
+              .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+              .reduce((sum, t) => sum + t.amount, 0);
+            effectiveAmount = totalDebits || 0;
           }
 
           if (effectiveAmount === 0) return false;
@@ -2069,10 +2071,11 @@ const Reports = () => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
 
-          // Actual loan amount: DEBIT LOAN txn मधून मुद्दल रक्कम शोधा
-          const loanDebitTxn = transactions
+          // मूळ कर्ज रक्कम: सर्व DEBIT LOAN txn ची बेरीज
+          // Loan Waiver असला तरी मूळ उचल रक्कम DEBIT txn मध्येच राहते
+          const totalDebitAmount = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+            .reduce((sum, t) => sum + t.amount, 0);
 
           // Actual repayment: सर्वात शेवटचा CREDIT LOAN transaction
           const repaymentTxn = isRepaid
@@ -2081,10 +2084,9 @@ const Reports = () => {
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
             : null;
 
-          // कर्ज रक्कम: फक्त मुद्दल (principalPaid > DEBIT amount > current principal)
-          // व्याजासकट रक्कम दाखवू नये
-          const actualLoanAmount = loanDebitTxn?.amount
-            || (isRepaid ? (repaymentTxn?.principalPaid || m.loanPrincipal || 0) : m.loanPrincipal);
+          // मूळ कर्ज रक्कम: DEBIT total > current principal
+          // Waiver मुळे principalPaid कमी होतो, पण मूळ उचल (DEBIT) रक्कम बरोबर असते
+          const actualLoanAmount = totalDebitAmount > 0 ? totalDebitAmount : m.loanPrincipal;
 
           // 31 मार्च 2026 ची कटऑफ तारीख
           const cutoffDate = new Date('2026-03-31');
