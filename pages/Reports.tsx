@@ -1917,8 +1917,32 @@ const Reports = () => {
         .map((m, idx) => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
-          const principal = m.loanPrincipal > 0 ? m.loanPrincipal : 50000;
-          const days = differenceInDays(new Date(), new Date(loanDate));
+
+          // मूळ कर्ज रक्कम: सर्व DEBIT Loan txn ची बेरीज (50000 hardcoded नाही!)
+          const totalDebits = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          const totalPrincipalRepaid = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
+
+          const principal = totalDebits > 0
+            ? totalDebits
+            : (isRepaid ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
+
+          // Actual repayment date: सर्वात शेवटचा CREDIT Loan txn
+          const repaymentTxn = isRepaid
+            ? transactions
+                .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+            : null;
+          const repaymentDateStr = repaymentTxn ? repaymentTxn.date : null;
+
+          // दिवस: repaid असल्यास loan date → repayment date, अन्यथा आजपर्यंत
+          const toDate = repaymentDateStr ? new Date(repaymentDateStr) : new Date();
+          const days = differenceInDays(toDate, new Date(loanDate));
+
           const productValue = principal * days;
           const productStr = productValue.toLocaleString();
           const incentive = isRepaid ? Math.round(principal * 0.03) : null;
@@ -1929,7 +1953,7 @@ const Reports = () => {
             category: m.category,
             village: m.village,
             loanDate: loanDate,
-            repaymentDate: isRepaid ? 'Paid (परतफेड)' : 'Ongoing (सुरु)',
+            repaymentDate: repaymentDateStr || (isRepaid ? '-' : 'Ongoing (सुरु)'),
             days: days,
             principal: principal,
             product: productStr,
@@ -1937,6 +1961,7 @@ const Reports = () => {
             bankAccount: m.bankAccountNo || 'N/A'
           };
         });
+
 
       const columns: Column<typeof incentiveData[0]>[] = [
         { header: 'अ. क्र.', accessorKey: 'id', width: '50px' },
