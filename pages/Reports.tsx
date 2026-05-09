@@ -1931,13 +1931,26 @@ const Reports = () => {
             ? totalDebits
             : (isRepaid ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
 
-          // Actual repayment date: सर्वात शेवटचा CREDIT Loan txn
+          // Dr. P. Deshmukh कालावधी: 30 जून 2026 पर्यंत
+          const deshmukCutoff = new Date('2026-06-30');
+
+          // Actual repayment date: 30 जून पर्यंतचा सर्वात शेवटचा CREDIT Loan txn
           const repaymentTxn = isRepaid
             ? transactions
-                .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                .filter(t =>
+                  t.memberId === m.id &&
+                  t.type === 'Credit' &&
+                  t.accountType === 'Loan' &&
+                  new Date(t.date) <= deshmukCutoff
+                )
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
             : null;
           const repaymentDateStr = repaymentTxn ? repaymentTxn.date : null;
+
+          // परतफेड 30 जून पूर्वी झाली का?
+          const repaidBeforeCutoff = repaymentTxn
+            ? new Date(repaymentTxn.date) <= deshmukCutoff
+            : false;
 
           // दिवस: repaid असल्यास loan date → repayment date, अन्यथा आजपर्यंत
           const toDate = repaymentDateStr ? new Date(repaymentDateStr) : new Date();
@@ -1945,7 +1958,8 @@ const Reports = () => {
 
           const productValue = principal * days;
           const productStr = productValue.toLocaleString();
-          const incentive = isRepaid ? Math.round(principal * 0.03) : null;
+          // 3% subsidy फक्त 30 जून पूर्वी परतफेड झाल्यासच
+          const incentive = repaidBeforeCutoff ? Math.round(principal * 0.03) : null;
 
           return {
             id: idx + 1,
@@ -1961,6 +1975,8 @@ const Reports = () => {
             bankAccount: m.bankAccountNo || 'N/A'
           };
         });
+
+
 
 
       const columns: Column<typeof incentiveData[0]>[] = [
