@@ -2176,8 +2176,10 @@ const Reports = () => {
             : false;
 
           // फक्त 31 मार्च पूर्वी परतफेड केलेल्यांना रक्कम दाखवा - व्याज वगळून फक्त मुद्दल
+          // NOTE: principalPaid नाही, actualLoanAmount (मूळ DEBIT txn) वापरतो
+          // कारण Admin ने व्याज माफ केल्यास principalPaid कमी होतो, पण मूळ कर्ज रक्कम बदलत नाही
           const repaymentAmount = repaidBeforeCutoff
-            ? (repaymentTxn?.principalPaid || actualLoanAmount)
+            ? actualLoanAmount
             : 0;
 
           const days = repaidBeforeCutoff && repaymentTxn
