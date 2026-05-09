@@ -593,6 +593,16 @@ const Reports = () => {
     return <div className="p-8 text-center text-slate-500">Select a report from above.</div>;
   };
 
+  // तारीख DD-MM-YYYY format मध्ये convert करण्यासाठी helper
+  const fmtDateDMY = (dateStr: string) => {
+    if (!dateStr || dateStr === 'N/A' || dateStr === '-') return dateStr;
+    try {
+      const [y, m, d] = dateStr.split('-');
+      if (y && m && d) return `${d}-${m}-${y}`;
+      return dateStr;
+    } catch { return dateStr; }
+  };
+
   const renderLoan = () => {
     const columns: Column<typeof loanData[0]>[] = [
       { header: 'No.', accessorKey: 'memberNo', width: '60px' },
@@ -601,7 +611,7 @@ const Reports = () => {
         render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
       },
       { header: 'Village', accessorKey: 'village' },
-      { header: 'Loan Date', accessorKey: 'loanDate' },
+      { header: 'Loan Date', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
       { header: 'Principal', accessorKey: 'principal', render: (i) => `₹${i.principal.toLocaleString()}` },
       { header: 'Interest', accessorKey: 'interest', render: (i) => `₹${i.interest.toLocaleString()}` },
       { header: 'Total', accessorKey: 'total', render: (i) => `₹${i.total.toLocaleString()}` },
@@ -1925,8 +1935,8 @@ const Reports = () => {
         { header: 'सभासदांचे नाव', accessorKey: 'name', className: 'font-bold text-slate-700' },
         { header: 'प्रवर्ग', accessorKey: 'category' },
         { header: 'गांव', accessorKey: 'village' },
-        { header: 'कर्ज तारीख', accessorKey: 'loanDate' },
-        { header: 'परतफेड दिनांक', accessorKey: 'repaymentDate' },
+        { header: 'कर्ज तारीख', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
+        { header: 'परतफेड दिनांक', accessorKey: 'repaymentDate', render: (i) => fmtDateDMY(i.repaymentDate) },
         { header: 'दिवस', accessorKey: 'days' },
         { header: 'मुद्दल', accessorKey: 'principal', render: (i) => `₹${i.principal.toLocaleString()}` },
         { header: 'प्रॉडक्ट', accessorKey: 'product', width: '200px', className: 'text-xs font-mono text-slate-600' },
