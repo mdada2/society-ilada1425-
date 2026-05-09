@@ -134,26 +134,33 @@ const Reports = () => {
     .map(m => {
       const loanDate = m.originalLoanDate || 'N/A';
 
+      // मूळ कर्ज रक्कम: negative (waiver artifact) असल्यास 0 घ्या
+      const safePrincipal = Math.max(0, Number(m.loanPrincipal));
+
       // Calculate current accrued interest (NOT hiding for reports)
+      // फक्त outstanding (principal > 0) सभासदांसाठी व्याज मोजा
       let accruedInterest = 0;
-      if (m.loanPrincipal > 0 && m.lastLoanCalculationDate) {
+      if (safePrincipal > 0 && m.lastLoanCalculationDate) {
         const today = format(new Date(), 'yyyy-MM-dd');
         const result = calculateLoanInterest(
-          m.loanPrincipal,
+          safePrincipal,
           m.lastLoanCalculationDate,
           today,
           settings.financialYearStart,
           settings.financialYearEnd,
-          false, // Show interest in reports - don't hide for first FY
-          m.originalLoanDate, // Pass original loan date
+          false,
+          m.originalLoanDate,
           settings.firstYearInterestRate || 6,
           settings.subsequentYearInterestRate || 12
         );
         accruedInterest = result.interest;
       }
 
-      const totalInterest = Number(m.loanInterestDue) + accruedInterest;
-      const total = Number(m.loanPrincipal) + totalInterest;
+      // Repaid members (principal = 0 किंवा negative waiver): व्याज 0 दाखवा
+      const totalInterest = safePrincipal > 0
+        ? (Math.max(0, Number(m.loanInterestDue)) + accruedInterest)
+        : 0;
+      const total = safePrincipal + totalInterest;
 
       return {
         id: m.id,
@@ -161,13 +168,14 @@ const Reports = () => {
         name: m.name,
         village: m.village,
         loanDate: loanDate,
-        principal: Number(m.loanPrincipal),
+        principal: safePrincipal,
         interest: totalInterest,
         total: total,
         loanType: m.loanType || 'N/A',
         overdueDays: loanDate !== 'N/A' ? differenceInDays(new Date(), parseISO(loanDate)) : 0
       };
     });
+
 
   // Membership
   const memberReportData = members.map(m => ({
