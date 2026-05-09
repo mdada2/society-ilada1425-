@@ -2222,13 +2222,24 @@ const Reports = () => {
 
       const summaryData = limits.map((l, idx) => {
         const filtered = members.filter(m => {
-          const principal = m.loanPrincipal > 0 ? m.loanPrincipal : (m.originalLoanDate ? 50000 : 0);
-          if (principal === 0) return false;
+          // मूळ कर्ज रक्कम: DEBIT txn ची बेरीज → नसल्यास principalPaid → नसल्यास loanPrincipal
+          const totalDebits = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + t.amount, 0);
+          const totalPrincipalRepaid = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
+          const effectivePrincipal = totalDebits > 0
+            ? totalDebits
+            : (m.loanPrincipal === 0 ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
 
-          const matches = l.above ? principal > l.threshold : principal <= l.threshold;
+          if (effectivePrincipal === 0) return false;
+
+          const matches = l.above ? effectivePrincipal > l.threshold : effectivePrincipal <= l.threshold;
           if (!matches) return false;
 
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
+          const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (!dStr) return false;
           const d = new Date(dStr);
           return d >= startDate && d <= endDate;
         });
@@ -2238,18 +2249,41 @@ const Reports = () => {
         filtered.forEach(m => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
-          const principal = l.above ? (isRepaid ? 120000 : m.loanPrincipal) : (isRepaid ? 45000 : m.loanPrincipal);
+
+          // Actual loan amount for calculations
+          const totalDebits = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + t.amount, 0);
+          const totalPrincipalRepaid = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
+          const principal = totalDebits > 0
+            ? totalDebits
+            : (isRepaid ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
 
           disbursement += principal;
+
           if (isRepaid) {
-            repaidCount++;
-            repayment += principal;
-            // Mock product & interest for summary based on FY 25-26
-            const days = differenceInDays(new Date('2025-12-15'), new Date(loanDate));
-            const prod = principal * days;
-            product += prod;
-            int3 += Math.round((prod * 0.03) / 365);
-            int2_5 += Math.round((prod * 0.025) / 365);
+            // cutoff पूर्वी परतफेड झाली का?
+            const cutoffDate = new Date('2026-03-31');
+            const repaymentTxn = transactions
+              .filter(t =>
+                t.memberId === m.id &&
+                t.type === 'Credit' &&
+                t.accountType === 'Loan' &&
+                new Date(t.date) <= cutoffDate
+              )
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+            if (repaymentTxn) {
+              repaidCount++;
+              repayment += principal;
+              const days = differenceInDays(new Date(repaymentTxn.date), new Date(loanDate));
+              const prod = principal * days;
+              product += prod;
+              int3 += Math.round((prod * 0.03) / 365);
+              int2_5 += Math.round((prod * 0.025) / 365);
+            }
           }
         });
 
@@ -2261,7 +2295,7 @@ const Reports = () => {
           limit: l.title,
           disbDate: '-',
           disbAmount: disbursement,
-          repaidDate: '31.03.2025',
+          repaidDate: '31.03.2026',
           repaidMemberCount: repaidCount,
           repaymentAmount: repayment,
           product: product,
@@ -2271,6 +2305,7 @@ const Reports = () => {
           total: repayment + balance
         };
       });
+
 
       // Total Row
       if (summaryData.length > 0) {
