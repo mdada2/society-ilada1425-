@@ -1916,7 +1916,8 @@ const Reports = () => {
         })
         .map((m, idx) => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
-          const isRepaid = m.loanPrincipal === 0;
+          // loanPrincipal <= 0 = repaid (negative value = waiver artifact)
+          const isRepaid = m.loanPrincipal <= 0;
 
           // मूळ कर्ज रक्कम: सर्व DEBIT Loan txn ची बेरीज (50000 hardcoded नाही!)
           const totalDebits = transactions
@@ -2136,7 +2137,8 @@ const Reports = () => {
         })
         .map((m, idx) => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
-          const isRepaid = m.loanPrincipal === 0;
+          // loanPrincipal <= 0 = repaid (negative value = waiver artifact)
+          const isRepaid = m.loanPrincipal <= 0;
 
           // मूळ कर्ज रक्कम: सर्व DEBIT LOAN txn ची बेरीज
           // Loan Waiver असला तरी मूळ उचल रक्कम DEBIT txn मध्येच राहते
