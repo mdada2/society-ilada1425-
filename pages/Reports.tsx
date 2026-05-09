@@ -2066,11 +2066,19 @@ const Reports = () => {
             effectiveAmount = totalDebits > 0 ? totalDebits : m.loanPrincipal;
           } else {
             // कर्ज परतफेड झाले: मूळ DEBIT txn चा total = मूळ उचल रक्कम
-            // Waiver असला तरी DEBIT txn amount बदलत नाही
             const totalDebits = transactions
               .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
               .reduce((sum, t) => sum + t.amount, 0);
-            effectiveAmount = totalDebits || 0;
+
+            if (totalDebits > 0) {
+              effectiveAmount = totalDebits;
+            } else {
+              // Fallback: DEBIT txn नसल्यास CREDIT मधील principalPaid बेरीज वापरा
+              const totalPrincipalRepaid = transactions
+                .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
+              effectiveAmount = totalPrincipalRepaid || 0;
+            }
           }
 
           if (effectiveAmount === 0) return false;
@@ -2087,19 +2095,28 @@ const Reports = () => {
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
 
-          // Actual repayment: सर्वात शेवटचा CREDIT LOAN transaction
+          // मूळ कर्ज रक्कम: DEBIT total, नसल्यास principalPaid fallback
+          const totalPrincipalRepaidMap = transactions
+            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
+          const actualLoanAmount = totalDebitAmount > 0
+            ? totalDebitAmount
+            : (totalPrincipalRepaidMap || m.loanPrincipal);
+
+          // Actual repayment: cutoff (31-Mar) पूर्वीचा सर्वात शेवटचा CREDIT LOAN transaction
+          // (31 मार्चनंतरच्या entries मुळे eligibility बाधित होणार नाही)
+          const cutoffDate = new Date('2026-03-31');
+
           const repaymentTxn = isRepaid
             ? transactions
-                .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                .filter(t =>
+                  t.memberId === m.id &&
+                  t.type === 'Credit' &&
+                  t.accountType === 'Loan' &&
+                  new Date(t.date) <= cutoffDate
+                )
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
             : null;
-
-          // मूळ कर्ज रक्कम: DEBIT total > current principal
-          // Waiver मुळे principalPaid कमी होतो, पण मूळ उचल (DEBIT) रक्कम बरोबर असते
-          const actualLoanAmount = totalDebitAmount > 0 ? totalDebitAmount : m.loanPrincipal;
-
-          // 31 मार्च 2026 ची कटऑफ तारीख
-          const cutoffDate = new Date('2026-03-31');
           const repaymentDate = repaymentTxn ? repaymentTxn.date : '-';
 
           // परतफेड 31 मार्च पूर्वी झाली का?
