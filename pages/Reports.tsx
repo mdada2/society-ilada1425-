@@ -2125,12 +2125,22 @@ const Reports = () => {
           };
         });
 
+      // तारीख DD-MM-YYYY format मध्ये convert करण्यासाठी helper
+      const fmtDate = (dateStr: string) => {
+        if (!dateStr || dateStr === '-') return '-';
+        try {
+          const [y, m, d] = dateStr.split('-');
+          if (y && m && d) return `${d}-${m}-${y}`;
+          return dateStr;
+        } catch { return dateStr; }
+      };
+
       const columns: Column<any>[] = [
         { header: 'अ. क्र.', accessorKey: 'id', width: '50px' },
         { header: 'सभासदांचे नाव', accessorKey: 'name', className: 'font-bold' },
-        { header: 'कर्ज तारीख', accessorKey: 'loanDate' },
+        { header: 'कर्ज तारीख', accessorKey: 'loanDate', render: (i) => fmtDate(i.loanDate) },
         { header: 'कर्ज रक्कम', accessorKey: 'loanAmount', render: (i) => `₹${i.loanAmount.toLocaleString()}` },
-        { header: 'परतफेड तारीख', accessorKey: 'repaymentDate' },
+        { header: 'परतफेड तारीख', accessorKey: 'repaymentDate', render: (i) => fmtDate(i.repaymentDate) },
         { header: 'परतफेड रक्कम', accessorKey: 'repaymentAmount', render: (i) => i.repaymentAmount > 0 ? `₹${i.repaymentAmount.toLocaleString()}` : '-' },
         { header: 'दिवस', accessorKey: 'days', render: (i) => i.days > 0 ? i.days : '-' },
         { header: 'प्रॉडक्ट', accessorKey: 'product', render: (i) => i.product > 0 ? i.product.toLocaleString() : '-' },
