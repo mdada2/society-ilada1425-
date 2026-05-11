@@ -2257,18 +2257,23 @@ const Reports = () => {
 
       const summaryData = limits.map((l, idx) => {
         const filtered = members.filter(m => {
-          // मूळ कर्ज रक्कम: DEBIT txn ची बेरीज → नसल्यास (amount - interestPaid) + outstanding
-          // principalPaid fallback वापरू नये - Admin waiver असल्यास ते चुकीचे येते
+          // मूळ कर्ज रक्कम: DEBIT txn → नसल्यास (amount - interestPaid) + waivedAmount + outstanding
           const totalDebits = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
           const effectivePrincipal = totalDebits > 0
             ? totalDebits
             : (() => {
-                const creditNet = transactions
-                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                const creditTxns = transactions
+                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan');
+                const creditNet = creditTxns
                   .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
-                return creditNet + Math.max(0, m.loanPrincipal) || 0;
+                const waived = creditTxns.reduce((sum, t) => {
+                  if (t.waivedAmount) return sum + t.waivedAmount;
+                  const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
+                  return sum + (match ? parseInt(match[1]) : 0);
+                }, 0);
+                return creditNet + waived + Math.max(0, m.loanPrincipal) || 0;
               })();
 
           if (effectivePrincipal === 0) return false;
@@ -2288,17 +2293,23 @@ const Reports = () => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
 
-          // मूळ कर्ज रक्कम: DEBIT txn total, नसल्यास (amount - interestPaid) + outstanding
+          // मूळ कर्ज रक्कम: DEBIT txn total → नसल्यास (amount - interestPaid) + waivedAmount + outstanding
           const totalDebits2 = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
           const principal = totalDebits2 > 0
             ? totalDebits2
             : (() => {
-                const creditNet = transactions
-                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                const creditTxns2 = transactions
+                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan');
+                const creditNet = creditTxns2
                   .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
-                return creditNet + Math.max(0, m.loanPrincipal) || 0;
+                const waived = creditTxns2.reduce((sum, t) => {
+                  if (t.waivedAmount) return sum + t.waivedAmount;
+                  const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
+                  return sum + (match ? parseInt(match[1]) : 0);
+                }, 0);
+                return creditNet + waived + Math.max(0, m.loanPrincipal) || 0;
               })();
 
           disbursement += principal;
