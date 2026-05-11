@@ -2104,23 +2104,35 @@ const Reports = () => {
           const d = new Date(dStr);
           if (!(d >= startDate && d <= endDate)) return false;
 
-          // कर्ज रक्कम: मूळ उचल रक्कम = सर्व DEBIT Loan txn ची बेरीज
-          // DEBIT txn नसल्यास: CREDIT txn मधील (amount - interestPaid) = मुद्दलात गेलेली रक्कम
-          // NOTE: principalPaid वापरू नये - Admin waiver असल्यास principalPaid चुकीचा (कमी) येतो
-          // पण (amount - interestPaid) = actual principal repaid, waiver धरून बरोबर असतो
+          // मूळ कर्ज रक्कम: सर्व DEBIT Loan txn ची बेरीज
+          // DEBIT txn नसल्यास: (amount - interestPaid) + waivedAmount + outstanding
+          // waivedAmount: नवीन transactions मध्ये field म्हणून, जुन्यांसाठी details string मधून parse
           const getMemberOriginalLoan = (memberId: string, currentPrincipal: number) => {
             const loanDebits = transactions
               .filter(t => t.memberId === memberId && t.type === 'Debit' && t.accountType === 'Loan')
               .reduce((sum, t) => sum + t.amount, 0);
             if (loanDebits > 0) return loanDebits;
 
-            // DEBIT txn नसल्यास: (CREDIT amount - interestPaid) + outstanding principal
-            // = मुद्दलात गेलेली रक्कम + बाकी मुद्दल = मूळ कर्ज
-            const creditNetPrincipal = transactions
-              .filter(t => t.memberId === memberId && t.type === 'Credit' && t.accountType === 'Loan')
+            // DEBIT txn नसल्यास:
+            // 1. CREDIT txn मधील (amount - interestPaid) = मुद्दलात गेलेली रक्कम
+            // 2. + waivedAmount (नवीन field किंवा details मधून parse)
+            // 3. + outstanding principal = मूळ कर्ज
+            const creditLoanTxns = transactions
+              .filter(t => t.memberId === memberId && t.type === 'Credit' && t.accountType === 'Loan');
+
+            const netPrincipalPaid = creditLoanTxns
               .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
+
+            // Waiver amount: नवीन field असल्यास वापरा, नसल्यास details मधून parse करा
+            const totalWaived = creditLoanTxns.reduce((sum, t) => {
+              if (t.waivedAmount) return sum + t.waivedAmount;
+              // जुन्या transactions साठी details मधून "कर्ज माफी: ₹X" parse करा
+              const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
+              return sum + (match ? parseInt(match[1]) : 0);
+            }, 0);
+
             const outstanding = Math.max(0, currentPrincipal);
-            return creditNetPrincipal + outstanding || 0;
+            return netPrincipalPaid + totalWaived + outstanding || 0;
           };
 
           let effectiveAmount = getMemberOriginalLoan(m.id, m.loanPrincipal);
@@ -2140,19 +2152,24 @@ const Reports = () => {
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
 
-          // मूळ कर्ज रक्कम: DEBIT txn total, नसल्यास (amount - interestPaid) + outstanding
-          // principalPaid fallback वापरू नये - Admin waiver असल्यास ते चुकीचे (कमी) येते
+          // मूळ कर्ज रक्कम: DEBIT txn total, नसल्यास (amount - interestPaid) + waivedAmount + outstanding
+          // waivedAmount: नवीन field (Transactions.tsx मधून) किंवा details मधून parse (जुने data)
           const actualLoanAmount = totalDebitAmount > 0
             ? totalDebitAmount
             : (() => {
-                const creditNetPrincipal = transactions
-                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                const creditLoanTxns = transactions
+                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan');
+                const netPrincipal = creditLoanTxns
                   .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
-                const outstanding = Math.max(0, m.loanPrincipal);
-                return creditNetPrincipal + outstanding || Math.max(0, m.loanPrincipal);
+                const waived = creditLoanTxns.reduce((sum, t) => {
+                  if (t.waivedAmount) return sum + t.waivedAmount;
+                  const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
+                  return sum + (match ? parseInt(match[1]) : 0);
+                }, 0);
+                return netPrincipal + waived + Math.max(0, m.loanPrincipal) || 0;
               })();
 
-          // Actual repayment: cutoff (31-Mar) पूर्वीचा सर्वात शेवटचा CREDIT LOAN transaction
+
           // (31 मार्चनंतरच्या entries मुळे eligibility बाधित होणार नाही)
           const cutoffDate = new Date('2026-03-31');
 
