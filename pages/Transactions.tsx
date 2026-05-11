@@ -276,6 +276,7 @@ const Transactions = () => {
                     if (applyWaiver && canWaive) {
                         memberUpdates.loanPrincipal = 0;
                         memberUpdates.loanInterestDue = 0;
+                        transaction.waivedAmount = remainingAfterPayment; // Bank Incentive साठी मूळ कर्ज रक्कम मिळवण्यासाठी
                         transaction.details = `${transaction.details} (कर्ज माफी: ₹${remainingAfterPayment})`.trim();
                     }
 
