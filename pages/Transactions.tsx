@@ -428,8 +428,35 @@ const Transactions = () => {
                         <form onSubmit={handleSubmit} className="space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-[10px] sm:text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Date</label>
-                                    <input type="date" required value={date} onChange={e => handleInputChange(setDate, e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-xs sm:text-sm" />
+                                    <label className="block text-[10px] sm:text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Date (दिनांक)</label>
+                                    {/* Custom DD-MM-YYYY Date Input */}
+                                    <div className="relative flex items-center w-full border dark:border-slate-600 rounded bg-white dark:bg-slate-700 focus-within:ring-2 focus-within:ring-blue-500">
+                                        <input
+                                            type="text"
+                                            value={date ? `${date.slice(8, 10)}-${date.slice(5, 7)}-${date.slice(0, 4)}` : ''}
+                                            onChange={e => {
+                                                let raw = e.target.value.replace(/\D/g, '');
+                                                if (raw.length > 8) raw = raw.slice(0, 8);
+                                                let formatted = raw;
+                                                if (raw.length > 4) formatted = raw.slice(0, 2) + '-' + raw.slice(2, 4) + '-' + raw.slice(4);
+                                                else if (raw.length > 2) formatted = raw.slice(0, 2) + '-' + raw.slice(2);
+                                                const match = formatted.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+                                                if (match) handleInputChange(setDate, `${match[3]}-${match[2]}-${match[1]}`);
+                                            }}
+                                            placeholder="DD-MM-YYYY"
+                                            maxLength={10}
+                                            className="flex-1 p-2 bg-transparent text-slate-900 dark:text-white outline-none text-xs sm:text-sm"
+                                        />
+                                        <label className="pr-2 cursor-pointer text-slate-400 hover:text-blue-500 transition-colors" title="Calendar खोला">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                            <input
+                                                type="date"
+                                                value={date}
+                                                onChange={e => handleInputChange(setDate, e.target.value)}
+                                                className="sr-only"
+                                            />
+                                        </label>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-[10px] sm:text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Type</label>
