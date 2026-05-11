@@ -2105,31 +2105,25 @@ const Reports = () => {
           if (!(d >= startDate && d <= endDate)) return false;
 
           // कर्ज रक्कम: मूळ उचल रक्कम = सर्व DEBIT Loan txn ची बेरीज
-          // (Loan Waiver मुळे principalPaid कमी होतो, पण मूळ उचल रक्कम DEBIT txn मध्ये असते)
-          // व्याजासकट रक्कम (repayment amount) वापरू नये - फक्त मुद्दल
-          let effectiveAmount = 0;
-          if (m.loanPrincipal > 0) {
-            // अजून कर्ज बाकी: सर्व DEBIT txn चा total घ्या (मूळ उचल)
-            const totalDebits = transactions
-              .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
+          // DEBIT txn नसल्यास: CREDIT txn मधील (amount - interestPaid) = मुद्दलात गेलेली रक्कम
+          // NOTE: principalPaid वापरू नये - Admin waiver असल्यास principalPaid चुकीचा (कमी) येतो
+          // पण (amount - interestPaid) = actual principal repaid, waiver धरून बरोबर असतो
+          const getMemberOriginalLoan = (memberId: string, currentPrincipal: number) => {
+            const loanDebits = transactions
+              .filter(t => t.memberId === memberId && t.type === 'Debit' && t.accountType === 'Loan')
               .reduce((sum, t) => sum + t.amount, 0);
-            effectiveAmount = totalDebits > 0 ? totalDebits : m.loanPrincipal;
-          } else {
-            // कर्ज परतफेड झाले: मूळ DEBIT txn चा total = मूळ उचल रक्कम
-            const totalDebits = transactions
-              .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-              .reduce((sum, t) => sum + t.amount, 0);
+            if (loanDebits > 0) return loanDebits;
 
-            if (totalDebits > 0) {
-              effectiveAmount = totalDebits;
-            } else {
-              // Fallback: DEBIT txn नसल्यास CREDIT मधील principalPaid बेरीज वापरा
-              const totalPrincipalRepaid = transactions
-                .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
-                .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
-              effectiveAmount = totalPrincipalRepaid || 0;
-            }
-          }
+            // DEBIT txn नसल्यास: (CREDIT amount - interestPaid) + outstanding principal
+            // = मुद्दलात गेलेली रक्कम + बाकी मुद्दल = मूळ कर्ज
+            const creditNetPrincipal = transactions
+              .filter(t => t.memberId === memberId && t.type === 'Credit' && t.accountType === 'Loan')
+              .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
+            const outstanding = Math.max(0, currentPrincipal);
+            return creditNetPrincipal + outstanding || 0;
+          };
+
+          let effectiveAmount = getMemberOriginalLoan(m.id, m.loanPrincipal);
 
           if (effectiveAmount === 0) return false;
           const matchesThreshold = isAbove ? effectiveAmount > 50000 : effectiveAmount <= 50000;
@@ -2146,13 +2140,17 @@ const Reports = () => {
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
 
-          // मूळ कर्ज रक्कम: DEBIT total, नसल्यास principalPaid fallback
-          const totalPrincipalRepaidMap = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
-            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
+          // मूळ कर्ज रक्कम: DEBIT txn total, नसल्यास (amount - interestPaid) + outstanding
+          // principalPaid fallback वापरू नये - Admin waiver असल्यास ते चुकीचे (कमी) येते
           const actualLoanAmount = totalDebitAmount > 0
             ? totalDebitAmount
-            : (totalPrincipalRepaidMap || m.loanPrincipal);
+            : (() => {
+                const creditNetPrincipal = transactions
+                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                  .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
+                const outstanding = Math.max(0, m.loanPrincipal);
+                return creditNetPrincipal + outstanding || Math.max(0, m.loanPrincipal);
+              })();
 
           // Actual repayment: cutoff (31-Mar) पूर्वीचा सर्वात शेवटचा CREDIT LOAN transaction
           // (31 मार्चनंतरच्या entries मुळे eligibility बाधित होणार नाही)
