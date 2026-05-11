@@ -49,6 +49,7 @@ export interface Transaction {
   interestAccrued?: number;
   interestPaid?: number;
   principalPaid?: number;
+  waivedAmount?: number;  // Admin द्वारे माफ केलेली रक्कम (कर्ज माफी) - Bank Incentive साठी मूळ कर्ज रक्कम मिळवण्यासाठी
   previousLoanCalculationDate?: string;
   expenseCategory?: string;
   bankId?: string; // Link to society bank if it's a bank transaction
