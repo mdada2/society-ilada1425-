@@ -80,10 +80,28 @@ function ReportTable<T extends { id?: string | number }>({
     const handleExportCSV = () => {
         if (data.length === 0) return;
 
+        // Excel साठी render value extract करणे:
+        // col.render असल्यास वापरा - जर plain string/number असेल तर Excel मध्ये टाका
+        // React element असल्यास raw value वापरा
+        const getExcelValue = (item: T, col: Column<T>): string | number => {
+            if (col.render) {
+                const rendered = col.render(item);
+                // React element नसल्यास (म्हणजे string/number/null) directly वापरा
+                if (typeof rendered === 'string' || typeof rendered === 'number') {
+                    return rendered;
+                }
+            }
+            // Raw value fallback - yyyy-MM-dd dates DD-MM-YYYY मध्ये convert करा
+            const raw = (item as any)[col.accessorKey] ?? '';
+            if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                // ISO date → DD-MM-YYYY
+                return `${raw.slice(8, 10)}-${raw.slice(5, 7)}-${raw.slice(0, 4)}`;
+            }
+            return raw;
+        };
+
         const headers = columns.map(c => c.header);
-        const rows = data.map(item =>
-            columns.map(col => (item as any)[col.accessorKey] ?? '')
-        );
+        const rows = data.map(item => columns.map(col => getExcelValue(item, col)));
 
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
         const wb = XLSX.utils.book_new();
@@ -91,7 +109,7 @@ function ReportTable<T extends { id?: string | number }>({
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-        const fileName = `${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+        const fileName = `${title.replace(/\s+/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.xlsx`;
         downloadBlob(blob, fileName);
     };
 
