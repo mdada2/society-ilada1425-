@@ -2240,16 +2240,19 @@ const Reports = () => {
 
       const summaryData = limits.map((l, idx) => {
         const filtered = members.filter(m => {
-          // मूळ कर्ज रक्कम: DEBIT txn ची बेरीज → नसल्यास principalPaid → नसल्यास loanPrincipal
+          // मूळ कर्ज रक्कम: DEBIT txn ची बेरीज → नसल्यास (amount - interestPaid) + outstanding
+          // principalPaid fallback वापरू नये - Admin waiver असल्यास ते चुकीचे येते
           const totalDebits = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
-          const totalPrincipalRepaid = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
-            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
           const effectivePrincipal = totalDebits > 0
             ? totalDebits
-            : (m.loanPrincipal === 0 ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
+            : (() => {
+                const creditNet = transactions
+                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                  .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
+                return creditNet + Math.max(0, m.loanPrincipal) || 0;
+              })();
 
           if (effectivePrincipal === 0) return false;
 
@@ -2268,16 +2271,18 @@ const Reports = () => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
           const isRepaid = m.loanPrincipal === 0;
 
-          // Actual loan amount for calculations
-          const totalDebits = transactions
+          // मूळ कर्ज रक्कम: DEBIT txn total, नसल्यास (amount - interestPaid) + outstanding
+          const totalDebits2 = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
-          const totalPrincipalRepaid = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
-            .reduce((sum, t) => sum + (t.principalPaid || 0), 0);
-          const principal = totalDebits > 0
-            ? totalDebits
-            : (isRepaid ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
+          const principal = totalDebits2 > 0
+            ? totalDebits2
+            : (() => {
+                const creditNet = transactions
+                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan')
+                  .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
+                return creditNet + Math.max(0, m.loanPrincipal) || 0;
+              })();
 
           disbursement += principal;
 
