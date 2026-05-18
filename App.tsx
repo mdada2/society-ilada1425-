@@ -17,6 +17,7 @@ import PaddyPurchase from './pages/PaddyPurchase';
 import Dispatch from './pages/Dispatch';
 import InventoryEntry from './pages/InventoryEntry';
 import BankAudit from './pages/BankAudit';
+import Tools from './pages/Tools';
 import AIChatWidget from './components/AIChatWidget';
 import { ShieldCheck, Menu, KeyRound, RotateCcw, Smartphone, Mail, ArrowLeft } from 'lucide-react';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -600,6 +601,7 @@ const MainLayout = () => {
           <Route path="/reports/:categoryId" element={<Reports />} />
           <Route path="/reports/:categoryId/:subTab" element={<Reports />} />
           <Route path="/loan-calculator" element={<LoanCalculatorPage />} />
+          <Route path="/tools" element={<Tools />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

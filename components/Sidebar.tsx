@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, IndianRupee, FileText, Settings, LogOut, X, Calculator, Handshake, Receipt, ShoppingBag, Cloud, CloudOff, AlertTriangle, RefreshCw, Loader2, Landmark, Truck, Package } from 'lucide-react';
+import { LayoutDashboard, Users, IndianRupee, FileText, Settings, LogOut, X, Calculator, Handshake, Receipt, ShoppingBag, Cloud, CloudOff, AlertTriangle, RefreshCw, Loader2, Landmark, Truck, Package, Wrench } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface SidebarProps {
@@ -18,6 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/members', label: 'Members', icon: <Users size={22} />, shortLabel: 'Members' },
     { path: '/transactions', label: 'Transactions', icon: <IndianRupee size={22} />, shortLabel: 'Money' },
     { path: '/reports', label: 'Reports', icon: <FileText size={22} />, shortLabel: 'Reports' },
+    { path: '/tools', label: 'Tools', icon: <Wrench size={22} />, shortLabel: 'Tools' },
     { path: '/settings', label: 'Settings', icon: <Settings size={22} />, shortLabel: 'Settings' },
   ];
 
@@ -33,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/inventory-entry', label: 'Inventory Entry', icon: <Package size={20} /> },
     { path: '/reports', label: 'Reports', icon: <FileText size={20} /> },
     { path: '/loan-calculator', label: 'Loan Calculator', icon: <Calculator size={20} /> },
+    { path: '/tools', label: 'Tools', icon: <Wrench size={20} /> },
     { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
 
