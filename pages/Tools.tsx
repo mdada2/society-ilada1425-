@@ -306,7 +306,6 @@ const Tools: React.FC = () => {
     readMergeFile(f, num);
   };
 
-  const KEY_COLS = 6; // A through F (indices 0–5)
   const buildKey = (row: any[]) =>
     row.slice(0, KEY_COLS).map((v: any) => String(v ?? '').trim().toLowerCase()).join('|||');
 
