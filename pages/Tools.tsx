@@ -411,29 +411,29 @@ const Tools: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
 
         {/* Card Header */}
-        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-4 flex items-center gap-3">
-          <Layers size={22} className="text-white/90" />
-          <div>
-            <h2 className="text-white font-bold text-lg">Excel Duplicate Consolidator</h2>
-            <p className="text-violet-200 text-xs mt-0.5">
-              Col A &amp; B = Unique Key · Col C,D,E,F = माहिती · Col K &amp; L = बेरीज
+        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 md:px-6 md:py-4 flex items-center gap-3">
+          <Layers size={20} className="text-white/90 shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-white font-bold text-base md:text-lg">Excel Duplicate Consolidator</h2>
+            <p className="text-violet-200 text-xs mt-0.5 leading-relaxed">
+              Col A+B = Key &middot; C,D,E,F = माहिती &middot; K+L = बेरीज
             </p>
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-3 md:p-6 space-y-4">
 
           {/* ── How it works info ── */}
-          <div className="flex gap-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-xl p-4">
-            <Info size={18} className="text-indigo-500 shrink-0 mt-0.5" />
-            <div className="text-sm text-indigo-800 dark:text-indigo-300 space-y-1">
-              <p className="font-semibold">हे Tool काय करते?</p>
-              <ul className="list-disc list-inside space-y-1 text-indigo-700 dark:text-indigo-400">
-                <li>Column <strong>A</strong> आणि <strong>B</strong> — Unique Key म्हणून वापरतो (duplicates शोधतो)</li>
-                <li>Column <strong>C, D, E, F</strong> — संबंधित माहिती (पहिल्या record मधून घेतो)</li>
-                <li>Column <strong>K</strong> व <strong>L</strong> — numeric values एकत्र <strong>बेरीज</strong> करतो</li>
-                <li>Duplicate rows वगळून <strong>एकच unique record</strong> ठेवतो</li>
-                <li>Original workbook मध्ये <strong>"Consolidated"</strong> नावाची नवीन sheet घालतो</li>
+          <div className="flex gap-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-xl p-3 md:p-4">
+            <Info size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+            <div className="text-xs md:text-sm text-indigo-800 dark:text-indigo-300 space-y-0.5">
+              <p className="font-semibold text-sm">हे Tool काय करते?</p>
+              <ul className="list-disc list-inside space-y-0.5 text-indigo-700 dark:text-indigo-400">
+                <li>Col <strong>A + B</strong> — Unique Key (duplicates शोधतो)</li>
+                <li>Col <strong>C, D, E, F</strong> — माहिती (पहिल्या record मधून)</li>
+                <li>Col <strong>K व L</strong> — numeric values बेरीज करतो</li>
+                <li>Duplicates वगळून एकच unique record ठेवतो</li>
+                <li>"Consolidated" नावाची नवीन sheet तयार करतो</li>
               </ul>
             </div>
           </div>
@@ -696,13 +696,13 @@ const Tools: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
 
         {/* Card Header */}
-        <div className="bg-gradient-to-r from-rose-500 to-pink-600 px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Layers size={22} className="text-white/90" />
-            <div>
-              <h2 className="text-white font-bold text-lg">Two-File Merger</h2>
-              <p className="text-rose-100 text-xs mt-0.5">
-                दोन Excel Files — Col A-F key ने match करा, G+ columns एकत्र करा
+        <div className="bg-gradient-to-r from-rose-500 to-pink-600 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Layers size={20} className="text-white/90 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-white font-bold text-base md:text-lg">Two-File Merger</h2>
+              <p className="text-rose-100 text-xs mt-0.5 leading-relaxed">
+                Col A-F ने match &middot; G+ columns एकत्र करा
               </p>
             </div>
           </div>
