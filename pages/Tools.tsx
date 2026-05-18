@@ -55,6 +55,8 @@ const fmtNum = (n: number) =>
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+const KEY_COLS = 6; // Col A–F (indices 0–5)
+
 const Tools: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
@@ -73,6 +75,23 @@ const Tools: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Two-File Merger state ─────────────────────────────────────────────────
+  const [mFile1, setMFile1] = useState<File | null>(null);
+  const [mFile2, setMFile2] = useState<File | null>(null);
+  const [mHeaders1, setMHeaders1] = useState<string[]>([]);
+  const [mHeaders2, setMHeaders2] = useState<string[]>([]);
+  const [mRows1, setMRows1] = useState<any[][]>([]);
+  const [mRows2, setMRows2] = useState<any[][]>([]);
+  const [mergedRows, setMergedRows] = useState<any[][]>([]);
+  const [mergedHeaders, setMergedHeaders] = useState<string[]>([]);
+  const [mergeStatus, setMergeStatus] = useState<'idle' | 'reading1' | 'reading2' | 'done' | 'error'>('idle');
+  const [mergeError, setMergeError] = useState('');
+  const [mergeDownloading, setMergeDownloading] = useState(false);
+  const [mFile1Name, setMFile1Name] = useState('');
+  const [mFile2Name, setMFile2Name] = useState('');
+  const fileInput1Ref = useRef<HTMLInputElement>(null);
+  const fileInput2Ref = useRef<HTMLInputElement>(null);
 
   // ── File reading ────────────────────────────────────────────────────────────
 
@@ -255,6 +274,96 @@ const Tools: React.FC = () => {
     setErrorMsg('');
     setShowPreview(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ── Two-File Merger logic ─────────────────────────────────────────────────
+
+  const readMergeFile = (f: File, num: 1 | 2) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (json.length < 2) { setMergeError('File मध्ये कमीत कमी 2 rows असणे आवश्यक आहे.'); setMergeStatus('error'); return; }
+        const hdr = (json[0] as any[]).map((h: any) => String(h ?? ''));
+        const rows = json.slice(1) as any[][];
+        if (num === 1) { setMHeaders1(hdr); setMRows1(rows); setMFile1Name(f.name); }
+        else { setMHeaders2(hdr); setMRows2(rows); setMFile2Name(f.name); }
+        setMergeStatus('idle');
+      } catch (err: any) { setMergeError('File वाचताना error: ' + (err.message ?? '')); setMergeStatus('error'); }
+    };
+    reader.readAsArrayBuffer(f);
+  };
+
+  const handleMergeFile = (f: File | null, num: 1 | 2) => {
+    if (!f) return;
+    if (!f.name.match(/\.(xlsx|xls|csv)$/i)) { setMergeError('कृपया .xlsx, .xls किंवा .csv file upload करा.'); setMergeStatus('error'); return; }
+    setMergeError('');
+    setMergeStatus(num === 1 ? 'reading1' : 'reading2');
+    if (num === 1) setMFile1(f); else setMFile2(f);
+    readMergeFile(f, num);
+  };
+
+  const KEY_COLS = 6; // A through F (indices 0–5)
+  const buildKey = (row: any[]) =>
+    row.slice(0, KEY_COLS).map((v: any) => String(v ?? '').trim().toLowerCase()).join('|||');
+
+  const mergeFiles = () => {
+    if (!mRows1.length || !mRows2.length) { setMergeError('कृपया दोन्ही files upload करा.'); setMergeStatus('error'); return; }
+    setMergeError('');
+
+    const extra1Hdrs = mHeaders1.slice(KEY_COLS);
+    const extra2Hdrs = mHeaders2.slice(KEY_COLS);
+    const extra1HdrsFinal = extra1Hdrs.map(h => extra2Hdrs.includes(h) ? h + ' (File1)' : h);
+    const extra2HdrsFinal = extra2Hdrs.map(h => extra1Hdrs.includes(h) ? h + ' (File2)' : h);
+    const finalHdrs = [...mHeaders1.slice(0, KEY_COLS), ...extra1HdrsFinal, ...extra2HdrsFinal];
+    setMergedHeaders(finalHdrs);
+
+    const map2 = new Map<string, any[]>();
+    mRows2.forEach(row => map2.set(buildKey(row), row.slice(KEY_COLS)));
+
+    const blank1 = extra1Hdrs.map(() => '');
+    const blank2 = extra2Hdrs.map(() => '');
+    const merged: any[][] = [];
+    const matchedKeys = new Set<string>();
+
+    mRows1.forEach(row => {
+      const key = buildKey(row);
+      matchedKeys.add(key);
+      merged.push([...row.slice(0, KEY_COLS), ...row.slice(KEY_COLS), ...(map2.get(key) ?? blank2)]);
+    });
+
+    mRows2.forEach(row => {
+      if (!matchedKeys.has(buildKey(row)))
+        merged.push([...row.slice(0, KEY_COLS), ...blank1, ...row.slice(KEY_COLS)]);
+    });
+
+    setMergedRows(merged);
+    setMergeStatus('done');
+  };
+
+  const downloadMerged = () => {
+    if (!mergedRows.length) return;
+    setMergeDownloading(true);
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([mergedHeaders, ...mergedRows]);
+      ws['!cols'] = mergedHeaders.map(() => ({ wch: 20 }));
+      XLSX.utils.book_append_sheet(wb, ws, 'Merged');
+      XLSX.writeFile(wb, (mFile1Name.replace(/\.(xlsx|xls|csv)$/i, '') || 'File1') + '_Merged.xlsx');
+    } catch (err: any) { setMergeError('Download error: ' + (err.message ?? '')); }
+    finally { setMergeDownloading(false); }
+  };
+
+  const resetMerger = () => {
+    setMFile1(null); setMFile2(null);
+    setMHeaders1([]); setMHeaders2([]); setMRows1([]); setMRows2([]);
+    setMergedRows([]); setMergedHeaders([]);
+    setMergeStatus('idle'); setMergeError(''); setMFile1Name(''); setMFile2Name('');
+    if (fileInput1Ref.current) fileInput1Ref.current.value = '';
+    if (fileInput2Ref.current) fileInput2Ref.current.value = '';
   };
 
   // ── Stats ────────────────────────────────────────────────────────────────────
@@ -559,6 +668,198 @@ const Tools: React.FC = () => {
                     <td className="px-4 py-3 text-center text-xs text-slate-500">{rawRows.length} rows</td>
                   </tr>
                 </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ════ Two-File Merger Card ════ */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+
+        {/* Card Header */}
+        <div className="bg-gradient-to-r from-rose-500 to-pink-600 px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Layers size={22} className="text-white/90" />
+            <div>
+              <h2 className="text-white font-bold text-lg">Two-File Merger</h2>
+              <p className="text-rose-100 text-xs mt-0.5">
+                दोन Excel Files — Col A-F key ने match करा, G+ columns एकत्र करा
+              </p>
+            </div>
+          </div>
+          {(mFile1 || mFile2) && (
+            <button onClick={resetMerger} className="text-white/70 hover:text-white transition text-xs flex items-center gap-1">
+              <X size={14} /> Reset
+            </button>
+          )}
+        </div>
+
+        <div className="p-6 space-y-5">
+
+          {/* Info */}
+          <div className="flex gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-4">
+            <Info size={18} className="text-rose-500 shrink-0 mt-0.5" />
+            <div className="text-sm text-rose-800 dark:text-rose-300 space-y-1">
+              <p className="font-semibold">हे Tool काय करते?</p>
+              <ul className="list-disc list-inside space-y-1 text-rose-700 dark:text-rose-400">
+                <li>दोन वेगळ्या Excel files upload करा</li>
+                <li>Column <strong>A, B, C, D, E, F</strong> — matching key म्हणून वापरतो</li>
+                <li>Column <strong>G onwards</strong> — दोन्ही files मधील माहिती एकत्र करतो</li>
+                <li>Matched rows: दोन्ही files चे extra columns side-by-side येतात</li>
+                <li>Unmatched rows: blank columns सह output मध्ये येतात</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Two Upload Boxes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* File 1 */}
+            <div>
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <span className="bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-bold px-2 py-0.5 rounded-full">File 1</span>
+                पहिली Excel File
+              </p>
+              {!mFile1 ? (
+                <div
+                  onClick={() => fileInput1Ref.current?.click()}
+                  className="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Upload size={24} className="text-slate-400" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Browse करा</p>
+                  <p className="text-xs text-slate-400">.xlsx, .xls, .csv</p>
+                  <input ref={fileInput1Ref} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                    onChange={e => handleMergeFile(e.target.files?.[0] ?? null, 1)} />
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl p-3">
+                  <FileSpreadsheet size={22} className="text-rose-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mFile1.name}</p>
+                    <p className="text-xs text-slate-500">{mRows1.length} rows · {mHeaders1.slice(KEY_COLS).length} extra cols</p>
+                  </div>
+                  <button onClick={() => { setMFile1(null); setMRows1([]); setMHeaders1([]); if (fileInput1Ref.current) fileInput1Ref.current.value = ''; }}
+                    className="text-slate-400 hover:text-red-500 transition"><X size={16} /></button>
+                </div>
+              )}
+            </div>
+
+            {/* File 2 */}
+            <div>
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <span className="bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400 text-xs font-bold px-2 py-0.5 rounded-full">File 2</span>
+                दुसरी Excel File
+              </p>
+              {!mFile2 ? (
+                <div
+                  onClick={() => fileInput2Ref.current?.click()}
+                  className="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/10 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Upload size={24} className="text-slate-400" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Browse करा</p>
+                  <p className="text-xs text-slate-400">.xlsx, .xls, .csv</p>
+                  <input ref={fileInput2Ref} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                    onChange={e => handleMergeFile(e.target.files?.[0] ?? null, 2)} />
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-700 rounded-xl p-3">
+                  <FileSpreadsheet size={22} className="text-pink-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mFile2.name}</p>
+                    <p className="text-xs text-slate-500">{mRows2.length} rows · {mHeaders2.slice(KEY_COLS).length} extra cols</p>
+                  </div>
+                  <button onClick={() => { setMFile2(null); setMRows2([]); setMHeaders2([]); if (fileInput2Ref.current) fileInput2Ref.current.value = ''; }}
+                    className="text-slate-400 hover:text-red-500 transition"><X size={16} /></button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Status */}
+          {(mergeStatus === 'reading1' || mergeStatus === 'reading2') && (
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 rounded-xl p-4">
+              <Loader2 size={20} className="animate-spin shrink-0" />
+              <span className="text-sm font-medium">File {mergeStatus === 'reading1' ? '1' : '2'} वाचत आहे...</span>
+            </div>
+          )}
+          {mergeStatus === 'error' && (
+            <div className="flex items-center gap-3 text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <AlertCircle size={20} className="shrink-0" /><span className="text-sm">{mergeError}</span>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          {mRows1.length > 0 && mRows2.length > 0 && mergeStatus !== 'reading1' && mergeStatus !== 'reading2' && (
+            <div className="flex flex-wrap gap-3">
+              <button onClick={mergeFiles}
+                className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all active:scale-95">
+                <Play size={18} /> Files Merge करा
+              </button>
+              {mergedRows.length > 0 && (
+                <button onClick={downloadMerged} disabled={mergeDownloading}
+                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
+                  {mergeDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                  Merged Excel Download करा
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Merge Results */}
+      {mergeStatus === 'done' && mergedRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 flex items-center gap-3">
+            <CheckCircle2 size={22} className="text-white" />
+            <div>
+              <h2 className="text-white font-bold text-lg">Merged Results</h2>
+              <p className="text-emerald-100 text-xs mt-0.5">
+                {mergedRows.length} rows merged · {mergedHeaders.length} columns
+              </p>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <StatCard icon={<BarChart3 size={20} className="text-rose-500" />} label="File 1 Rows" value={mRows1.length} bg="bg-rose-50 dark:bg-rose-900/20" />
+              <StatCard icon={<BarChart3 size={20} className="text-pink-500" />} label="File 2 Rows" value={mRows2.length} bg="bg-pink-50 dark:bg-pink-900/20" />
+              <StatCard icon={<CheckCircle2 size={20} className="text-emerald-500" />} label="Total Merged Rows" value={mergedRows.length} bg="bg-emerald-50 dark:bg-emerald-900/20" />
+            </div>
+            <div className="overflow-auto max-h-80 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
+              <table className="min-w-full text-xs">
+                <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-500">#</th>
+                    {mergedHeaders.map((h, i) => (
+                      <th key={i} className={`px-3 py-2 text-left font-semibold whitespace-nowrap
+                        ${i < KEY_COLS ? 'text-slate-600 dark:text-slate-300' :
+                          h.includes('(File1)') || (!h.includes('(File2)') && i < KEY_COLS + mHeaders1.slice(KEY_COLS).length)
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-pink-600 dark:text-pink-400'}`}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {mergedRows.slice(0, 30).map((row, i) => (
+                    <tr key={i} className="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                      <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
+                      {row.map((cell: any, j: number) => (
+                        <td key={j} className={`px-3 py-1.5 whitespace-nowrap
+                          ${j < KEY_COLS ? 'font-medium text-slate-800 dark:text-white' :
+                            j < KEY_COLS + mHeaders1.slice(KEY_COLS).length
+                              ? 'text-rose-700 dark:text-rose-300'
+                              : 'text-pink-700 dark:text-pink-300'}`}>
+                          {String(cell ?? '')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {mergedRows.length > 30 && (
+                    <tr><td colSpan={mergedHeaders.length + 1} className="px-3 py-2 text-center text-slate-400 italic">... आणखी {mergedRows.length - 30} rows (Download करा)</td></tr>
+                  )}
+                </tbody>
               </table>
             </div>
           </div>
