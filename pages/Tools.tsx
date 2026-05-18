@@ -713,7 +713,7 @@ const Tools: React.FC = () => {
           )}
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-3 md:p-6 space-y-4">
 
           {/* Info */}
           <div className="flex gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-3 md:p-4">
