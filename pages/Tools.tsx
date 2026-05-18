@@ -55,8 +55,6 @@ const fmtNum = (n: number) =>
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const KEY_COLS = 6; // Col A–F (indices 0–5)
-
 const Tools: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
@@ -89,6 +87,7 @@ const Tools: React.FC = () => {
   const [mergeError, setMergeError] = useState('');
   const [mergeDownloading, setMergeDownloading] = useState(false);
   const [mFile1Name, setMFile1Name] = useState('');
+  const [keyColCount, setKeyColCount] = useState(2); // default: A+B as key
   const [mFile2Name, setMFile2Name] = useState('');
   const fileInput1Ref = useRef<HTMLInputElement>(null);
   const fileInput2Ref = useRef<HTMLInputElement>(null);
@@ -306,37 +305,58 @@ const Tools: React.FC = () => {
     readMergeFile(f, num);
   };
 
-  const buildKey = (row: any[]) =>
-    row.slice(0, KEY_COLS).map((v: any) => String(v ?? '').trim().toLowerCase()).join('|||');
+  const buildKey = (row: any[], kc: number) =>
+    row.slice(0, kc).map((v: any) => String(v ?? '').trim().toLowerCase()).join('|||');
 
   const mergeFiles = () => {
     if (!mRows1.length || !mRows2.length) { setMergeError('कृपया दोन्ही files upload करा.'); setMergeStatus('error'); return; }
     setMergeError('');
 
-    const extra1Hdrs = mHeaders1.slice(KEY_COLS);
-    const extra2Hdrs = mHeaders2.slice(KEY_COLS);
-    const extra1HdrsFinal = extra1Hdrs.map(h => extra2Hdrs.includes(h) ? h + ' (File1)' : h);
-    const extra2HdrsFinal = extra2Hdrs.map(h => extra1Hdrs.includes(h) ? h + ' (File2)' : h);
-    const finalHdrs = [...mHeaders1.slice(0, KEY_COLS), ...extra1HdrsFinal, ...extra2HdrsFinal];
+    const kc = keyColCount;
+
+    // Extra columns from each file (after the key columns)
+    const extra1Hdrs = mHeaders1.slice(kc);
+    const extra2Hdrs = mHeaders2.slice(kc);
+
+    // Columns only in File2 (not already in File1 extras)
+    const onlyIn2 = extra2Hdrs.filter(h => !extra1Hdrs.includes(h));
+    // Columns in both: mark them clearly
+    const extra1Final = extra1Hdrs.map(h => extra2Hdrs.includes(h) ? h + ' (File1)' : h);
+    // For columns in both, add (File2) suffix; for File2-only, use as-is
+    const extra2Final = [
+      ...extra2Hdrs.filter(h => extra1Hdrs.includes(h)).map(h => h + ' (File2)'),
+      ...onlyIn2,
+    ];
+
+    const finalHdrs = [...mHeaders1.slice(0, kc), ...extra1Final, ...extra2Final];
     setMergedHeaders(finalHdrs);
 
+    // Build lookup from File2
     const map2 = new Map<string, any[]>();
-    mRows2.forEach(row => map2.set(buildKey(row), row.slice(KEY_COLS)));
+    mRows2.forEach(row => {
+      const extraRow2 = [
+        ...extra2Hdrs.filter(h => extra1Hdrs.includes(h)).map(h => row[mHeaders2.indexOf(h)]),
+        ...onlyIn2.map(h => row[mHeaders2.indexOf(h)]),
+      ];
+      map2.set(buildKey(row, kc), extraRow2);
+    });
 
-    const blank1 = extra1Hdrs.map(() => '');
-    const blank2 = extra2Hdrs.map(() => '');
+    const blank1 = extra1Final.map(() => '');
+    const blank2 = extra2Final.map(() => '');
     const merged: any[][] = [];
     const matchedKeys = new Set<string>();
 
     mRows1.forEach(row => {
-      const key = buildKey(row);
+      const key = buildKey(row, kc);
       matchedKeys.add(key);
-      merged.push([...row.slice(0, KEY_COLS), ...row.slice(KEY_COLS), ...(map2.get(key) ?? blank2)]);
+      merged.push([...row.slice(0, kc), ...row.slice(kc), ...(map2.get(key) ?? blank2)]);
     });
 
     mRows2.forEach(row => {
-      if (!matchedKeys.has(buildKey(row)))
-        merged.push([...row.slice(0, KEY_COLS), ...blank1, ...row.slice(KEY_COLS)]);
+      if (!matchedKeys.has(buildKey(row, kc)))
+        merged.push([...row.slice(0, kc), ...blank1,
+          ...extra2Hdrs.filter(h => extra1Hdrs.includes(h)).map(h => row[mHeaders2.indexOf(h)]),
+          ...onlyIn2.map(h => row[mHeaders2.indexOf(h)])]);
     });
 
     setMergedRows(merged);
@@ -710,6 +730,34 @@ const Tools: React.FC = () => {
             </div>
           </div>
 
+          {/* Key Column Count Selector */}
+          <div className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-4">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+              <span className="bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-bold px-2 py-0.5 rounded-full">Key</span>
+              Matching साठी किती columns वापरायचे?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4, 5, 6].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setKeyColCount(n)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                    keyColCount === n
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-md'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-rose-400'
+                  }`}
+                >
+                  {n === 1 ? 'A' : n === 2 ? 'A+B' : n === 3 ? 'A+B+C' : n === 4 ? 'A–D' : n === 5 ? 'A–E' : 'A–F'}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              सध्या: पहिले <strong className="text-rose-500">{keyColCount}</strong> column{keyColCount > 1 ? 's' : ''} (
+              {['A', 'A & B', 'A, B & C', 'A ते D', 'A ते E', 'A ते F'][keyColCount - 1]}) key म्हणून वापरले जातील.
+              बाकीचे columns दोन्ही files मधून एकत्र केले जातील.
+            </p>
+          </div>
+
           {/* Two Upload Boxes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -735,7 +783,7 @@ const Tools: React.FC = () => {
                   <FileSpreadsheet size={22} className="text-rose-500 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mFile1.name}</p>
-                    <p className="text-xs text-slate-500">{mRows1.length} rows · {mHeaders1.slice(KEY_COLS).length} extra cols</p>
+                    <p className="text-xs text-slate-500">{mRows1.length} rows · {mHeaders1.slice(keyColCount).length} extra cols</p>
                   </div>
                   <button onClick={() => { setMFile1(null); setMRows1([]); setMHeaders1([]); if (fileInput1Ref.current) fileInput1Ref.current.value = ''; }}
                     className="text-slate-400 hover:text-red-500 transition"><X size={16} /></button>
@@ -765,7 +813,7 @@ const Tools: React.FC = () => {
                   <FileSpreadsheet size={22} className="text-pink-500 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mFile2.name}</p>
-                    <p className="text-xs text-slate-500">{mRows2.length} rows · {mHeaders2.slice(KEY_COLS).length} extra cols</p>
+                    <p className="text-xs text-slate-500">{mRows2.length} rows · {mHeaders2.slice(keyColCount).length} extra cols</p>
                   </div>
                   <button onClick={() => { setMFile2(null); setMRows2([]); setMHeaders2([]); if (fileInput2Ref.current) fileInput2Ref.current.value = ''; }}
                     className="text-slate-400 hover:text-red-500 transition"><X size={16} /></button>
@@ -831,8 +879,8 @@ const Tools: React.FC = () => {
                     <th className="px-3 py-2 text-left font-semibold text-slate-500">#</th>
                     {mergedHeaders.map((h, i) => (
                       <th key={i} className={`px-3 py-2 text-left font-semibold whitespace-nowrap
-                        ${i < KEY_COLS ? 'text-slate-600 dark:text-slate-300' :
-                          h.includes('(File1)') || (!h.includes('(File2)') && i < KEY_COLS + mHeaders1.slice(KEY_COLS).length)
+                        ${i < keyColCount ? 'text-slate-600 dark:text-slate-300' :
+                          h.includes('(File1)') || (!h.includes('(File2)') && i < keyColCount + mHeaders1.slice(keyColCount).length)
                             ? 'text-rose-600 dark:text-rose-400'
                             : 'text-pink-600 dark:text-pink-400'}`}>
                         {h}
@@ -846,8 +894,8 @@ const Tools: React.FC = () => {
                       <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
                       {row.map((cell: any, j: number) => (
                         <td key={j} className={`px-3 py-1.5 whitespace-nowrap
-                          ${j < KEY_COLS ? 'font-medium text-slate-800 dark:text-white' :
-                            j < KEY_COLS + mHeaders1.slice(KEY_COLS).length
+                          ${j < keyColCount ? 'font-medium text-slate-800 dark:text-white' :
+                            j < keyColCount + mHeaders1.slice(keyColCount).length
                               ? 'text-rose-700 dark:text-rose-300'
                               : 'text-pink-700 dark:text-pink-300'}`}>
                           {String(cell ?? '')}
