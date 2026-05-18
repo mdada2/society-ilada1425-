@@ -22,6 +22,10 @@ import {
 interface RawRow {
   colA: string;
   colB: string;
+  colC: string;
+  colD: string;
+  colE: string;
+  colF: string;
   colK: number;
   colL: number;
   [key: string]: any;
@@ -30,6 +34,10 @@ interface RawRow {
 interface ConsolidatedRow {
   colA: string;
   colB: string;
+  colC: string;
+  colD: string;
+  colE: string;
+  colF: string;
   totalK: number;
   totalL: number;
   count: number;
@@ -55,6 +63,10 @@ const Tools: React.FC = () => {
   const [consolidated, setConsolidated] = useState<ConsolidatedRow[]>([]);
   const [colKName, setColKName] = useState('Col K');
   const [colLName, setColLName] = useState('Col L');
+  const [colCName, setColCName] = useState('Col C');
+  const [colDName, setColDName] = useState('Col D');
+  const [colEName, setColEName] = useState('Col E');
+  const [colFName, setColFName] = useState('Col F');
   const [status, setStatus] = useState<'idle' | 'reading' | 'done' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -88,13 +100,21 @@ const Tools: React.FC = () => {
         const hdr: string[] = (json[0] as any[]).map((h) => String(h ?? ''));
         setHeaders(hdr);
 
-        // Detect col K/L names (index 10, 11)
-        setColKName(hdr[10] || 'Column K');
-        setColLName(hdr[11] || 'Column L');
+        // Detect column names from header row
+        setColCName(hdr[2] || 'Col C');
+        setColDName(hdr[3] || 'Col D');
+        setColEName(hdr[4] || 'Col E');
+        setColFName(hdr[5] || 'Col F');
+        setColKName(hdr[10] || 'Col K');
+        setColLName(hdr[11] || 'Col L');
 
         const rows: RawRow[] = json.slice(1).map((row: any[]) => ({
           colA: String(row[0] ?? '').trim(),
           colB: String(row[1] ?? '').trim(),
+          colC: String(row[2] ?? '').trim(),
+          colD: String(row[3] ?? '').trim(),
+          colE: String(row[4] ?? '').trim(),
+          colF: String(row[5] ?? '').trim(),
           colK: toNum(row[10]),
           colL: toNum(row[11]),
           _raw: row,
@@ -145,10 +165,19 @@ const Tools: React.FC = () => {
         existing.totalK += row.colK;
         existing.totalL += row.colL;
         existing.count += 1;
+        // C,D,E,F: fill blank values from later rows if first was empty
+        if (!existing.colC && row.colC) existing.colC = row.colC;
+        if (!existing.colD && row.colD) existing.colD = row.colD;
+        if (!existing.colE && row.colE) existing.colE = row.colE;
+        if (!existing.colF && row.colF) existing.colF = row.colF;
       } else {
         map.set(key, {
           colA: row.colA,
           colB: row.colB,
+          colC: row.colC,
+          colD: row.colD,
+          colE: row.colE,
+          colF: row.colF,
           totalK: row.colK,
           totalL: row.colL,
           count: 1,
@@ -167,17 +196,29 @@ const Tools: React.FC = () => {
     setDownloading(true);
 
     try {
-      // Build new sheet data
+      // Build new sheet data (A, B, C, D, E, F, K, L, Total, Count)
       const sheetData: any[][] = [
-        ['Col A', 'Col B', colKName + ' (बेरीज)', colLName + ' (बेरीज)', 'एकूण Records'],
-        ...consolidated.map((r) => [r.colA, r.colB, r.totalK, r.totalL, r.count]),
+        [
+          'Col A', 'Col B',
+          colCName, colDName, colEName, colFName,
+          colKName + ' (बेरीज)', colLName + ' (बेरीज)',
+          'एकूण (K+L)', 'Records'
+        ],
+        ...consolidated.map((r) => [
+          r.colA, r.colB,
+          r.colC, r.colD, r.colE, r.colF,
+          r.totalK, r.totalL,
+          r.totalK + r.totalL, r.count
+        ]),
       ];
 
       const newWS = XLSX.utils.aoa_to_sheet(sheetData);
 
-      // Style header row width
+      // Column widths
       newWS['!cols'] = [
-        { wch: 25 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 15 },
+        { wch: 25 }, { wch: 25 },
+        { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
+        { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 12 },
       ];
 
       // Remove old "Consolidated" sheet if it exists, then add fresh one
@@ -247,7 +288,7 @@ const Tools: React.FC = () => {
           <div>
             <h2 className="text-white font-bold text-lg">Excel Duplicate Consolidator</h2>
             <p className="text-violet-200 text-xs mt-0.5">
-              Column A &amp; B च्या duplicates बेरीज करा → Column K &amp; L
+              Col A &amp; B = Unique Key · Col C,D,E,F = माहिती · Col K &amp; L = बेरीज
             </p>
           </div>
         </div>
@@ -260,10 +301,11 @@ const Tools: React.FC = () => {
             <div className="text-sm text-indigo-800 dark:text-indigo-300 space-y-1">
               <p className="font-semibold">हे Tool काय करते?</p>
               <ul className="list-disc list-inside space-y-1 text-indigo-700 dark:text-indigo-400">
-                <li>Column <strong>A</strong> आणि <strong>B</strong> मधील duplicate entries शोधते</li>
-                <li>त्यांचे Column <strong>K</strong> व <strong>L</strong> चे values एकत्र <strong>बेरीज</strong> करते</li>
-                <li>Duplicate rows वगळून <strong>एकच unique record</strong> ठेवते</li>
-                <li>Original workbook मध्ये <strong>"Consolidated"</strong> नावाची नवीन sheet घालते</li>
+                <li>Column <strong>A</strong> आणि <strong>B</strong> — Unique Key म्हणून वापरतो (duplicates शोधतो)</li>
+                <li>Column <strong>C, D, E, F</strong> — संबंधित माहिती (पहिल्या record मधून घेतो)</li>
+                <li>Column <strong>K</strong> व <strong>L</strong> — numeric values एकत्र <strong>बेरीज</strong> करतो</li>
+                <li>Duplicate rows वगळून <strong>एकच unique record</strong> ठेवतो</li>
+                <li>Original workbook मध्ये <strong>"Consolidated"</strong> नावाची नवीन sheet घालतो</li>
               </ul>
             </div>
           </div>
@@ -356,7 +398,7 @@ const Tools: React.FC = () => {
               <table className="min-w-full text-xs">
                 <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                   <tr>
-                    {['#', 'Col A', 'Col B', 'Col K', 'Col L'].map((h) => (
+                    {['#', 'Col A', 'Col B', colCName, colDName, colEName, colFName, colKName, colLName].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {h}
                       </th>
@@ -369,13 +411,17 @@ const Tools: React.FC = () => {
                       <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
                       <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 font-medium">{row.colA}</td>
                       <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300">{row.colB}</td>
+                      <td className="px-3 py-1.5 text-slate-600 dark:text-slate-400">{row.colC}</td>
+                      <td className="px-3 py-1.5 text-slate-600 dark:text-slate-400">{row.colD}</td>
+                      <td className="px-3 py-1.5 text-slate-600 dark:text-slate-400">{row.colE}</td>
+                      <td className="px-3 py-1.5 text-slate-600 dark:text-slate-400">{row.colF}</td>
                       <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 text-right">{fmtNum(row.colK)}</td>
                       <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 text-right">{fmtNum(row.colL)}</td>
                     </tr>
                   ))}
                   {rawRows.length > 20 && (
                     <tr>
-                      <td colSpan={5} className="px-3 py-2 text-center text-slate-400 italic">
+                      <td colSpan={9} className="px-3 py-2 text-center text-slate-400 italic">
                         ... आणखी {rawRows.length - 20} rows
                       </td>
                     </tr>
@@ -459,21 +505,17 @@ const Tools: React.FC = () => {
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">#</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Col A (नाव/ID)</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Col B</th>
-                    <th className="px-4 py-3 text-right font-semibold text-violet-600 dark:text-violet-400">
-                      {colKName} बेरीज (K)
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-indigo-600 dark:text-indigo-400">
-                      {colLName} बेरीज (L)
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                      एकूण (K+L)
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-slate-500 dark:text-slate-400">
-                      Records
-                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">#</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Col A</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Col B</th>
+                    <th className="px-4 py-3 text-left font-semibold text-sky-600 dark:text-sky-400 whitespace-nowrap">{colCName}</th>
+                    <th className="px-4 py-3 text-left font-semibold text-sky-600 dark:text-sky-400 whitespace-nowrap">{colDName}</th>
+                    <th className="px-4 py-3 text-left font-semibold text-sky-600 dark:text-sky-400 whitespace-nowrap">{colEName}</th>
+                    <th className="px-4 py-3 text-left font-semibold text-sky-600 dark:text-sky-400 whitespace-nowrap">{colFName}</th>
+                    <th className="px-4 py-3 text-right font-semibold text-violet-600 dark:text-violet-400 whitespace-nowrap">{colKName} बेरीज</th>
+                    <th className="px-4 py-3 text-right font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">{colLName} बेरीज</th>
+                    <th className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">एकूण (K+L)</th>
+                    <th className="px-4 py-3 text-center font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Records</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -484,17 +526,15 @@ const Tools: React.FC = () => {
                         ${row.count > 1 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}
                     >
                       <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">{row.colA}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{row.colB}</td>
-                      <td className="px-4 py-3 text-right text-violet-700 dark:text-violet-300 font-medium">
-                        {fmtNum(row.totalK)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-indigo-700 dark:text-indigo-300 font-medium">
-                        {fmtNum(row.totalL)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400">
-                        {fmtNum(row.totalK + row.totalL)}
-                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white whitespace-nowrap">{row.colA}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{row.colB}</td>
+                      <td className="px-4 py-3 text-sky-700 dark:text-sky-300 text-sm">{row.colC}</td>
+                      <td className="px-4 py-3 text-sky-700 dark:text-sky-300 text-sm">{row.colD}</td>
+                      <td className="px-4 py-3 text-sky-700 dark:text-sky-300 text-sm">{row.colE}</td>
+                      <td className="px-4 py-3 text-sky-700 dark:text-sky-300 text-sm">{row.colF}</td>
+                      <td className="px-4 py-3 text-right text-violet-700 dark:text-violet-300 font-medium">{fmtNum(row.totalK)}</td>
+                      <td className="px-4 py-3 text-right text-indigo-700 dark:text-indigo-300 font-medium">{fmtNum(row.totalL)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400">{fmtNum(row.totalK + row.totalL)}</td>
                       <td className="px-4 py-3 text-center">
                         {row.count > 1 ? (
                           <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full">
@@ -510,18 +550,12 @@ const Tools: React.FC = () => {
                 {/* Grand Total Footer */}
                 <tfoot className="bg-slate-100 dark:bg-slate-700 border-t-2 border-slate-300 dark:border-slate-500">
                   <tr>
-                    <td colSpan={3} className="px-4 py-3 font-bold text-slate-700 dark:text-slate-200 text-right">
+                    <td colSpan={7} className="px-4 py-3 font-bold text-slate-700 dark:text-slate-200 text-right">
                       Grand Total →
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-violet-700 dark:text-violet-300">
-                      {fmtNum(grandK)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-indigo-700 dark:text-indigo-300">
-                      {fmtNum(grandL)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400 text-base">
-                      {fmtNum(grandK + grandL)}
-                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-violet-700 dark:text-violet-300">{fmtNum(grandK)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-indigo-700 dark:text-indigo-300">{fmtNum(grandL)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400 text-base">{fmtNum(grandK + grandL)}</td>
                     <td className="px-4 py-3 text-center text-xs text-slate-500">{rawRows.length} rows</td>
                   </tr>
                 </tfoot>
