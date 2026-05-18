@@ -561,10 +561,10 @@ const Tools: React.FC = () => {
 
           {/* ── Action Buttons ── */}
           {rawRows.length > 0 && status !== 'reading' && (
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 onClick={processData}
-                className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-violet-300 dark:hover:shadow-violet-900 hover:opacity-90 transition-all duration-200 active:scale-95"
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all duration-200 active:scale-95 w-full sm:w-auto"
               >
                 <Play size={18} />
                 Process &amp; Consolidate
@@ -574,7 +574,7 @@ const Tools: React.FC = () => {
                 <button
                   onClick={downloadUpdated}
                   disabled={downloading}
-                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-emerald-300 dark:hover:shadow-emerald-900 hover:opacity-90 transition-all duration-200 active:scale-95 disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all duration-200 active:scale-95 disabled:opacity-60 w-full sm:w-auto"
                 >
                   {downloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
                   Updated Excel Download करा
@@ -599,7 +599,7 @@ const Tools: React.FC = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 pb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 md:p-6 pb-3">
             <StatCard
               icon={<BarChart3 size={20} className="text-violet-500" />}
               label="एकूण Rows (Original)"
@@ -716,16 +716,16 @@ const Tools: React.FC = () => {
         <div className="p-6 space-y-5">
 
           {/* Info */}
-          <div className="flex gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-4">
-            <Info size={18} className="text-rose-500 shrink-0 mt-0.5" />
-            <div className="text-sm text-rose-800 dark:text-rose-300 space-y-1">
-              <p className="font-semibold">हे Tool काय करते?</p>
-              <ul className="list-disc list-inside space-y-1 text-rose-700 dark:text-rose-400">
-                <li>दोन वेगळ्या Excel files upload करा</li>
-                <li>Column <strong>A, B, C, D, E, F</strong> — matching key म्हणून वापरतो</li>
-                <li>Column <strong>G onwards</strong> — दोन्ही files मधील माहिती एकत्र करतो</li>
-                <li>Matched rows: दोन्ही files चे extra columns side-by-side येतात</li>
-                <li>Unmatched rows: blank columns सह output मध्ये येतात</li>
+          <div className="flex gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-3 md:p-4">
+            <Info size={16} className="text-rose-500 shrink-0 mt-0.5" />
+            <div className="text-xs md:text-sm text-rose-800 dark:text-rose-300 space-y-1">
+              <p className="font-semibold text-sm">हे Tool काय करते?</p>
+              <ul className="list-disc list-inside space-y-0.5 text-rose-700 dark:text-rose-400">
+                <li>दोन Excel files upload करा</li>
+                <li>निवडलेल्या columns (A-F) ने rows match करतो</li>
+                <li>उरलेले columns (G+) दोन्ही files मधून एकत्र करतो</li>
+                <li>Matched → एकाच row मध्ये सर्व माहिती</li>
+                <li>Unmatched → blank columns सह येतो</li>
               </ul>
             </div>
           </div>
@@ -736,18 +736,18 @@ const Tools: React.FC = () => {
               <span className="bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-bold px-2 py-0.5 rounded-full">Key</span>
               Matching साठी किती columns वापरायचे?
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3, 4, 5, 6].map(n => (
                 <button
                   key={n}
                   onClick={() => setKeyColCount(n)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                  className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all text-center ${
                     keyColCount === n
                       ? 'bg-rose-500 text-white border-rose-500 shadow-md'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-rose-400'
                   }`}
                 >
-                  {n === 1 ? 'A' : n === 2 ? 'A+B' : n === 3 ? 'A+B+C' : n === 4 ? 'A–D' : n === 5 ? 'A–E' : 'A–F'}
+                  {n === 1 ? 'A only' : n === 2 ? 'A + B' : n === 3 ? 'A+B+C' : n === 4 ? 'A → D' : n === 5 ? 'A → E' : 'A → F'}
                 </button>
               ))}
             </div>
@@ -837,14 +837,14 @@ const Tools: React.FC = () => {
 
           {/* Action Buttons */}
           {mRows1.length > 0 && mRows2.length > 0 && mergeStatus !== 'reading1' && mergeStatus !== 'reading2' && (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={mergeFiles}
-                className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all active:scale-95">
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all active:scale-95 w-full sm:w-auto">
                 <Play size={18} /> Files Merge करा
               </button>
               {mergedRows.length > 0 && (
                 <button onClick={downloadMerged} disabled={mergeDownloading}
-                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-all active:scale-95 disabled:opacity-60 w-full sm:w-auto">
                   {mergeDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
                   Merged Excel Download करा
                 </button>
@@ -866,8 +866,8 @@ const Tools: React.FC = () => {
               </p>
             </div>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="p-3 md:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               <StatCard icon={<BarChart3 size={20} className="text-rose-500" />} label="File 1 Rows" value={mRows1.length} bg="bg-rose-50 dark:bg-rose-900/20" />
               <StatCard icon={<BarChart3 size={20} className="text-pink-500" />} label="File 2 Rows" value={mRows2.length} bg="bg-pink-50 dark:bg-pink-900/20" />
               <StatCard icon={<CheckCircle2 size={20} className="text-emerald-500" />} label="Total Merged Rows" value={mergedRows.length} bg="bg-emerald-50 dark:bg-emerald-900/20" />
