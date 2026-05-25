@@ -9,7 +9,7 @@ import html2canvas from 'html2canvas';
 import { downloadBlob } from '../utils/downloadUtils';
 
 const PaddyPurchase = () => {
-    const { paddyPurchases, addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase, paddySeasons, addPaddySeason, updatePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason, settings, updateSettings } = useApp();
+    const { paddyPurchases, dispatches, addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase, paddySeasons, addPaddySeason, updatePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason, settings, updateSettings } = useApp();
 
     // Settings & Calculator UI State
     const [showSettings, setShowSettings] = useState(false);
@@ -191,21 +191,26 @@ const PaddyPurchase = () => {
 
     // Logic to calculate stocks excluding current editing record
     const currentStocks = useMemo(() => {
-        return paddyPurchases
+        // Filter purchases to only include the active season
+        const seasonPurchases = paddyPurchases.filter(p => p.season === currentSeasonCode);
+        
+        // Filter dispatches to only include the active season
+        const seasonDispatches = dispatches.filter(d => d.season === currentSeasonCode);
+        
+        // Sum up purchases
+        const purchasesSum = seasonPurchases
             .filter(p => p.id !== editingId)
             .reduce((acc, p) => ({
                 godown: acc.godown + (p.godownBags || 0),
                 godownWeight: acc.godownWeight + (p.godownWeight || 0),
                 shed: acc.shed + (p.shedBags || 0),
                 shedWeight: acc.shedWeight + (p.shedWeight || 0),
-                // Accumulate Bag Types
                 newBags: acc.newBags + (p.newBags || 0),
                 newWeight: acc.newWeight + (p.newWeight || 0),
                 oldBags: acc.oldBags + (p.oldBags || 0),
                 oldWeight: acc.oldWeight + (p.oldWeight || 0),
                 usedOnceBags: acc.usedOnceBags + (p.usedOnceBags || 0),
                 usedOnceWeight: acc.usedOnceWeight + (p.usedOnceWeight || 0),
-                // Accumulate Open Storage
                 open: acc.open + (p.openBags || 0),
                 openWeight: acc.openWeight + (p.openWeight || 0),
             }), {
@@ -213,7 +218,39 @@ const PaddyPurchase = () => {
                 newBags: 0, newWeight: 0, oldBags: 0, oldWeight: 0, usedOnceBags: 0, usedOnceWeight: 0,
                 open: 0, openWeight: 0
             });
-    }, [paddyPurchases, editingId]);
+
+        // Subtract dispatches from storage allocation
+        const dispatchesSum = seasonDispatches.reduce((acc, d) => {
+            const bags = d.bags || 0;
+            const weight = d.weight || 0;
+            if (d.storageSource === 'Godown') {
+                acc.godown += bags;
+                acc.godownWeight += weight;
+            } else if (d.storageSource === 'Shed') {
+                acc.shed += bags;
+                acc.shedWeight += weight;
+            } else if (d.storageSource === 'Open') {
+                acc.open += bags;
+                acc.openWeight += weight;
+            }
+            return acc;
+        }, { godown: 0, godownWeight: 0, shed: 0, shedWeight: 0, open: 0, openWeight: 0 });
+
+        return {
+            godown: Math.max(0, purchasesSum.godown - dispatchesSum.godown),
+            godownWeight: Math.max(0, purchasesSum.godownWeight - dispatchesSum.godownWeight),
+            shed: Math.max(0, purchasesSum.shed - dispatchesSum.shed),
+            shedWeight: Math.max(0, purchasesSum.shedWeight - dispatchesSum.shedWeight),
+            open: Math.max(0, purchasesSum.open - dispatchesSum.open),
+            openWeight: Math.max(0, purchasesSum.openWeight - dispatchesSum.openWeight),
+            newBags: purchasesSum.newBags,
+            newWeight: purchasesSum.newWeight,
+            oldBags: purchasesSum.oldBags,
+            oldWeight: purchasesSum.oldWeight,
+            usedOnceBags: purchasesSum.usedOnceBags,
+            usedOnceWeight: purchasesSum.usedOnceWeight,
+        };
+    }, [paddyPurchases, dispatches, currentSeasonCode, editingId]);
 
     const remainingGodown = Math.max(0, godownCapacity - currentStocks.godown);
     const remainingShed = Math.max(0, shedCapacity - currentStocks.shed);
