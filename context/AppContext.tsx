@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, PaddySeason, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment, StaffSalary } from '../types';
+import { Member, Transaction, AppSettings, LocalSettings, TransactionType, AccountType, Meeting, PaddyPurchaseRecord, PaddySeason, SocietyBank, AuditNote, DispatchRecord, InventoryAdjustment, StaffSalary, PaddyDO } from '../types';
 import { db, auth, signInWithEmail, signUpWithEmail, signOutUser, sendPasswordResetEmail as sendResetEmail, setupRecaptcha, signInWithPhone, verifyOTP, clearRecaptcha } from '../services/firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged, User, ConfirmationResult, ApplicationVerifier } from 'firebase/auth';
@@ -12,6 +12,7 @@ interface AppContextType {
   paddyPurchases: PaddyPurchaseRecord[];
   paddySeasons: PaddySeason[];
   dispatches: DispatchRecord[];
+  paddyDOs: PaddyDO[];
   inventoryAdjustments: InventoryAdjustment[];
   societyBanks: SocietyBank[];
   auditNotes: AuditNote[];
@@ -48,6 +49,9 @@ interface AppContextType {
   getActiveSeason: () => PaddySeason | undefined;
   getPurchasesBySeason: (seasonCode: string) => PaddyPurchaseRecord[];
   getSuggestedSeason: () => { code: string; name: string; type: 'kharif' | 'rabi'; startDate: string; endDate: string } | null;
+  addPaddyDO: (record: PaddyDO) => void;
+  updatePaddyDO: (record: PaddyDO) => void;
+  deletePaddyDO: (id: string) => void;
   addDispatch: (record: DispatchRecord) => void;
   updateDispatch: (record: DispatchRecord) => void;
   deleteDispatch: (id: string) => void;
@@ -116,6 +120,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [paddyPurchases, setPaddyPurchases] = useState<PaddyPurchaseRecord[]>([]);
   const [paddySeasons, setPaddySeasons] = useState<PaddySeason[]>([]);
   const [dispatches, setDispatches] = useState<DispatchRecord[]>([]);
+  const [paddyDOs, setPaddyDOs] = useState<PaddyDO[]>([]);
   const [inventoryAdjustments, setInventoryAdjustments] = useState<InventoryAdjustment[]>([]);
   const [societyBanks, setSocietyBanks] = useState<SocietyBank[]>([]);
   const [auditNotes, setAuditNotes] = useState<AuditNote[]>([]);
@@ -181,6 +186,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (data.paddyPurchases) setPaddyPurchases(data.paddyPurchases);
             if (data.paddySeasons) setPaddySeasons(data.paddySeasons);
             if (data.dispatches) setDispatches(data.dispatches);
+            if (data.paddyDOs) setPaddyDOs(data.paddyDOs);
             if (data.inventoryAdjustments) setInventoryAdjustments(data.inventoryAdjustments);
             if (data.societyBanks) setSocietyBanks(data.societyBanks);
             if (data.auditNotes) setAuditNotes(data.auditNotes);
@@ -238,7 +244,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       const sanitizedData = JSON.parse(JSON.stringify({
-        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries,
+        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries,
         settings: settingsToSync,
         lastUpdated: timestamp
       }));
@@ -267,6 +273,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setPaddyPurchases(data.paddyPurchases || []);
         setPaddySeasons(data.paddySeasons || []);
         setDispatches(data.dispatches || []);
+        setPaddyDOs(data.paddyDOs || []);
         setInventoryAdjustments(data.inventoryAdjustments || []);
         setSocietyBanks(data.societyBanks || []);
         setAuditNotes(data.auditNotes || []);
@@ -288,6 +295,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('paddyPurchases', JSON.stringify(paddyPurchases));
     localStorage.setItem('paddySeasons', JSON.stringify(paddySeasons));
     localStorage.setItem('dispatches', JSON.stringify(dispatches));
+    localStorage.setItem('paddyDOs', JSON.stringify(paddyDOs));
     localStorage.setItem('inventoryAdjustments', JSON.stringify(inventoryAdjustments));
     localStorage.setItem('societyBanks', JSON.stringify(societyBanks));
     localStorage.setItem('auditNotes', JSON.stringify(auditNotes));
@@ -296,7 +304,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsCloudSynced(false);
     const timeout = setTimeout(syncToCloud, 3000);
     return () => clearTimeout(timeout);
-  }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings]);
+  }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings]);
 
   const login = async (email: string, password: string): Promise<void> => {
     await signInWithEmail(email, password);
@@ -510,6 +518,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateDispatch = (updatedRecord: DispatchRecord) => setDispatches(prev => prev.map(p => p.id === updatedRecord.id ? updatedRecord : p));
   const deleteDispatch = (id: string) => setDispatches(prev => prev.filter(p => p.id !== id));
 
+  const addPaddyDO = (record: PaddyDO) => setPaddyDOs(prev => [record, ...prev]);
+  const updatePaddyDO = (updatedRecord: PaddyDO) => setPaddyDOs(prev => prev.map(p => p.id === updatedRecord.id ? updatedRecord : p));
+  const deletePaddyDO = (id: string) => setPaddyDOs(prev => prev.filter(p => p.id !== id));
+
   const addInventoryAdjustment = (record: InventoryAdjustment) => setInventoryAdjustments(prev => [record, ...prev]);
   const updateInventoryAdjustment = (updatedRecord: InventoryAdjustment) => setInventoryAdjustments(prev => prev.map(p => p.id === updatedRecord.id ? updatedRecord : p));
   const deleteInventoryAdjustment = (id: string) => setInventoryAdjustments(prev => prev.filter(p => p.id !== id));
@@ -535,6 +547,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPaddyPurchases(data.paddyPurchases || []);
     setPaddySeasons(data.paddySeasons || []);
     setDispatches(data.dispatches || []);
+    setPaddyDOs(data.paddyDOs || []);
     setInventoryAdjustments(data.inventoryAdjustments || []);
     setSocietyBanks(data.societyBanks || []);
     setAuditNotes(data.auditNotes || []);
@@ -546,11 +559,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
-      members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+      members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
       login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,
       addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase,
       addPaddySeason, updatePaddySeason, deletePaddySeason, setActiveSeason, getActiveSeason, getPurchasesBySeason, getSuggestedSeason,
+      addPaddyDO, updatePaddyDO, deletePaddyDO,
       addDispatch, updateDispatch, deleteDispatch,
       addInventoryAdjustment, updateInventoryAdjustment, deleteInventoryAdjustment,
       addSocietyBank, updateSocietyBank, deleteSocietyBank,

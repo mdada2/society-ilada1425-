@@ -96,6 +96,17 @@ export interface PaddySeason {
   createdAt: number;
 }
 
+export interface PaddyDO {
+  id: string;
+  season: string;        // Season code (e.g., "25K", "26R")
+  doNumber: string;      // Unique D.O. number
+  millName: string;      // Name of the mill
+  approvedBags: number;  // Approved Bags
+  approvedWeight: number;// Approved Weight (Qtl)
+  date: string;          // Date of DO issue
+  timestamp: number;
+}
+
 export interface PaddyPurchaseRecord {
   id: string;
   date: string;
