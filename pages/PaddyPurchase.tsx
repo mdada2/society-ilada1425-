@@ -445,7 +445,7 @@ const PaddyPurchase = () => {
         // Dynamic Calculation: Filter records up to this one (inclusive) based on timestamp
         // If allRecords is not provided, fall back to just this record (initial behavior)
         const relevantRecords = allRecords.length > 0
-            ? allRecords.filter(rec => rec.timestamp <= r.timestamp)
+            ? allRecords.filter(rec => rec.season === r.season && rec.timestamp <= r.timestamp)
             : [r];
 
         // Calculate Cumulative Allocations
@@ -1071,7 +1071,7 @@ const PaddyPurchase = () => {
                 </div>
                 {filteredPurchases.length === 0 ? <p className="text-slate-500 text-center py-8">No records found.</p> : [...filteredPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 50).map(record => {
                     // Dynamic Calculation Context for this record
-                    const relevantRecords = filteredPurchases.filter(r => r.timestamp <= record.timestamp);
+                    const relevantRecords = filteredPurchases.filter(r => r.season === record.season && r.timestamp <= record.timestamp);
 
 
                     const totalGodown = relevantRecords.reduce((sum, r) => sum + (r.godownBags || 0), 0);
@@ -1221,7 +1221,7 @@ const PaddyPurchase = () => {
                     <h2 className="text-4xl font-bold text-center text-blue-700 mb-4 border-b-4 border-blue-500 pb-3">खरेदी केंद्र ईळदा</h2>
                     {[...filteredPurchases].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10).map((record, index) => {
                         // Calculate running totals up to this record
-                        const relevantRecords = filteredPurchases.filter(r => r.timestamp <= record.timestamp);
+                        const relevantRecords = filteredPurchases.filter(r => r.season === record.season && r.timestamp <= record.timestamp);
                         const totalGodown = relevantRecords.reduce((sum, r) => sum + (r.godownBags || 0), 0);
                         const totalShed = relevantRecords.reduce((sum, r) => sum + (r.shedBags || 0), 0);
                         const totalOpen = relevantRecords.reduce((sum, r) => sum + (r.openBags || 0), 0);
