@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Member, Transaction } from '../types';
+import { Member, Transaction, PaddyDO, DispatchRecord } from '../types';
 import { format } from 'date-fns';
 
 // ============================================================================
@@ -300,7 +300,73 @@ export const exportDispatchesToExcel = (dispatches: any[]): void => {
     XLSX.writeFile(wb, filename);
 };
 
-// --- 7. Get Export Summary ---
+// --- 7. Export D.O. Summary to Excel ---
+export const exportPaddyDOsToExcel = (paddyDOs: PaddyDO[], dispatches: DispatchRecord[]): void => {
+    if (paddyDOs.length === 0) return;
+
+    const data = paddyDOs.map(d => {
+        // Calculate dynamic stats
+        const seasonDispatches = dispatches.filter(dispatch => 
+            dispatch.season === d.season && 
+            (dispatch.doNumber || '').toUpperCase().trim() === d.doNumber.toUpperCase().trim()
+        );
+        
+        const dispatchedBags = seasonDispatches.reduce((sum, curr) => sum + (Number(curr.bags) || 0), 0);
+        const dispatchedWeight = seasonDispatches.reduce((sum, curr) => sum + (Number(curr.weight) || 0), 0);
+        
+        // Sum up bag types used for this D.O.
+        const newBagsUsed = seasonDispatches.reduce((sum, curr) => sum + (Number(curr.newBagsUsed) || 0), 0);
+        const oldBagsUsed = seasonDispatches.reduce((sum, curr) => sum + (Number(curr.oldBagsUsed) || 0), 0);
+        const usedOnceBagsUsed = seasonDispatches.reduce((sum, curr) => sum + (Number(curr.usedOnceBagsUsed) || 0), 0);
+
+        const balanceBags = Math.max(0, d.approvedBags - dispatchedBags);
+        const balanceWeight = Math.max(0, d.approvedWeight - dispatchedWeight);
+        const completionPct = d.approvedBags > 0 ? `${Math.min(100, Math.round((dispatchedBags / d.approvedBags) * 100))}%` : '0%';
+
+        return {
+            'D.O. Date': d.date,
+            'Season': d.season,
+            'D.O. Number': d.doNumber,
+            'Mill Name': d.millName,
+            'Approved Bags': d.approvedBags,
+            'Approved Weight (Qtl)': d.approvedWeight,
+            'Dispatched Bags (Total)': dispatchedBags,
+            'Dispatched Weight (Total Qtl)': dispatchedWeight,
+            'New Bags (नवीन पोते)': newBagsUsed,
+            'Old Bags (जुने पोते)': oldBagsUsed,
+            'Used Once Bags (एकदा वापरलेले)': usedOnceBagsUsed,
+            'Balance Bags': balanceBags,
+            'Balance Weight (Qtl)': balanceWeight,
+            'Completion Rate': completionPct
+        };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    ws['!cols'] = [
+        { wch: 12 }, // D.O. Date
+        { wch: 12 }, // Season
+        { wch: 15 }, // D.O. Number
+        { wch: 25 }, // Mill Name
+        { wch: 15 }, // Approved Bags
+        { wch: 20 }, // Approved Weight (Qtl)
+        { wch: 20 }, // Dispatched Bags (Total)
+        { wch: 25 }, // Dispatched Weight (Total Qtl)
+        { wch: 20 }, // New Bags (नवीन पोते)
+        { wch: 20 }, // Old Bags (जुने पोते)
+        { wch: 25 }, // Used Once Bags (एकदा वापरलेले)
+        { wch: 15 }, // Balance Bags
+        { wch: 20 }, // Balance Weight (Qtl)
+        { wch: 15 }  // Completion Rate
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'DO_Summary');
+    const filename = `DO_Summary_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.xlsx`;
+    XLSX.writeFile(wb, filename);
+};
+
+// --- 8. Get Export Summary ---
 export const getExportSummary = (): string => {
     return `
 📊 **Excel Export Available**

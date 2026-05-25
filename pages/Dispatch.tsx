@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck, Calendar, Filter, Plus } from 'lucide-react';
 import { DispatchRecord, PaddyDO } from '../types';
 import { downloadBlob } from '../utils/downloadUtils';
-import { exportDispatchesToExcel } from '../services/excelExport';
+import { exportDispatchesToExcel, exportPaddyDOsToExcel } from '../services/excelExport';
 
 const Dispatch = () => {
     const { dispatches, addDispatch, updateDispatch, deleteDispatch, paddyDOs, addPaddyDO, updatePaddyDO, deletePaddyDO, paddySeasons, getActiveSeason, settings } = useApp();
@@ -300,6 +300,20 @@ const Dispatch = () => {
             titleMr: 'एक्सपोर्ट यशस्वी झाले!',
             message: `Successfully exported ${filteredDispatches.length} dispatch records to Excel file.`,
             messageMr: `${filteredDispatches.length} डिस्पॅच रेकॉर्ड एक्सेल फाईलमध्ये यशस्वीपणे एक्सपोर्ट झाले.`,
+            icon: '✅',
+            confirmText: 'OK',
+            confirmTextMr: 'ठीक आहे',
+            confirmColor: 'green'
+        });
+    };
+
+    const handleExportDOs = async () => {
+        exportPaddyDOsToExcel(filteredDOs, dispatches);
+        await showConfirm({
+            title: 'Export Successful!',
+            titleMr: 'एक्सपोर्ट यशस्वी झाले!',
+            message: `Successfully exported ${filteredDOs.length} D.O. summary records to Excel file.`,
+            messageMr: `${filteredDOs.length} डी.ओ. पत्रक गोषवारा एक्सेल फाईलमध्ये यशस्वीपणे एक्सपोर्ट झाले.`,
             icon: '✅',
             confirmText: 'OK',
             confirmTextMr: 'ठीक आहे',
@@ -656,23 +670,30 @@ const Dispatch = () => {
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                 <ClipboardList className="text-blue-600" /> डी.ओ. गोषवारा व शिल्लक साठा पत्रक (D.O. Summary & Balance Report)
                             </h3>
-                            {paddySeasons.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <Filter size={16} className="text-slate-500" />
-                                    <select
-                                        value={seasonFilter}
-                                        onChange={(e) => setSeasonFilter(e.target.value)}
-                                        className="px-3 py-1 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                                    >
-                                        <option value="all">सर्व हंगाम (All Seasons)</option>
-                                        {paddySeasons.map(s => (
-                                            <option key={s.id} value={s.code}>
-                                                {s.code} - {s.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {filteredDOs.length > 0 && (
+                                    <button onClick={handleExportDOs} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white transition font-bold shadow-sm">
+                                        <Download size={16} /> Export Excel
+                                    </button>
+                                )}
+                                {paddySeasons.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <Filter size={16} className="text-slate-500" />
+                                        <select
+                                            value={seasonFilter}
+                                            onChange={(e) => setSeasonFilter(e.target.value)}
+                                            className="px-3 py-1 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="all">सर्व हंगाम (All Seasons)</option>
+                                            {paddySeasons.map(s => (
+                                                <option key={s.id} value={s.code}>
+                                                    {s.code} - {s.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {filteredDOs.length === 0 ? (
