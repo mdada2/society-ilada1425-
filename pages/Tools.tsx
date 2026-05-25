@@ -478,8 +478,8 @@ const Tools: React.FC = () => {
                 <FileSpreadsheet size={28} className="text-green-600 dark:text-green-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 dark:text-white truncate">{file.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="font-semibold text-slate-800 dark:text-white text-xs md:text-sm break-all whitespace-normal leading-tight">{file.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {(file.size / 1024).toFixed(1)} KB
                   {rawRows.length > 0 && ` · ${rawRows.length} rows`}
                 </p>
@@ -523,7 +523,7 @@ const Tools: React.FC = () => {
           {/* ── Preview Table ── */}
           {showPreview && rawRows.length > 0 && (
             <div className="overflow-auto max-h-60 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
-              <table className="min-w-full text-xs">
+              <table className="w-full min-w-[800px] text-xs">
                 <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                   <tr>
                     {['#', 'Col A', 'Col B', colCName, colDName, colEName, colFName, colKName, colLName].map((h) => (
@@ -630,7 +630,7 @@ const Tools: React.FC = () => {
           {/* Consolidated Table */}
           <div className="px-6 pb-6">
             <div className="overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
-              <table className="min-w-full text-sm">
+              <table className="w-full min-w-[1000px] text-sm">
                 <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">#</th>
@@ -782,8 +782,8 @@ const Tools: React.FC = () => {
                 <div className="flex items-center gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl p-3">
                   <FileSpreadsheet size={22} className="text-rose-500 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mFile1.name}</p>
-                    <p className="text-xs text-slate-500">{mRows1.length} rows · {mHeaders1.slice(keyColCount).length} extra cols</p>
+                    <p className="text-xs md:text-sm font-semibold text-slate-800 dark:text-white break-all whitespace-normal leading-tight">{mFile1.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">{mRows1.length} rows · {mHeaders1.slice(keyColCount).length} extra cols</p>
                   </div>
                   <button onClick={() => { setMFile1(null); setMRows1([]); setMHeaders1([]); if (fileInput1Ref.current) fileInput1Ref.current.value = ''; }}
                     className="text-slate-400 hover:text-red-500 transition"><X size={16} /></button>
@@ -812,8 +812,8 @@ const Tools: React.FC = () => {
                 <div className="flex items-center gap-3 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-700 rounded-xl p-3">
                   <FileSpreadsheet size={22} className="text-pink-500 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mFile2.name}</p>
-                    <p className="text-xs text-slate-500">{mRows2.length} rows · {mHeaders2.slice(keyColCount).length} extra cols</p>
+                    <p className="text-xs md:text-sm font-semibold text-slate-800 dark:text-white break-all whitespace-normal leading-tight">{mFile2.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">{mRows2.length} rows · {mHeaders2.slice(keyColCount).length} extra cols</p>
                   </div>
                   <button onClick={() => { setMFile2(null); setMRows2([]); setMHeaders2([]); if (fileInput2Ref.current) fileInput2Ref.current.value = ''; }}
                     className="text-slate-400 hover:text-red-500 transition"><X size={16} /></button>
@@ -873,7 +873,7 @@ const Tools: React.FC = () => {
               <StatCard icon={<CheckCircle2 size={20} className="text-emerald-500" />} label="Total Merged Rows" value={mergedRows.length} bg="bg-emerald-50 dark:bg-emerald-900/20" />
             </div>
             <div className="overflow-auto max-h-80 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
-              <table className="min-w-full text-xs">
+              <table className="w-full min-w-[1000px] text-xs">
                 <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                   <tr>
                     <th className="px-3 py-2 text-left font-semibold text-slate-500">#</th>
