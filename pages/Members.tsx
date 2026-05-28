@@ -89,6 +89,7 @@ const Members = () => {
   // -- History Filter States --
   const [historyDate, setHistoryDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [historySearch, setHistorySearch] = useState('');
+  const [showHistoryStatement, setShowHistoryStatement] = useState(false);
 
   // -- Disbursement Handlers --
   const handleDisbursementChange = (id: string, field: string, value: any) => {
@@ -335,6 +336,110 @@ const Members = () => {
       count: disbursementsOnHistoryDate.length
     };
   }, [disbursementsOnHistoryDate, transactions, historyDate]);
+
+  const historyStatement = useMemo(() => {
+    const initRow = () => ({ count: 0, land: 0, loan: 0, shares: 0, net: 0 });
+
+    const data = {
+      largeFarmer: initRow(),
+      smallFarmer: initRow(),
+      st: initRow(),
+      sc: initRow(),
+      nonTribal: initRow(), // OBC + OPEN
+      female: initRow(),
+      regular: initRow(),
+      defaulter: initRow(),
+      newMember: initRow()
+    };
+
+    disbursementsOnHistoryDate.forEach(item => {
+      const m = members.find(x => x.id === item.memberId);
+      if (!m) return;
+
+      const landVal = parseFloat(m.landArea) || 0;
+      const loanVal = item.amount || 0;
+
+      const shareTxn = transactions.find(t => 
+        t.memberId === m.id && 
+        t.date === item.date && 
+        t.accountType === AccountType.SHARES && 
+        t.type === TransactionType.CREDIT
+      );
+      const sharesVal = shareTxn ? shareTxn.amount : 0;
+      const netVal = loanVal - sharesVal;
+
+      // 1. Farmer Type
+      if (m.farmerType === 'Large Farmer') {
+        data.largeFarmer.count++;
+        data.largeFarmer.land += landVal;
+        data.largeFarmer.loan += loanVal;
+        data.largeFarmer.shares += sharesVal;
+        data.largeFarmer.net += netVal;
+      } else {
+        data.smallFarmer.count++;
+        data.smallFarmer.land += landVal;
+        data.smallFarmer.loan += loanVal;
+        data.smallFarmer.shares += sharesVal;
+        data.smallFarmer.net += netVal;
+      }
+
+      // 2. Caste Category
+      if (m.category === 'ST') {
+        data.st.count++;
+        data.st.land += landVal;
+        data.st.loan += loanVal;
+        data.st.shares += sharesVal;
+        data.st.net += netVal;
+      } else if (m.category === 'SC') {
+        data.sc.count++;
+        data.sc.land += landVal;
+        data.sc.loan += loanVal;
+        data.sc.shares += sharesVal;
+        data.sc.net += netVal;
+      } else {
+        data.nonTribal.count++;
+        data.nonTribal.land += landVal;
+        data.nonTribal.loan += loanVal;
+        data.nonTribal.shares += sharesVal;
+        data.nonTribal.net += netVal;
+      }
+
+      // 3. Gender
+      if (m.gender === 'Female') {
+        data.female.count++;
+        data.female.land += landVal;
+        data.female.loan += loanVal;
+        data.female.shares += sharesVal;
+        data.female.net += netVal;
+      }
+
+      // 4. Membership Status
+      const isNew = m.membershipDate && m.membershipDate >= (settings.financialYearStart || '2025-04-01');
+      const isDefaulter = !m.isActive;
+      
+      if (isDefaulter) {
+        data.defaulter.count++;
+        data.defaulter.land += landVal;
+        data.defaulter.loan += loanVal;
+        data.defaulter.shares += sharesVal;
+        data.defaulter.net += netVal;
+      } else if (isNew) {
+        data.newMember.count++;
+        data.newMember.land += landVal;
+        data.newMember.loan += loanVal;
+        data.newMember.shares += sharesVal;
+        data.newMember.net += netVal;
+      } else {
+        data.regular.count++;
+        data.regular.land += landVal;
+        data.regular.loan += loanVal;
+        data.regular.shares += sharesVal;
+        data.regular.net += netVal;
+      }
+    });
+
+    return data;
+  }, [disbursementsOnHistoryDate, members, transactions, settings.financialYearStart]);
 
   const generateHistoryCSV = (items: any[]) => {
     if (items.length === 0) return null;
@@ -1307,6 +1412,7 @@ const Members = () => {
                   <thead>
                     <tr className="text-slate-500 dark:text-slate-400 text-sm border-b dark:border-slate-700">
                       <th className="pb-3 pl-2">Name</th>
+                      <th className="pb-3 w-28">Land (Ha.R)</th>
                       <th className="pb-3 w-32">Shares (+)</th>
                       <th className="pb-3 w-40">Loan Amount (₹)</th>
                       <th className="pb-3 w-36">Date</th>
@@ -1331,6 +1437,11 @@ const Members = () => {
                           <td className={`py-3 pl-2 font-medium ${isSaved ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}`}>
                             {member.name}
                             <div className="text-xs text-slate-400 font-normal">#{member.memberNo} | A/C: {member.loanAccountNo || 'N/A'} | Cur shares: ₹{member.shareBalance}</div>
+                          </td>
+                          <td className="py-3 pr-2">
+                            <div className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-center text-sm font-bold text-slate-700 dark:text-slate-300">
+                              {member.landArea || '0.00'}
+                            </div>
                           </td>
                           <td className="py-3 pr-2">
                             <input 
@@ -1418,6 +1529,12 @@ const Members = () => {
             </div>
             <div className="flex gap-2">
               <button 
+                onClick={() => setShowHistoryStatement(!showHistoryStatement)}
+                className={`px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm ${showHistoryStatement ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-inner' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+              >
+                <FileText size={16} /> {showHistoryStatement ? 'गोषवारा बंद करा' : 'गोषवारा पहा (Statement)'}
+              </button>
+              <button 
                 onClick={handleExportHistoryList} 
                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm"
               >
@@ -1431,6 +1548,165 @@ const Members = () => {
               </button>
             </div>
           </div>
+
+          {/* Kharif Crop Loan Disbursement Statement (खरीप पीक कर्ज वाटप स्टेटमेंट) */}
+          {showHistoryStatement && (
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border dark:border-slate-700 shadow-lg space-y-6 animate-fade-in-up">
+              <div className="text-center border-b pb-4 dark:border-slate-700">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-wide">
+                  {settings.societyName || 'आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५'}
+                </h2>
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mt-1">
+                  खरीप पीक कर्ज वाटप स्टेटमेंट (गोषवारा)
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  तारीख: {historyDate} | हंगाम: २०२६-२७
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-center border-collapse border border-slate-300 dark:border-slate-700 text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold">
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 w-16">अ. क्र.</th>
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">कर्ज वाटप तपशिल</th>
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 w-24">सभासद</th>
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 w-32">आराजी (Land)</th>
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 w-36">कर्ज रक्कम (₹)</th>
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 w-36">हिस्से रक्कम (₹)</th>
+                      <th className="p-2.5 border border-slate-300 dark:border-slate-600 w-36">देय रक्कम (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Section 1: Farmer Types */}
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">१</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">मोठे कृषक</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.largeFarmer.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.largeFarmer.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.largeFarmer.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.largeFarmer.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.largeFarmer.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">२</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">लघु कृषक</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.smallFarmer.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.smallFarmer.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.smallFarmer.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.smallFarmer.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.smallFarmer.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="bg-slate-50 dark:bg-slate-900 font-bold text-slate-800 dark:text-white border-t-2">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600"></td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4 font-black">एकूण</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600">{historyStatement.largeFarmer.count + historyStatement.smallFarmer.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600">{(historyStatement.largeFarmer.land + historyStatement.smallFarmer.land).toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4">₹{(historyStatement.largeFarmer.loan + historyStatement.smallFarmer.loan).toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4">₹{(historyStatement.largeFarmer.shares + historyStatement.smallFarmer.shares).toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 text-emerald-600 dark:text-emerald-400">₹{(historyStatement.largeFarmer.net + historyStatement.smallFarmer.net).toLocaleString()}</td>
+                    </tr>
+
+                    {/* Spacer Row */}
+                    <tr className="bg-slate-100 dark:bg-slate-900/40"><td colSpan={7} className="h-4 p-0"></td></tr>
+
+                    {/* Section 2: Caste Categories */}
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">३</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">ST</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.st.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.st.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.st.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.st.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.st.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">४</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">SC</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.sc.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.sc.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.sc.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.sc.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.sc.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">५</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">गैर आदि.</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.nonTribal.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.nonTribal.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.nonTribal.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.nonTribal.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.nonTribal.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="bg-slate-50 dark:bg-slate-900 font-bold text-slate-800 dark:text-white border-t-2">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600"></td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4 font-black">एकूण</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600">{historyStatement.st.count + historyStatement.sc.count + historyStatement.nonTribal.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600">{(historyStatement.st.land + historyStatement.sc.land + historyStatement.nonTribal.land).toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4">₹{(historyStatement.st.loan + historyStatement.sc.loan + historyStatement.nonTribal.loan).toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4">₹{(historyStatement.st.shares + historyStatement.sc.shares + historyStatement.nonTribal.shares).toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 text-emerald-600 dark:text-emerald-400">₹{(historyStatement.st.net + historyStatement.sc.net + historyStatement.nonTribal.net).toLocaleString()}</td>
+                    </tr>
+
+                    {/* Spacer Row */}
+                    <tr className="bg-slate-100 dark:bg-slate-900/40"><td colSpan={7} className="h-4 p-0"></td></tr>
+
+                    {/* Section 3: Women Members */}
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">६</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4 font-bold">महिला सभासद</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.female.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.female.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.female.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.female.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.female.net.toLocaleString()}</td>
+                    </tr>
+
+                    {/* Spacer Row */}
+                    <tr className="bg-slate-100 dark:bg-slate-900/40"><td colSpan={7} className="h-4 p-0"></td></tr>
+
+                    {/* Section 4: Membership Status */}
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">७</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">चालू सभासद</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.regular.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.regular.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.regular.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.regular.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.regular.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">८</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">थकीत/खंडित सभासद</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.defaulter.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.defaulter.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.defaulter.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.defaulter.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.defaulter.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-bold">९</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4">नवीन सभासद</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.newMember.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 font-medium">{historyStatement.newMember.land.toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.newMember.loan.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold">₹{historyStatement.newMember.shares.toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 font-semibold text-emerald-600 dark:text-emerald-400">₹{historyStatement.newMember.net.toLocaleString()}</td>
+                    </tr>
+                    <tr className="bg-slate-50 dark:bg-slate-900 font-bold text-slate-800 dark:text-white border-t-2">
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600"></td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-left pl-4 font-black">एकूण</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600">{historyStatement.regular.count + historyStatement.defaulter.count + historyStatement.newMember.count}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600">{(historyStatement.regular.land + historyStatement.defaulter.land + historyStatement.newMember.land).toFixed(2)}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4">₹{(historyStatement.regular.loan + historyStatement.defaulter.loan + historyStatement.newMember.loan).toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4">₹{(historyStatement.regular.shares + historyStatement.defaulter.shares + historyStatement.newMember.shares).toLocaleString()}</td>
+                      <td className="p-2.5 border border-slate-300 dark:border-slate-600 text-right pr-4 text-emerald-600 dark:text-emerald-400">₹{(historyStatement.regular.net + historyStatement.defaulter.net + historyStatement.newMember.net).toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Disbursement Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
