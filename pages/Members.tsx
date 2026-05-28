@@ -100,7 +100,8 @@ const Members = () => {
           shareAmount: 0,
           loanAmount: bulkAmount || members.find(m => m.id === id)?.loanPrincipal || 0,
           date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
-          loanType: bulkType || members.find(m => m.id === id)?.loanType || 'Short Term'
+          loanType: bulkType || members.find(m => m.id === id)?.loanType || 'Short Term',
+          landArea: members.find(m => m.id === id)?.landArea || '0.00'
         }),
         [field]: value
       }
@@ -117,7 +118,8 @@ const Members = () => {
           ...(updated[id] || {
             shareAmount: 0,
             loanAmount: bulkAmount || m?.loanPrincipal || 0,
-            loanType: bulkType || m?.loanType || 'Short Term'
+            loanType: bulkType || m?.loanType || 'Short Term',
+            landArea: m?.landArea || '0.00'
           }),
           date: newDate
         };
@@ -137,7 +139,8 @@ const Members = () => {
           ...(updated[id] || {
             shareAmount: 0,
             date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
-            loanType: bulkType || m?.loanType || 'Short Term'
+            loanType: bulkType || m?.loanType || 'Short Term',
+            landArea: m?.landArea || '0.00'
           }),
           loanAmount: newAmount
         };
@@ -156,7 +159,8 @@ const Members = () => {
           ...(updated[id] || {
             shareAmount: 0,
             loanAmount: bulkAmount || m?.loanPrincipal || 0,
-            date: bulkDate || format(new Date(), 'yyyy-MM-dd')
+            date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+            landArea: m?.landArea || '0.00'
           }),
           loanType: newType
         };
@@ -178,7 +182,8 @@ const Members = () => {
             shareAmount: prevData[id]?.shareAmount || 0,
             loanAmount: prevData[id]?.loanAmount || bulkAmount || member?.loanPrincipal || 0,
             date: prevData[id]?.date || bulkDate || format(new Date(), 'yyyy-MM-dd'),
-            loanType: prevData[id]?.loanType || bulkType || member?.loanType || 'Short Term'
+            loanType: prevData[id]?.loanType || bulkType || member?.loanType || 'Short Term',
+            landArea: prevData[id]?.landArea || member?.landArea || '0.00'
           }
         }));
         return [...prev, id];
@@ -186,7 +191,7 @@ const Members = () => {
     });
   };
 
-  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string }) => {
+  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string, landArea?: string }) => {
     const member = members.find(m => m.id === id);
     if (!member) return;
 
@@ -194,7 +199,8 @@ const Members = () => {
       shareAmount: 0,
       loanAmount: member.loanPrincipal || 0,
       date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
-      loanType: member.loanType || 'Short Term'
+      loanType: member.loanType || 'Short Term',
+      landArea: member.landArea || '0.00'
     };
 
     if (data.loanAmount <= 0) {
@@ -216,7 +222,8 @@ const Members = () => {
     };
 
     addTransaction(loanTxn, {
-      loanType: data.loanType as any
+      loanType: data.loanType as any,
+      landArea: data.landArea
     });
 
     // 2. Add Share Addition Transaction (CREDIT) if shareAmount > 0
@@ -480,6 +487,66 @@ const Members = () => {
     }).filter(row => row.length > 0);
 
     return { headers, rows };
+  };
+
+  const handleExportStatementExcel = () => {
+    const societyName = settings.societyName || 'आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५';
+    const title = "खरीप पीक कर्ज वाटप स्टेटमेंट (गोषवारा)";
+    const subtitle = `तारीख: ${historyDate} | हंगाम: २०२६-२७`;
+
+    const headers = [
+      "अ. क्र.",
+      "कर्ज वाटप तपशिल",
+      "सभासद संख्या",
+      "एकूण क्षेत्र (आराजी - Ha.R)",
+      "कर्ज रक्कम (₹)",
+      "शेअर्स (हिस्से) रक्कम (₹)",
+      "निव्वळ देय रक्कम (₹)"
+    ];
+
+    const rows = [
+      [societyName],
+      [title],
+      [subtitle],
+      [], // Empty row
+      headers,
+      
+      // Section 1: Farmer Types
+      ["१", "मोठे कृषक", historyStatement.largeFarmer.count, parseFloat(historyStatement.largeFarmer.land.toFixed(2)), historyStatement.largeFarmer.loan, historyStatement.largeFarmer.shares, historyStatement.largeFarmer.net],
+      ["२", "लघु कृषक", historyStatement.smallFarmer.count, parseFloat(historyStatement.smallFarmer.land.toFixed(2)), historyStatement.smallFarmer.loan, historyStatement.smallFarmer.shares, historyStatement.smallFarmer.net],
+      ["", "एकूण (कृषक प्रकार)", historyStatement.largeFarmer.count + historyStatement.smallFarmer.count, parseFloat((historyStatement.largeFarmer.land + historyStatement.smallFarmer.land).toFixed(2)), historyStatement.largeFarmer.loan + historyStatement.smallFarmer.loan, historyStatement.largeFarmer.shares + historyStatement.smallFarmer.shares, historyStatement.largeFarmer.net + historyStatement.smallFarmer.net],
+      [], // Empty row
+      
+      // Section 2: Caste Categories
+      ["३", "ST", historyStatement.st.count, parseFloat(historyStatement.st.land.toFixed(2)), historyStatement.st.loan, historyStatement.st.shares, historyStatement.st.net],
+      ["४", "SC", historyStatement.sc.count, parseFloat(historyStatement.sc.land.toFixed(2)), historyStatement.sc.loan, historyStatement.sc.shares, historyStatement.sc.net],
+      ["५", "गैर आदि. (OBC+Open)", historyStatement.nonTribal.count, parseFloat(historyStatement.nonTribal.land.toFixed(2)), historyStatement.nonTribal.loan, historyStatement.nonTribal.shares, historyStatement.nonTribal.net],
+      ["", "एकूण (वर्गवारी)", historyStatement.st.count + historyStatement.sc.count + historyStatement.nonTribal.count, parseFloat((historyStatement.st.land + historyStatement.sc.land + historyStatement.nonTribal.land).toFixed(2)), historyStatement.st.loan + historyStatement.sc.loan + historyStatement.nonTribal.loan, historyStatement.st.shares + historyStatement.sc.shares + historyStatement.nonTribal.shares, historyStatement.st.net + historyStatement.sc.net + historyStatement.nonTribal.net],
+      [], // Empty row
+      
+      // Section 3: Women Members
+      ["६", "महिला सभासद", historyStatement.female.count, parseFloat(historyStatement.female.land.toFixed(2)), historyStatement.female.loan, historyStatement.female.shares, historyStatement.female.net],
+      [], // Empty row
+      
+      // Section 4: Membership Status
+      ["७", "चालू सभासद", historyStatement.regular.count, parseFloat(historyStatement.regular.land.toFixed(2)), historyStatement.regular.loan, historyStatement.regular.shares, historyStatement.regular.net],
+      ["८", "थकीत/खंडित सभासद", historyStatement.defaulter.count, parseFloat(historyStatement.defaulter.land.toFixed(2)), historyStatement.defaulter.loan, historyStatement.defaulter.shares, historyStatement.defaulter.net],
+      ["९", "नवीन सभासद", historyStatement.newMember.count, parseFloat(historyStatement.newMember.land.toFixed(2)), historyStatement.newMember.loan, historyStatement.newMember.shares, historyStatement.newMember.net],
+      ["", "एकूण (सभासद पात्रता)", historyStatement.regular.count + historyStatement.defaulter.count + historyStatement.newMember.count, parseFloat((historyStatement.regular.land + historyStatement.defaulter.land + historyStatement.newMember.land).toFixed(2)), historyStatement.regular.loan + historyStatement.defaulter.loan + historyStatement.newMember.loan, historyStatement.regular.shares + historyStatement.defaulter.shares + historyStatement.newMember.shares, historyStatement.regular.net + historyStatement.defaulter.net + historyStatement.newMember.net]
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Merge titles
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // Society name
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // Title
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }  // Subtitle
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Gozwara Statement");
+    XLSX.writeFile(wb, `Crop_Loan_Statement_Gozwara_${historyDate}.xlsx`);
   };
 
   const handleExportHistoryList = () => {
@@ -1438,10 +1505,13 @@ const Members = () => {
                             {member.name}
                             <div className="text-xs text-slate-400 font-normal">#{member.memberNo} | A/C: {member.loanAccountNo || 'N/A'} | Cur shares: ₹{member.shareBalance}</div>
                           </td>
-                          <td className="py-3 pr-2">
-                            <div className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-center text-sm font-bold text-slate-700 dark:text-slate-300">
-                              {member.landArea || '0.00'}
-                            </div>
+                          <td className="py-3 pr-2 w-28">
+                            <input 
+                              type="text"
+                              value={data.landArea ?? member.landArea ?? ''}
+                              onChange={e => handleDisbursementChange(id, 'landArea', e.target.value)}
+                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-center text-sm font-bold text-slate-800 dark:text-white"
+                            />
                           </td>
                           <td className="py-3 pr-2">
                             <input 
@@ -1552,16 +1622,26 @@ const Members = () => {
           {/* Kharif Crop Loan Disbursement Statement (खरीप पीक कर्ज वाटप स्टेटमेंट) */}
           {showHistoryStatement && (
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border dark:border-slate-700 shadow-lg space-y-6 animate-fade-in-up">
-              <div className="text-center border-b pb-4 dark:border-slate-700">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-wide">
-                  {settings.societyName || 'आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५'}
-                </h2>
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mt-1">
-                  खरीप पीक कर्ज वाटप स्टेटमेंट (गोषवारा)
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                  तारीख: {historyDate} | हंगाम: २०२६-२७
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b pb-4 dark:border-slate-700 gap-4">
+                <div className="text-center sm:text-left flex-1">
+                  <h2 className="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-wide">
+                    {settings.societyName || 'आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५'}
+                  </h2>
+                  <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mt-1">
+                    खरीप पीक कर्ज वाटप स्टेटमेंट (गोषवारा)
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                    तारीख: {historyDate} | हंगाम: २०२६-२७
+                  </p>
+                </div>
+                <div className="flex justify-center sm:justify-end">
+                  <button
+                    onClick={handleExportStatementExcel}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm border border-emerald-500 hover:border-emerald-600 active:scale-95"
+                  >
+                    <FileSpreadsheet size={16} /> गोषवारा Excel Export
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
