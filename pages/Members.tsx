@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, User, Trash2, X, AlertTriangle, Download, Upload, Image as ImageIcon, FileSpreadsheet, Edit3, RotateCcw, ScanLine, Loader2, Camera, Share2, Filter, ChevronLeft, ChevronRight, ArrowLeft, FileText } from 'lucide-react';
-import { Member } from '../types';
+import { Member, AccountType, TransactionType } from '../types';
 import { calculateLoanInterest } from '../utils/loanCalculator';
 import { format } from 'date-fns';
 import { scanIDCard } from '../services/ai';
@@ -13,7 +13,7 @@ import { exportMembersToExcel } from '../services/excelExport';
 import * as XLSX from 'xlsx';
 
 const Members = () => {
-  const { members, addMember, deleteMember, settings, importMembers, updateMembers } = useApp();
+  const { members, addMember, deleteMember, settings, importMembers, updateMembers, addTransaction, transactions } = useApp();
   const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -76,10 +76,19 @@ const Members = () => {
   }, [newMember.memberNo, members]);
 
   // -- New Loan Tab State --
-  const [activeTab, setActiveTab] = useState<'list' | 'new_loan'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'new_loan' | 'history'>('list');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [disbursementData, setDisbursementData] = useState<Record<string, { shareAmount: number, loanAmount: number, date: string, loanType: string }>>({});
   const [disbursedLog, setDisbursedLog] = useState<Set<string>>(new Set());
+
+  // -- Bulk Setup States --
+  const [bulkDate, setBulkDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [bulkAmount, setBulkAmount] = useState<number | ''>('');
+  const [bulkType, setBulkType] = useState<string>('Short Term');
+
+  // -- History Filter States --
+  const [historyDate, setHistoryDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [historySearch, setHistorySearch] = useState('');
 
   // -- Disbursement Handlers --
   const handleDisbursementChange = (id: string, field: string, value: any) => {
@@ -88,59 +97,333 @@ const Members = () => {
       [id]: {
         ...(prev[id] || {
           shareAmount: 0,
-          loanAmount: members.find(m => m.id === id)?.loanPrincipal || 0,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          loanType: members.find(m => m.id === id)?.loanType || 'Short Term'
+          loanAmount: bulkAmount || members.find(m => m.id === id)?.loanPrincipal || 0,
+          date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+          loanType: bulkType || members.find(m => m.id === id)?.loanType || 'Short Term'
         }),
         [field]: value
       }
     }));
   };
 
-  const handleSaveDisbursement = (id: string) => {
-    const memberIndex = members.findIndex(m => m.id === id);
-    if (memberIndex === -1) return;
+  const handleBulkDateChange = (newDate: string) => {
+    setBulkDate(newDate);
+    setDisbursementData(prev => {
+      const updated = { ...prev };
+      selectedMemberIds.forEach(id => {
+        const m = members.find(x => x.id === id);
+        updated[id] = {
+          ...(updated[id] || {
+            shareAmount: 0,
+            loanAmount: bulkAmount || m?.loanPrincipal || 0,
+            loanType: bulkType || m?.loanType || 'Short Term'
+          }),
+          date: newDate
+        };
+      });
+      return updated;
+    });
+  };
 
-    const data = disbursementData[id] || {
+  const handleBulkAmountChange = (newAmount: number | '') => {
+    setBulkAmount(newAmount);
+    if (newAmount === '') return;
+    setDisbursementData(prev => {
+      const updated = { ...prev };
+      selectedMemberIds.forEach(id => {
+        const m = members.find(x => x.id === id);
+        updated[id] = {
+          ...(updated[id] || {
+            shareAmount: 0,
+            date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+            loanType: bulkType || m?.loanType || 'Short Term'
+          }),
+          loanAmount: newAmount
+        };
+      });
+      return updated;
+    });
+  };
+
+  const handleBulkTypeChange = (newType: string) => {
+    setBulkType(newType);
+    setDisbursementData(prev => {
+      const updated = { ...prev };
+      selectedMemberIds.forEach(id => {
+        const m = members.find(x => x.id === id);
+        updated[id] = {
+          ...(updated[id] || {
+            shareAmount: 0,
+            loanAmount: bulkAmount || m?.loanPrincipal || 0,
+            date: bulkDate || format(new Date(), 'yyyy-MM-dd')
+          }),
+          loanType: newType
+        };
+      });
+      return updated;
+    });
+  };
+
+  const handleToggleMemberSelection = (id: string) => {
+    setSelectedMemberIds(prev => {
+      const isSelected = prev.includes(id);
+      if (isSelected) {
+        return prev.filter(x => x !== id);
+      } else {
+        const member = members.find(m => m.id === id);
+        setDisbursementData(prevData => ({
+          ...prevData,
+          [id]: {
+            shareAmount: prevData[id]?.shareAmount || 0,
+            loanAmount: prevData[id]?.loanAmount || bulkAmount || member?.loanPrincipal || 0,
+            date: prevData[id]?.date || bulkDate || format(new Date(), 'yyyy-MM-dd'),
+            loanType: prevData[id]?.loanType || bulkType || member?.loanType || 'Short Term'
+          }
+        }));
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string }) => {
+    const member = members.find(m => m.id === id);
+    if (!member) return;
+
+    const data = customData || disbursementData[id] || {
       shareAmount: 0,
-      loanAmount: members[memberIndex].loanPrincipal || 0,
-      date: format(new Date(), 'yyyy-MM-dd'),
-      loanType: members[memberIndex].loanType || 'Short Term'
+      loanAmount: member.loanPrincipal || 0,
+      date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+      loanType: member.loanType || 'Short Term'
     };
 
-    const updatedMember = {
-      ...members[memberIndex],
-      shareBalance: (members[memberIndex].shareBalance || 0) + (data.shareAmount || 0),
-      loanPrincipal: data.loanAmount,
-      originalLoanDate: data.date,
-      lastLoanCalculationDate: data.date,
+    if (data.loanAmount <= 0) {
+      alert(`Please enter a valid loan amount for ${member.name}`);
+      return;
+    }
+
+    // 1. Add Loan Disbursement Transaction (DEBIT)
+    const loanTxn = {
+      id: `LN-DISB-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      date: data.date,
+      memberId: id,
+      memberName: member.name,
+      accountType: AccountType.LOAN,
+      type: TransactionType.DEBIT,
+      amount: data.loanAmount,
+      details: `Loan Disbursed / कर्ज वाटप करण्यात आले (${data.loanType})`,
+      timestamp: Date.now()
+    };
+
+    addTransaction(loanTxn, {
       loanType: data.loanType as any
+    });
+
+    // 2. Add Share Addition Transaction (CREDIT) if shareAmount > 0
+    if (data.shareAmount > 0) {
+      const shareTxn = {
+        id: `SH-DISB-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        date: data.date,
+        memberId: id,
+        memberName: member.name,
+        accountType: AccountType.SHARES,
+        type: TransactionType.CREDIT,
+        amount: data.shareAmount,
+        details: `Shares added during loan disbursement / कर्ज वाटपाच्या वेळी शेअर्स जमा`,
+        timestamp: Date.now() + 1
+      };
+      addTransaction(shareTxn);
+    }
+
+    setDisbursedLog(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkSaveDisbursements = () => {
+    if (selectedMemberIds.length === 0) {
+      alert("No members selected for disbursement.");
+      return;
+    }
+
+    let successCount = 0;
+    selectedMemberIds.forEach(id => {
+      if (disbursedLog.has(id)) return; // skip already saved
+
+      const member = members.find(m => m.id === id);
+      if (!member) return;
+
+      const data = disbursementData[id] || {
+        shareAmount: 0,
+        loanAmount: bulkAmount || 0,
+        date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+        loanType: bulkType || member.loanType || 'Short Term'
+      };
+
+      if (data.loanAmount <= 0) return; // skip invalid in bulk
+
+      handleSaveDisbursement(id, data);
+      successCount++;
+    });
+
+    if (successCount > 0) {
+      alert(`Successfully disbursed loans to ${successCount} members!`);
+      setSelectedMemberIds([]);
+    } else {
+      alert("No pending valid disbursements were found to save. Please make sure loan amount is greater than 0.");
+    }
+  };
+
+  // Precompute disbursement history on a specific date
+  const disbursementsOnHistoryDate = useMemo(() => {
+    const txnDisb = transactions.filter(t => 
+      t.date === historyDate && 
+      t.type === TransactionType.DEBIT && 
+      t.accountType === AccountType.LOAN
+    );
+
+    const txnMemberIds = new Set(txnDisb.map(t => t.memberId));
+
+    const legacyDisb = members.filter(m => 
+      m.originalLoanDate === historyDate && 
+      (m.loanPrincipal || 0) > 0 &&
+      !txnMemberIds.has(m.id)
+    ).map(m => ({
+      id: `legacy-${m.id}`,
+      date: historyDate,
+      memberId: m.id,
+      memberName: m.name,
+      accountType: AccountType.LOAN,
+      type: TransactionType.DEBIT,
+      amount: m.loanPrincipal,
+      details: `Loan Disbursed / कर्ज वाटप (Legacy/Imported)`,
+      timestamp: m.membershipDate ? new Date(m.membershipDate).getTime() : Date.now(),
+      isLegacy: true
+    }));
+
+    const allDisb = [...txnDisb, ...legacyDisb].sort((a, b) => b.timestamp - a.timestamp);
+
+    if (!historySearch) return allDisb;
+    const lowerSearch = historySearch.toLowerCase();
+    return allDisb.filter(d => {
+      const m = members.find(x => x.id === d.memberId);
+      return d.memberName?.toLowerCase().includes(lowerSearch) || 
+             m?.memberNo.includes(lowerSearch) ||
+             m?.village.toLowerCase().includes(lowerSearch);
+    });
+  }, [transactions, members, historyDate, historySearch]);
+
+  const historyTotals = useMemo(() => {
+    let totalLoan = 0;
+    let totalShares = 0;
+    disbursementsOnHistoryDate.forEach(item => {
+      totalLoan += item.amount || 0;
+      // Find share txn on same date for this member
+      const shareTxn = transactions.find(t => 
+        t.memberId === item.memberId && 
+        t.date === historyDate && 
+        t.accountType === AccountType.SHARES && 
+        t.type === TransactionType.CREDIT
+      );
+      if (shareTxn) totalShares += shareTxn.amount;
+    });
+
+    return {
+      loan: totalLoan,
+      shares: totalShares,
+      count: disbursementsOnHistoryDate.length
     };
+  }, [disbursementsOnHistoryDate, transactions, historyDate]);
 
-    const newMembersList = [...members];
-    newMembersList[memberIndex] = updatedMember;
-    updateMembers(newMembersList);
+  const generateHistoryCSV = (items: any[]) => {
+    if (items.length === 0) return null;
 
-    setDisbursedLog(prev => new Set(prev).add(id));
-    // Optional: Add a transaction record here if needed in future
+    const headers = [
+      "Member No / सभासद क्र.", 
+      "Name / नाव", 
+      "Village / गाव", 
+      "Loan Account No / कर्ज खाते क्र.", 
+      "Shares Added / शेअर्स जमा", 
+      "Principal Amount / कर्ज मुद्दल", 
+      "Date / तारीख", 
+      "Loan Type / कर्ज प्रकार"
+    ];
+
+    const rows = items.map(item => {
+      const m = members.find(x => x.id === item.memberId);
+      if (!m) return [];
+      
+      const shareTxn = transactions.find(t => 
+        t.memberId === m.id && 
+        t.date === item.date && 
+        t.accountType === AccountType.SHARES && 
+        t.type === TransactionType.CREDIT
+      );
+      const sharesAdded = shareTxn ? shareTxn.amount : 0;
+
+      return [
+        m.memberNo, 
+        m.name, 
+        m.village, 
+        m.loanAccountNo || 'N/A', 
+        sharesAdded || 0,
+        item.amount || 0,
+        item.date, 
+        m.loanType || 'Short Term'
+      ];
+    }).filter(row => row.length > 0);
+
+    return { headers, rows };
+  };
+
+  const handleExportHistoryList = () => {
+    const data = generateHistoryCSV(disbursementsOnHistoryDate);
+    if (!data) { alert("No disbursements found on this date to export."); return; }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
+    XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
+    XLSX.writeFile(wb, `Loan_Disbursements_${historyDate}.xlsx`);
+  };
+
+  const handleShareHistoryList = async () => {
+    const data = generateHistoryCSV(disbursementsOnHistoryDate);
+    if (!data) { alert("No disbursements to share."); return; }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
+    XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const file = new File([blob], `Loan_Disbursements_${historyDate}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: `Loan Disbursements - ${historyDate}`,
+          text: `Here is the loan disbursement history for ${historyDate}.`
+        });
+      } catch (error) { console.error('Share failed:', error); }
+    } else { alert("Sharing not supported on this device."); }
   };
 
   const generateDisbursementCSV = () => {
     const idsToExport = selectedMemberIds.filter(id => disbursedLog.has(id));
     if (idsToExport.length === 0) return null;
 
-    const headers = ["Member No", "Name", "Total Share Balance", "Shares Added", "New Loan Principal", "Loan Date", "Loan Type"];
+    const headers = ["Member No", "Name", "Total Share Balance", "Shares Added", "New Loan Principal", "Loan Account No", "Loan Date", "Loan Type"];
     const rows = idsToExport.map(id => {
       const m = members.find(x => x.id === id);
       if (!m) return [];
       const data = disbursementData[id] || {};
       return [
         m.memberNo, m.name, m.shareBalance, data.shareAmount || 0, m.loanPrincipal,
-        m.originalLoanDate, m.loanType
+        m.loanAccountNo || 'N/A', m.originalLoanDate, m.loanType
       ];
     }).filter(row => row.length > 0);
 
-    // Return headers and rows for TSV export
     return { headers, rows };
   };
 
@@ -812,10 +1095,16 @@ const Members = () => {
         >
           नवीन कर्ज / New Loan
         </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`pb-3 px-4 font-bold text-lg transition border-b-2 ${activeTab === 'history' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+        >
+          कर्ज वाटप इतिहास / History
+        </button>
       </div>
 
       {/* Tabs Content */}
-      {activeTab === 'list' ? (
+      {activeTab === 'list' && (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto max-h-[70vh] md:max-h-[70vh] max-h-[60vh] will-change-scroll">
             <table className="w-full text-left border-collapse">
@@ -887,7 +1176,9 @@ const Members = () => {
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'new_loan' && (
         <div className="space-y-6">
           {/* New Loan Selection Section */}
           <div className="bg-yellow-50 dark:bg-yellow-900/10 p-4 rounded-xl border border-yellow-200 dark:border-yellow-800">
@@ -895,17 +1186,20 @@ const Members = () => {
               <div className="bg-yellow-100 dark:bg-yellow-800 p-1.5 rounded-lg"><Plus size={18} /></div> Select Members for Loan Disbursement / कर्ज वाटपासाठी सभासद निवडा
             </h3>
 
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border dark:border-slate-700 overflow-hidden max-h-[400px] overflow-y-auto overflow-x-auto mobile-scroll">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border dark:border-slate-700 overflow-hidden max-h-[300px] overflow-y-auto overflow-x-auto mobile-scroll">
               <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-700 shadow-sm">
                   <tr>
-                    <th className="p-3 w-10"><input type="checkbox"
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedMemberIds(filteredMembers.map(m => m.id));
-                        else setSelectedMemberIds([]);
-                      }}
-                      checked={filteredMembers.length > 0 && selectedMemberIds.length === filteredMembers.length}
-                    /></th>
+                    <th className="p-3 w-10">
+                      <input 
+                        type="checkbox"
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedMemberIds(filteredMembers.map(m => m.id));
+                          else setSelectedMemberIds([]);
+                        }}
+                        checked={filteredMembers.length > 0 && selectedMemberIds.length === filteredMembers.length}
+                      />
+                    </th>
                     <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">No.</th>
                     <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Name</th>
                     <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Village</th>
@@ -917,17 +1211,17 @@ const Members = () => {
                     const isSelected = selectedMemberIds.includes(m.id);
                     const isDisbursed = disbursedLog.has(m.id);
                     return (
-                      <tr key={m.id} className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                        onClick={() => {
-                          if (isSelected) setSelectedMemberIds(prev => prev.filter(id => id !== m.id));
-                          else setSelectedMemberIds(prev => [...prev, m.id]);
-                        }}
+                      <tr 
+                        key={m.id} 
+                        className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                        onClick={() => handleToggleMemberSelection(m.id)}
                       >
                         <td className="p-3" onClick={e => e.stopPropagation()}>
-                          <input type="checkbox" checked={isSelected} onChange={() => {
-                            if (isSelected) setSelectedMemberIds(prev => prev.filter(id => id !== m.id));
-                            else setSelectedMemberIds(prev => [...prev, m.id]);
-                          }} />
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected} 
+                            onChange={() => handleToggleMemberSelection(m.id)} 
+                          />
                         </td>
                         <td className={`p-3 ${isDisbursed ? 'text-emerald-600 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>{m.memberNo}</td>
                         <td className={`p-3 font-medium ${isDisbursed ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'}`}>
@@ -946,16 +1240,65 @@ const Members = () => {
 
           {/* Disbursement Form Area */}
           {selectedMemberIds.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-indigo-100 dark:border-slate-700">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-xl text-slate-800 dark:text-white">Loan Disbursement Details</h3>
-                <div className="flex gap-2">
-                  <button onClick={handleExportDisbursedList} className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">
-                    <FileSpreadsheet size={18} /> Export List
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-indigo-100 dark:border-slate-700">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 border-b dark:border-slate-700 pb-3">
+                <div>
+                  <h3 className="font-bold text-xl text-slate-800 dark:text-white">Loan Disbursement Details</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Define amounts and dates for selected borrowers</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    onClick={handleBulkSaveDisbursements} 
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm active:scale-95"
+                  >
+                    <Plus size={16} /> Disburse Selected / एकत्रित वाटप
                   </button>
-                  <button onClick={handleShareDisbursedList} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">
-                    <Share2 size={18} /> Share List
+                  <button 
+                    onClick={handleExportDisbursedList} 
+                    className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"
+                  >
+                    <FileSpreadsheet size={16} /> Export List
                   </button>
+                  <button 
+                    onClick={handleShareDisbursedList} 
+                    className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"
+                  >
+                    <Share2 size={16} /> Share
+                  </button>
+                </div>
+              </div>
+
+              {/* Bulk Settings Panel */}
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Set Date for All / सर्वांसाठी एकच तारीख:</label>
+                  <input 
+                    type="date" 
+                    value={bulkDate} 
+                    onChange={e => handleBulkDateChange(e.target.value)} 
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-blue-500 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Set Loan Amount for All / सर्वांसाठी एकत्रित मुद्दल (₹):</label>
+                  <input 
+                    type="number" 
+                    value={bulkAmount} 
+                    onChange={e => handleBulkAmountChange(e.target.value ? parseFloat(e.target.value) : '')} 
+                    placeholder="Principal Amount" 
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-blue-500 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Set Loan Type for All / सर्वांसाठी कर्ज प्रकार:</label>
+                  <select 
+                    value={bulkType} 
+                    onChange={e => handleBulkTypeChange(e.target.value)} 
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-blue-500 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white"
+                  >
+                    <option>Short Term</option>
+                    <option>Medium Term</option>
+                  </select>
                 </div>
               </div>
 
@@ -977,9 +1320,9 @@ const Members = () => {
                       if (!member) return null;
                       const data = disbursementData[id] || {
                         shareAmount: 0,
-                        loanAmount: member.loanPrincipal || 0, // Default to existing or 0
-                        date: format(new Date(), 'yyyy-MM-dd'),
-                        loanType: member.loanType || 'Short Term'
+                        loanAmount: bulkAmount || member.loanPrincipal || 0,
+                        date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+                        loanType: bulkType || member.loanType || 'Short Term'
                       };
                       const isSaved = disbursedLog.has(id);
 
@@ -987,41 +1330,49 @@ const Members = () => {
                         <tr key={id} className={`group ${isSaved ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
                           <td className={`py-3 pl-2 font-medium ${isSaved ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}`}>
                             {member.name}
-                            <div className="text-xs text-slate-400 font-normal">#{member.memberNo} | Cur shares: ₹{member.shareBalance}</div>
+                            <div className="text-xs text-slate-400 font-normal">#{member.memberNo} | A/C: {member.loanAccountNo || 'N/A'} | Cur shares: ₹{member.shareBalance}</div>
                           </td>
                           <td className="py-3 pr-2">
-                            <input type="number"
+                            <input 
+                              type="number"
                               value={data.shareAmount || ''}
                               placeholder="0"
                               onChange={e => handleDisbursementChange(id, 'shareAmount', parseFloat(e.target.value))}
-                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-white"
                             />
                           </td>
                           <td className="py-3 pr-2">
-                            <input type="number"
+                            <input 
+                              type="number"
                               value={data.loanAmount || ''}
                               placeholder="Principal"
                               onChange={e => handleDisbursementChange(id, 'loanAmount', parseFloat(e.target.value))}
-                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 dark:text-white"
                             />
                           </td>
                           <td className="py-3 pr-2">
-                            <input type="date"
+                            <input 
+                              type="date"
                               value={data.date}
                               onChange={e => handleDisbursementChange(id, 'date', e.target.value)}
-                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-800 dark:text-white"
                             />
                           </td>
                           <td className="py-3 pr-2">
-                            <select value={data.loanType} onChange={e => handleDisbursementChange(id, 'loanType', e.target.value)}
-                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            <select 
+                              value={data.loanType} 
+                              onChange={e => handleDisbursementChange(id, 'loanType', e.target.value)}
+                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-800 dark:text-white"
                             >
                               <option>Short Term</option>
                               <option>Medium Term</option>
                             </select>
                           </td>
                           <td className="py-3">
-                            <button onClick={() => handleSaveDisbursement(id)} className={`px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition ${isSaved ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                            <button 
+                              onClick={() => handleSaveDisbursement(id)} 
+                              className={`px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition ${isSaved ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                            >
                               {isSaved ? 'Saved' : 'Save'}
                             </button>
                           </td>
@@ -1040,8 +1391,142 @@ const Members = () => {
         </div>
       )}
 
-      {/* Members List (Original - Hidden when tab is new_loan) */}
+      {activeTab === 'history' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Filter & Summary Header */}
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">तारीख निवडा / Select Date:</span>
+                <input 
+                  type="date" 
+                  value={historyDate} 
+                  onChange={e => setHistoryDate(e.target.value)} 
+                  className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 text-slate-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="नाव, क्र., गाव शोधा..." 
+                  value={historySearch} 
+                  onChange={e => setHistorySearch(e.target.value)} 
+                  className="pl-8 pr-4 py-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleExportHistoryList} 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm"
+              >
+                <Download size={16} /> Export Excel
+              </button>
+              <button 
+                onClick={handleShareHistoryList} 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm"
+              >
+                <Share2 size={16} /> Share History
+              </button>
+            </div>
+          </div>
 
+          {/* Disbursement Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-slate-800 dark:to-slate-800/80 p-4 rounded-xl border border-blue-100 dark:border-slate-700 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">एकूण लाभार्थी सभासद</p>
+                <p className="text-2xl font-black text-blue-900 dark:text-white mt-1">{historyTotals.count} सभासद</p>
+              </div>
+              <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 p-2.5 rounded-lg">
+                <User size={24} />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-slate-800 dark:to-slate-800/80 p-4 rounded-xl border border-emerald-100 dark:border-slate-700 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">एकूण वितरित कर्ज रक्कम</p>
+                <p className="text-2xl font-black text-emerald-900 dark:text-white mt-1">₹{historyTotals.loan.toLocaleString()}</p>
+              </div>
+              <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-2.5 rounded-lg">
+                <FileText size={24} />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-slate-800 dark:to-slate-800/80 p-4 rounded-xl border border-indigo-100 dark:border-slate-700 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">एकूण शेअर्स जमा</p>
+                <p className="text-2xl font-black text-indigo-900 dark:text-white mt-1">₹{historyTotals.shares.toLocaleString()}</p>
+              </div>
+              <div className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 p-2.5 rounded-lg">
+                <Plus size={24} />
+              </div>
+            </div>
+          </div>
+
+          {/* History Details Table */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 overflow-hidden">
+            <div className="overflow-x-auto overflow-y-auto max-h-[50vh] will-change-scroll mobile-scroll">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-700 shadow-sm">
+                  <tr>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Member No</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Name</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Village</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium text-blue-600 dark:text-blue-400">Loan Account No</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium text-right">Shares Added</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium text-right">Principal Disbursed</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Date</th>
+                    <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">Loan Type</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y dark:divide-slate-700">
+                  {disbursementsOnHistoryDate.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-500 dark:text-slate-400 font-medium">
+                        निवडलेल्या तारखेला (`{historyDate}`) कोणतेही कर्ज वाटप सापडले नाही.
+                      </td>
+                    </tr>
+                  ) : disbursementsOnHistoryDate.map((item) => {
+                    const m = members.find(x => x.id === item.memberId);
+                    if (!m) return null;
+
+                    // Get shares added on same date
+                    const shareTxn = transactions.find(t => 
+                      t.memberId === m.id && 
+                      t.date === item.date && 
+                      t.accountType === AccountType.SHARES && 
+                      t.type === TransactionType.CREDIT
+                    );
+                    const sharesAdded = shareTxn ? shareTxn.amount : 0;
+
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <td className="p-3 font-semibold text-slate-600 dark:text-slate-300">#{m.memberNo}</td>
+                        <td className="p-3 font-medium text-slate-800 dark:text-white">
+                          <Link to={`/members/${m.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            {m.name}
+                          </Link>
+                          {item.isLegacy && <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 ml-2 px-1.5 py-0.5 rounded">Legacy</span>}
+                        </td>
+                        <td className="p-3 text-slate-500 dark:text-slate-400">{m.village}</td>
+                        <td className="p-3 font-bold text-blue-600 dark:text-blue-400">{m.loanAccountNo || 'N/A'}</td>
+                        <td className="p-3 text-right text-indigo-600 dark:text-indigo-400 font-bold">₹{(sharesAdded || 0).toLocaleString()}</td>
+                        <td className="p-3 text-right text-emerald-600 dark:text-emerald-400 font-black">₹{item.amount.toLocaleString()}</td>
+                        <td className="p-3 text-slate-500 dark:text-slate-400">{item.date}</td>
+                        <td className="p-3 text-slate-600 dark:text-slate-300 font-medium">
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-xs">
+                            {m.loanType || 'Short Term'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Member Modal */}
       {showAddModal && (
