@@ -98,7 +98,7 @@ const Members = () => {
       [id]: {
         ...(prev[id] || {
           shareAmount: 0,
-          loanAmount: bulkAmount || members.find(m => m.id === id)?.loanPrincipal || 0,
+          loanAmount: bulkAmount || Math.max(0, members.find(m => m.id === id)?.loanPrincipal || 0),
           date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
           loanType: bulkType || members.find(m => m.id === id)?.loanType || 'Short Term',
           landArea: members.find(m => m.id === id)?.landArea || '0.00'
@@ -117,7 +117,7 @@ const Members = () => {
         updated[id] = {
           ...(updated[id] || {
             shareAmount: 0,
-            loanAmount: bulkAmount || m?.loanPrincipal || 0,
+            loanAmount: bulkAmount || Math.max(0, m?.loanPrincipal || 0),
             loanType: bulkType || m?.loanType || 'Short Term',
             landArea: m?.landArea || '0.00'
           }),
@@ -158,7 +158,7 @@ const Members = () => {
         updated[id] = {
           ...(updated[id] || {
             shareAmount: 0,
-            loanAmount: bulkAmount || m?.loanPrincipal || 0,
+            loanAmount: bulkAmount || Math.max(0, m?.loanPrincipal || 0),
             date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
             landArea: m?.landArea || '0.00'
           }),
@@ -180,7 +180,7 @@ const Members = () => {
           ...prevData,
           [id]: {
             shareAmount: prevData[id]?.shareAmount || 0,
-            loanAmount: prevData[id]?.loanAmount || bulkAmount || member?.loanPrincipal || 0,
+            loanAmount: prevData[id]?.loanAmount || bulkAmount || Math.max(0, member?.loanPrincipal || 0),
             date: prevData[id]?.date || bulkDate || format(new Date(), 'yyyy-MM-dd'),
             loanType: prevData[id]?.loanType || bulkType || member?.loanType || 'Short Term',
             landArea: prevData[id]?.landArea || member?.landArea || '0.00'
@@ -197,7 +197,7 @@ const Members = () => {
 
     const data = customData || disbursementData[id] || {
       shareAmount: 0,
-      loanAmount: member.loanPrincipal || 0,
+      loanAmount: Math.max(0, member.loanPrincipal || 0),
       date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
       loanType: member.loanType || 'Short Term',
       landArea: member.landArea || '0.00'
@@ -1493,7 +1493,7 @@ const Members = () => {
                       if (!member) return null;
                       const data = disbursementData[id] || {
                         shareAmount: 0,
-                        loanAmount: bulkAmount || member.loanPrincipal || 0,
+                        loanAmount: bulkAmount || Math.max(0, member.loanPrincipal || 0),
                         date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
                         loanType: bulkType || member.loanType || 'Short Term'
                       };

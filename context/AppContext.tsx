@@ -356,7 +356,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const member = members.find(m => m.id === transaction.memberId);
       if (member) {
         transaction.previousLoanCalculationDate = member.lastLoanCalculationDate;
-        const updatedMember = { ...member, ...memberUpdates };
+        const updatedMember = { ...member };
         const amt = transaction.amount;
         if (transaction.type === TransactionType.CREDIT) {
           if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
@@ -370,11 +370,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         } else {
           if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance -= amt;
           if (transaction.accountType === AccountType.LOAN) {
+            if (updatedMember.loanPrincipal < 0) {
+              updatedMember.loanPrincipal = 0;
+            }
             if (updatedMember.loanPrincipal <= 0) updatedMember.originalLoanDate = transaction.date;
             updatedMember.loanPrincipal += amt;
             updatedMember.lastLoanCalculationDate = transaction.date;
           }
         }
+
+        // Apply manual member updates (e.g. waiver overrides to 0) after automatic transaction calculations
+        if (memberUpdates) {
+          Object.assign(updatedMember, memberUpdates);
+        }
+
         updateMember(updatedMember);
       }
     }
