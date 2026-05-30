@@ -170,12 +170,17 @@ const Members = () => {
   };
 
   const handleToggleMemberSelection = (id: string) => {
+    const member = members.find(m => m.id === id);
+    if (member && activeTab === 'new_loan' && ((member.loanPrincipal || 0) > 0 || (member.loanInterestDue || 0) > 0)) {
+      alert(`या सभासदाचे आधीचे कर्ज बाकी आहे! (शिल्लक मुद्दल: ₹${member.loanPrincipal.toLocaleString()})`);
+      return;
+    }
+
     setSelectedMemberIds(prev => {
       const isSelected = prev.includes(id);
       if (isSelected) {
         return prev.filter(x => x !== id);
       } else {
-        const member = members.find(m => m.id === id);
         setDisbursementData(prevData => ({
           ...prevData,
           [id]: {
@@ -721,10 +726,9 @@ const Members = () => {
 
       const matchesFarmerType = filterFarmerType ? m.farmerType === filterFarmerType : true;
 
-      // In New Loan tab, only show members who DON'T have an outstanding loan
+      // In New Loan tab, show all active members, but selection is restricted if they have an active loan
       if (activeTab === 'new_loan') {
-        const hasNoOutstanding = (m.loanPrincipal || 0) <= 0 && (m.loanInterestDue || 0) <= 0;
-        return matchesVillage && matchesCategory && matchesStatus && matchesFarmerType && hasNoOutstanding && m.isActive;
+        return matchesVillage && matchesCategory && matchesStatus && matchesFarmerType && m.isActive;
       }
 
       return matchesVillage && matchesCategory && matchesStatus && matchesFarmerType;
@@ -1366,10 +1370,15 @@ const Members = () => {
                       <input 
                         type="checkbox"
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedMemberIds(filteredMembers.map(m => m.id));
+                          if (e.target.checked) {
+                            const selectableIds = filteredMembers
+                              .filter(m => (m.loanPrincipal || 0) <= 0 && (m.loanInterestDue || 0) <= 0)
+                              .map(m => m.id);
+                            setSelectedMemberIds(selectableIds);
+                          }
                           else setSelectedMemberIds([]);
                         }}
-                        checked={filteredMembers.length > 0 && selectedMemberIds.length === filteredMembers.length}
+                        checked={filteredMembers.length > 0 && selectedMemberIds.length === filteredMembers.filter(m => (m.loanPrincipal || 0) <= 0 && (m.loanInterestDue || 0) <= 0).length}
                       />
                     </th>
                     <th className="p-3 text-slate-600 dark:text-slate-300 font-medium">No.</th>
@@ -1382,25 +1391,36 @@ const Members = () => {
                   {filteredMembers.map(m => {
                     const isSelected = selectedMemberIds.includes(m.id);
                     const isDisbursed = disbursedLog.has(m.id);
+                    const hasOutstanding = (m.loanPrincipal || 0) > 0 || (m.loanInterestDue || 0) > 0;
                     return (
                       <tr 
                         key={m.id} 
-                        className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                        className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''} ${hasOutstanding ? 'opacity-75 bg-slate-50/20' : ''}`}
                         onClick={() => handleToggleMemberSelection(m.id)}
                       >
                         <td className="p-3" onClick={e => e.stopPropagation()}>
                           <input 
                             type="checkbox" 
                             checked={isSelected} 
+                            disabled={hasOutstanding}
                             onChange={() => handleToggleMemberSelection(m.id)} 
+                            className={hasOutstanding ? 'cursor-not-allowed opacity-50' : ''}
                           />
                         </td>
                         <td className={`p-3 ${isDisbursed ? 'text-emerald-600 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>{m.memberNo}</td>
-                        <td className={`p-3 font-medium ${isDisbursed ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'}`}>
+                        <td className={`p-3 font-medium ${isDisbursed ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'} ${hasOutstanding ? 'text-slate-500' : ''}`}>
                           {m.name} {isDisbursed && '(Disbursed)'}
                         </td>
                         <td className="p-3 text-slate-500 dark:text-slate-400">{m.village}</td>
-                        <td className="p-3 text-slate-500 dark:text-slate-400">₹{m.loanPrincipal.toLocaleString()}</td>
+                        <td className="p-3">
+                          {hasOutstanding ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded border border-red-100 dark:border-red-900/40">
+                              <AlertTriangle size={12} /> ₹{m.loanPrincipal.toLocaleString()} (कर्ज बाकी)
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
