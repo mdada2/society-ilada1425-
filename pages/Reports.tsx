@@ -1416,7 +1416,7 @@ const Reports = () => {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             <ReportTable title="" columns={columns} data={summaryData} enableSearch={false} />
           </div>
         </div>
@@ -1566,7 +1566,7 @@ const Reports = () => {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             <ReportTable title="" columns={columns} data={crossTabData} enableSearch={false} />
           </div>
         </div>
@@ -1698,7 +1698,7 @@ const Reports = () => {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             <ReportTable title="" columns={columns} data={villageData} enableSearch={false} />
           </div>
         </div>
@@ -1881,7 +1881,7 @@ const Reports = () => {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             <ReportTable title="" columns={columns} data={financialData} enableSearch={false} />
           </div>
         </div>
@@ -2494,7 +2494,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-4 pb-24 bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 flex flex-col min-h-0 p-4 pb-24 bg-slate-50 dark:bg-slate-900 overflow-y-auto">
         {renderContent()}
       </div>
 
