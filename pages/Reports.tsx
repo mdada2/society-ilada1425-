@@ -2494,7 +2494,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 p-4 pb-24 bg-slate-50 dark:bg-slate-900 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-h-0 p-4 md:pb-4 pb-24 bg-slate-50 dark:bg-slate-900 overflow-y-auto md:overflow-hidden">
         {renderContent()}
       </div>
 
