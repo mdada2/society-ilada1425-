@@ -11,8 +11,9 @@ import { format } from 'date-fns';
 import { TransactionType } from '../types';
 
 const Dashboard = () => {
-    const { members, transactions, societyBanks, paddyPurchases } = useApp();
+    const { members, transactions, societyBanks, paddyPurchases, paddySeasons, getActiveSeason, dispatches } = useApp();
     const navigate = useNavigate();
+    const [paddySeasonFilter, setPaddySeasonFilter] = useState<string>('active');
 
     // Persist chart selection
     const [chartType, setChartType] = useState<string>(() => {
@@ -48,15 +49,45 @@ const Dashboard = () => {
         // Bank Stats
         const totalBankBalance = societyBanks.reduce((sum, b) => sum + b.balance, 0);
 
-        // Paddy Stats
-        const totalPaddyWeight = paddyPurchases.reduce((sum, p) => sum + p.newWeight + p.oldWeight + p.usedOnceWeight, 0);
-        const totalPaddyBags = paddyPurchases.reduce((sum, p) => sum + p.newBags + p.oldBags + p.usedOnceBags, 0);
-
         return {
             totalMembers, activeMembers, outstandingLoans, loansGiven, deposits, shareCapital,
-            todayCollection, todayExpense, cashInHand, totalBankBalance, totalPaddyWeight, totalPaddyBags
+            todayCollection, todayExpense, cashInHand, totalBankBalance
         };
-    }, [members, transactions, societyBanks, paddyPurchases]);
+    }, [members, transactions, societyBanks]);
+
+    const activeSeason = getActiveSeason();
+    const activeSeasonCode = activeSeason?.code || '';
+
+    // Dynamic Paddy Calculations for Selected Season
+    const paddyStats = useMemo(() => {
+        let targetSeasonCode = paddySeasonFilter;
+        if (paddySeasonFilter === 'active') {
+            targetSeasonCode = activeSeasonCode;
+        }
+
+        const filteredPurchases = targetSeasonCode === 'all'
+            ? paddyPurchases
+            : paddyPurchases.filter(p => p.season === targetSeasonCode);
+
+        const filteredDispatches = targetSeasonCode === 'all'
+            ? dispatches
+            : dispatches.filter(d => d.season === targetSeasonCode);
+
+        const weight = filteredPurchases.reduce((sum, p) => sum + (p.newWeight || 0) + (p.oldWeight || 0) + (p.usedOnceWeight || 0), 0);
+        const bags = filteredPurchases.reduce((sum, p) => sum + (p.newBags || 0) + (p.oldBags || 0) + (p.usedOnceBags || 0), 0);
+
+        const dispatchWeight = filteredDispatches.reduce((sum, d) => sum + (d.weight || 0), 0);
+        const dispatchBags = filteredDispatches.reduce((sum, d) => sum + (d.bags || 0), 0);
+
+        return {
+            weight,
+            bags,
+            dispatchWeight,
+            dispatchBags,
+            stockBags: Math.max(0, bags - dispatchBags),
+            stockWeight: Math.max(0, weight - dispatchWeight)
+        };
+    }, [paddyPurchases, dispatches, paddySeasonFilter, activeSeasonCode]);
 
     // Enhanced Chart Data
     const chartData = [
@@ -243,23 +274,58 @@ const Dashboard = () => {
                 <div className="space-y-6">
 
                     {/* Paddy Stats Widget */}
-                    <Link to="/paddy-purchase" className="block bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-800 dark:to-emerald-900/20 p-5 rounded-2xl border border-green-200 dark:border-emerald-800 relative overflow-hidden group">
-                        <div className="absolute right-0 bottom-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><ShoppingBag size={100} /></div>
-                        <h4 className="text-sm font-black text-green-800 dark:text-green-400 uppercase tracking-wide mb-2 flex items-center gap-2">
-                            <ShoppingBag size={16} /> Paddy Procurement
-                        </h4>
-                        <div className="flex gap-4">
-                            <div>
-                                <p className="text-2xl font-black text-slate-800 dark:text-white">{stats.totalPaddyWeight.toFixed(2)}</p>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase">Quintals (क्विंटल)</p>
+                    <div className="block bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-800 dark:to-emerald-900/20 p-5 rounded-2xl border border-green-200 dark:border-emerald-800 relative overflow-hidden group shadow-sm">
+                        <div className="absolute right-0 bottom-0 p-2 opacity-5 pointer-events-none"><ShoppingBag size={100} /></div>
+                        
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xs font-black text-green-800 dark:text-green-400 uppercase tracking-wider flex items-center gap-1">
+                                <ShoppingBag size={14} /> Paddy Procurement
+                            </h4>
+                            <select
+                                value={paddySeasonFilter}
+                                onChange={(e) => setPaddySeasonFilter(e.target.value)}
+                                className="px-2 py-0.5 border border-green-300 dark:border-emerald-800 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-[10px] font-extrabold outline-none focus:ring-1 focus:ring-green-500 relative z-10"
+                            >
+                                <option value="active">सध्याचा हंगाम ({activeSeasonCode || 'Active'})</option>
+                                <option value="all">सर्व हंगाम (All)</option>
+                                {paddySeasons.map(s => (
+                                    <option key={s.id} value={s.code}>{s.code} - {s.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        {/* Bags Breakdown Grid */}
+                        <div className="grid grid-cols-5 gap-1 mb-4 text-center border-b border-green-200 dark:border-emerald-800/50 pb-3">
+                            <div className="col-span-2">
+                                <p className="text-xl font-black text-slate-800 dark:text-white">{paddyStats.bags}</p>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">खरेदी (Bags)</p>
                             </div>
-                            <div className="w-px bg-green-200 dark:bg-emerald-800 h-10"></div>
-                            <div>
-                                <p className="text-2xl font-black text-slate-800 dark:text-white">{stats.totalPaddyBags}</p>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase">Bags (पोते)</p>
+                            <div className="w-px bg-green-200 dark:bg-emerald-800 h-8 self-center mx-auto"></div>
+                            <div className="col-span-2">
+                                <p className="text-xl font-black text-blue-600 dark:text-blue-400">{paddyStats.dispatchBags}</p>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">जावक (Dispatched)</p>
                             </div>
                         </div>
-                    </Link>
+
+                        {/* Weight & Stock Grid */}
+                        <div className="flex items-center justify-between text-xs pt-1">
+                            <div>
+                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">एकूण खरेदी वजन:</span>
+                                <span className="font-extrabold text-slate-800 dark:text-white">{paddyStats.weight.toFixed(2)} Qtl</span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase tracking-wider">गोदामात शिल्लक साठा:</span>
+                                <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{paddyStats.stockBags} Bags</span>
+                                <span className="text-[9px] text-slate-500 dark:text-slate-400 block">({paddyStats.stockWeight.toFixed(2)} Qtl शिल्लक)</span>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-3 text-right">
+                            <Link to="/paddy-purchase" className="inline-flex items-center gap-1 text-[10px] font-extrabold text-green-700 dark:text-emerald-400 hover:underline">
+                                खरेदी नोंदी पहा <ChevronRight size={10} />
+                            </Link>
+                        </div>
+                    </div>
 
                     {/* Bank Accounts List Widget */}
                     <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border dark:border-slate-700">
