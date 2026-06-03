@@ -11,9 +11,16 @@ import { format } from 'date-fns';
 import { TransactionType } from '../types';
 
 const Dashboard = () => {
-    const { members, transactions, societyBanks, paddyPurchases, paddySeasons, getActiveSeason, dispatches } = useApp();
+    const { members, transactions, societyBanks, paddyPurchases, paddySeasons, getActiveSeason, dispatches, settings } = useApp();
     const navigate = useNavigate();
     const [paddySeasonFilter, setPaddySeasonFilter] = useState<string>('active');
+
+    // Warning logic if current date exceeds settings financialYearEnd
+    const showFYWarning = useMemo(() => {
+        if (!settings?.financialYearEnd) return false;
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        return todayStr > settings.financialYearEnd;
+    }, [settings?.financialYearEnd]);
 
     // Persist chart selection
     const [chartType, setChartType] = useState<string>(() => {
@@ -192,6 +199,26 @@ const Dashboard = () => {
                 </div>
                 <span className="text-xs font-semibold text-ios-gray-500 bg-ios-gray-100 dark:bg-ios-gray-800 px-3 py-1.5 rounded-ios">{format(new Date(), 'dd MMM yyyy')}</span>
             </div>
+
+            {/* Financial Year Update Warning Alert */}
+            {showFYWarning && (
+                <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl flex items-start gap-3 shadow-sm print:hidden">
+                    <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={20} />
+                    <div className="flex-1">
+                        <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400">
+                            कृपया लक्ष द्या: नवीन आर्थिक वर्ष (Financial Year) सुरू झाले आहे!
+                        </h4>
+                        <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-1 leading-relaxed">
+                            सध्याचे आर्थिक वर्ष <strong>{settings?.financialYearStart ? format(new Date(settings.financialYearStart), 'dd-MM-yyyy') : ''} ते {settings?.financialYearEnd ? format(new Date(settings.financialYearEnd), 'dd-MM-yyyy') : ''}</strong> असे सेट आहे. नवीन नोंदी व व्याज अचूक राहण्यासाठी कृपया Settings मध्ये जाऊन नवीन आर्थिक वर्ष बदल (Update) करा.
+                        </p>
+                        <div className="mt-3">
+                            <Link to="/settings" className="inline-flex items-center gap-1 text-xs font-black text-amber-900 dark:text-amber-400 bg-amber-200/50 hover:bg-amber-200 dark:bg-amber-950/50 dark:hover:bg-amber-950 px-3 py-1.5 rounded-lg transition-colors">
+                                Settings मध्ये जा <ChevronRight size={14} />
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Main Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-2 print:grid-cols-2 print:gap-4">
