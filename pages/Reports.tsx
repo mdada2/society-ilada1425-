@@ -169,6 +169,12 @@ const Reports = () => {
           }
         }
 
+        // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
+        const parsedLoanDate = new Date(loanDate);
+        if (parsedLoanDate < startDate || parsedLoanDate > endDate) {
+          return null;
+        }
+
         // Determine loan amount
         let loanAmount = 0;
         const totalDebitsInFY = transactions
