@@ -1988,12 +1988,12 @@ const Reports = () => {
         { header: 'कर्ज तारीख', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
         { header: 'परतफेड दिनांक', accessorKey: 'repaymentDate', render: (i) => fmtDateDMY(i.repaymentDate) },
         { header: 'दिवस', accessorKey: 'days' },
-        { header: 'मुद्दल', accessorKey: 'principal', render: (i) => `₹${i.principal.toLocaleString()}` },
+        { header: 'मुद्दल', accessorKey: 'principal', render: (i) => `${i.principal.toLocaleString()}` },
         { header: 'प्रॉडक्ट', accessorKey: 'product', width: '200px', className: 'text-xs font-mono text-slate-600' },
         {
           header: '3% व्याज सवलत रक्कम',
           accessorKey: 'subsidy',
-          render: (i) => i.subsidy ? `₹${i.subsidy.toLocaleString()}` : '',
+          render: (i) => i.subsidy ? `${i.subsidy.toLocaleString()}` : '',
           className: 'font-bold text-green-600 text-center'
         },
         { header: 'बँक खाते', accessorKey: 'bankAccount', className: 'font-mono text-xs' },
@@ -2257,13 +2257,13 @@ const Reports = () => {
         { header: 'अ. क्र.', accessorKey: 'id', width: '50px' },
         { header: 'सभासदांचे नाव', accessorKey: 'name', className: 'font-bold' },
         { header: 'कर्ज तारीख', accessorKey: 'loanDate', render: (i) => fmtDate(i.loanDate) },
-        { header: 'कर्ज रक्कम', accessorKey: 'loanAmount', render: (i) => `₹${i.loanAmount.toLocaleString()}` },
+        { header: 'कर्ज रक्कम', accessorKey: 'loanAmount', render: (i) => `${i.loanAmount.toLocaleString()}` },
         { header: 'परतफेड तारीख', accessorKey: 'repaymentDate', render: (i) => fmtDate(i.repaymentDate) },
-        { header: 'परतफेड रक्कम', accessorKey: 'repaymentAmount', render: (i) => i.repaymentAmount > 0 ? `₹${i.repaymentAmount.toLocaleString()}` : '-' },
+        { header: 'परतफेड रक्कम', accessorKey: 'repaymentAmount', render: (i) => i.repaymentAmount > 0 ? `${i.repaymentAmount.toLocaleString()}` : '-' },
         { header: 'दिवस', accessorKey: 'days', render: (i) => i.days > 0 ? i.days : '-' },
         { header: 'प्रॉडक्ट', accessorKey: 'product', render: (i) => i.product > 0 ? i.product.toLocaleString() : '-' },
-        { header: '3% व्याज', accessorKey: 'interest3', render: (i) => i.interest3 ? `₹${i.interest3.toLocaleString()}` : '-', className: 'text-blue-600 font-bold text-center' },
-        { header: '2.50% व्याज', accessorKey: 'interest2_5', render: (i) => i.interest2_5 ? `₹${i.interest2_5.toLocaleString()}` : '-', className: 'text-indigo-600 font-bold text-center' },
+        { header: '3% व्याज', accessorKey: 'interest3', render: (i) => i.interest3 ? `${i.interest3.toLocaleString()}` : '-', className: 'text-blue-600 font-bold text-center' },
+        { header: '2.50% व्याज', accessorKey: 'interest2_5', render: (i) => i.interest2_5 ? `${i.interest2_5.toLocaleString()}` : '-', className: 'text-indigo-600 font-bold text-center' },
       ];
 
       return <ReportTable title={`Bank Incentive - ${activeSubTab}`} columns={columns} data={incentiveData} />;
