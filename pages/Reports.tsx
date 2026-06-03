@@ -2091,153 +2091,133 @@ const Reports = () => {
   };
 
   const renderBankIncentive = () => {
-    if (activeSubTab === 'Within ₹50,000' || activeSubTab === 'Above ₹50,000') {
-      const isAbove = activeSubTab === 'Above ₹50,000';
-      const startDate = new Date('2025-04-01');
-      const endDate = new Date('2026-03-31');
+    const startDate = new Date('2025-04-01');
+    const endDate = new Date('2026-03-31');
+    const cutoffDate = new Date('2026-03-31');
 
-      const incentiveData = members
-        .filter(m => {
-          // Target Year Check: शोधून काढा की या आर्थिक वर्षात (2025-04-01 ते 2026-03-31) कर्ज वाटप (Debit Transaction) झाले आहे का
-          const loanDebitInFY = transactions.find(t => 
-            t.memberId === m.id && 
-            t.type === 'Debit' && 
-            t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
-            new Date(t.date) <= endDate
-          );
+    // Reconstruct ALL loans that were active or disbursed in FY 2025-26 (including legacy ones since repaid)
+    const allIncentiveLoans = members
+      .map(m => {
+        // 1. Check if they have a Debit transaction in FY 2025-26
+        const loanDebitInFY = transactions.find(t => 
+          t.memberId === m.id && 
+          t.type === 'Debit' && 
+          t.accountType === 'Loan' && 
+          new Date(t.date) >= startDate && 
+          new Date(t.date) <= endDate
+        );
 
-          let loanDateStr = '';
-          if (loanDebitInFY) {
-            loanDateStr = loanDebitInFY.date;
+        // 2. Check if they have a Credit transaction (repayment) of type Loan in FY 2025-26 or early FY 2026-27 (repaid the loan)
+        const loanCreditInFY = transactions.find(t => 
+          t.memberId === m.id && 
+          t.type === 'Credit' && 
+          t.accountType === 'Loan' && 
+          new Date(t.date) >= startDate && 
+          new Date(t.date) <= new Date('2026-06-30') // cutoff date for repayments
+        );
+
+        // 3. Check if their current active loan is from FY 2025-26
+        const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
+        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
+
+        // If none of these match, this member had no loan in FY 2025-26
+        if (!loanDebitInFY && !loanCreditInFY && !currentLoanInFY) {
+          return null;
+        }
+
+        // Determine original loan date
+        let loanDate = '2025-07-15'; // Default fallback
+        if (loanDebitInFY) {
+          loanDate = loanDebitInFY.date;
+        } else if (currentLoanInFY) {
+          loanDate = currentLoanDateStr!;
+        } else if (loanCreditInFY) {
+          if (loanCreditInFY.previousLoanCalculationDate) {
+            loanDate = loanCreditInFY.previousLoanCalculationDate;
           } else {
-            // Fallback for legacy / imported data
-            const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
-            if (dStr) {
-              const d = new Date(dStr);
-              if (d >= startDate && d <= endDate) {
-                loanDateStr = dStr;
+            // Reconstruct based on interest formula
+            const prin = loanCreditInFY.principalPaid || (loanCreditInFY.amount - (loanCreditInFY.interestPaid || 0)) || 30000;
+            const intr = loanCreditInFY.interestPaid || 0;
+            if (intr > 0 && prin > 0) {
+              const estDays = Math.round((intr * 365) / (prin * 0.06));
+              if (estDays > 30 && estDays < 450) {
+                const repDate = new Date(loanCreditInFY.date);
+                const estLoanDateObj = new Date(repDate.getTime() - estDays * 24 * 60 * 60 * 1000);
+                loanDate = format(estLoanDateObj, 'yyyy-MM-dd');
               }
             }
           }
+        }
 
-          if (!loanDateStr) return false;
+        // Determine loan amount
+        let loanAmount = 0;
+        if (loanDebitInFY) {
+          loanAmount = loanDebitInFY.amount;
+        } else if (loanCreditInFY) {
+          loanAmount = loanCreditInFY.principalPaid || (loanCreditInFY.amount - (loanCreditInFY.interestPaid || 0)) || 30000;
+        } else {
+          // If no transactions, fall back to current principal (or original loan principal if it was imported)
+          loanAmount = m.loanPrincipal || 30000;
+        }
 
-          // मूळ कर्ज रक्कम: सर्व DEBIT Loan txn ची बेरीज
-          const getMemberOriginalLoan = (memberId: string, currentPrincipal: number) => {
-            const loanDebits = transactions
-              .filter(t => t.memberId === memberId && t.type === 'Debit' && t.accountType === 'Loan')
-              .reduce((sum, t) => sum + t.amount, 0);
-            if (loanDebits > 0) return loanDebits;
+        // Determine if they repaid this specific loan before 31-03-2026
+        // Repayment would be a Credit transaction after the loanDate and before cutoffDate
+        const repaymentTxn = transactions.find(t => 
+          t.memberId === m.id && 
+          t.type === 'Credit' && 
+          t.accountType === 'Loan' && 
+          t.date >= loanDate && 
+          new Date(t.date) <= cutoffDate
+        );
 
-            const creditLoanTxns = transactions
-              .filter(t => t.memberId === memberId && t.type === 'Credit' && t.accountType === 'Loan');
+        const isRepaid = !!repaymentTxn;
+        const repaymentDate = isRepaid ? repaymentTxn.date : '-';
+        const repaymentAmount = isRepaid ? loanAmount : 0;
 
-            const netPrincipalPaid = creditLoanTxns
-              .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
+        const days = isRepaid
+          ? differenceInDays(new Date(repaymentDate), new Date(loanDate))
+          : 0;
 
-            const totalWaived = creditLoanTxns.reduce((sum, t) => {
-              if (t.waivedAmount) return sum + t.waivedAmount;
-              const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
-              return sum + (match ? parseInt(match[1]) : 0);
-            }, 0);
+        const productValue = isRepaid ? (loanAmount * days) : 0;
 
-            const outstanding = Math.max(0, currentPrincipal);
-            return netPrincipalPaid + totalWaived + outstanding || 0;
-          };
+        const interest3 = isRepaid ? Math.round((productValue * 0.03) / 365) : null;
+        const interest2_5 = isRepaid ? Math.round((productValue * 0.025) / 365) : null;
 
-          let effectiveAmount = getMemberOriginalLoan(m.id, m.loanPrincipal);
+        return {
+          member: m,
+          loanDate,
+          loanAmount,
+          repaymentDate,
+          repaymentAmount,
+          days: days > 0 ? days : 0,
+          product: productValue,
+          interest3,
+          interest2_5,
+          isRepaid
+        };
+      })
+      .filter(Boolean) as any[];
 
-          if (effectiveAmount === 0) return false;
-          const matchesThreshold = isAbove ? effectiveAmount > 50000 : effectiveAmount <= 50000;
-          return matchesThreshold;
-        })
-        .map((m, idx) => {
-          const loanDebitInFY = transactions.find(t => 
-            t.memberId === m.id && 
-            t.type === 'Debit' && 
-            t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
-            new Date(t.date) <= endDate
-          );
-          const loanDate = loanDebitInFY ? loanDebitInFY.date : (m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01');
-          const isRepaid = m.loanPrincipal <= 0;
+    if (activeSubTab === 'Within ₹50,000' || activeSubTab === 'Above ₹50,000') {
+      const isAbove = activeSubTab === 'Above ₹50,000';
+      const filteredLoans = allIncentiveLoans.filter(item => {
+        return isAbove ? item.loanAmount > 50000 : item.loanAmount <= 50000;
+      });
 
-          // मूळ कर्ज रक्कम: सर्व DEBIT LOAN txn ची बेरीज
-          // Loan Waiver असला तरी मूळ उचल रक्कम DEBIT txn मध्येच राहते
-          const totalDebitAmount = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-            .reduce((sum, t) => sum + t.amount, 0);
+      const incentiveData = filteredLoans.map((item, idx) => ({
+        id: idx + 1,
+        name: item.member.name,
+        loanDate: item.loanDate,
+        loanAmount: item.loanAmount,
+        repaymentDate: item.repaymentDate,
+        repaymentAmount: item.repaymentAmount,
+        days: item.days,
+        product: item.product,
+        interest3: item.interest3,
+        interest2_5: item.interest2_5,
+        bankAccount: item.member.bankAccountNo || 'N/A'
+      }));
 
-          // मूळ कर्ज रक्कम: DEBIT txn total, नसल्यास (amount - interestPaid) + waivedAmount + outstanding
-          // waivedAmount: नवीन field (Transactions.tsx मधून) किंवा details मधून parse (जुने data)
-          const actualLoanAmount = totalDebitAmount > 0
-            ? totalDebitAmount
-            : (() => {
-                const creditLoanTxns = transactions
-                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan');
-                const netPrincipal = creditLoanTxns
-                  .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
-                const waived = creditLoanTxns.reduce((sum, t) => {
-                  if (t.waivedAmount) return sum + t.waivedAmount;
-                  const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
-                  return sum + (match ? parseInt(match[1]) : 0);
-                }, 0);
-                return netPrincipal + waived + Math.max(0, m.loanPrincipal) || 0;
-              })();
-
-
-          // (31 मार्चनंतरच्या entries मुळे eligibility बाधित होणार नाही)
-          const cutoffDate = new Date('2026-03-31');
-
-          const repaymentTxn = isRepaid
-            ? transactions
-                .filter(t =>
-                  t.memberId === m.id &&
-                  t.type === 'Credit' &&
-                  t.accountType === 'Loan' &&
-                  new Date(t.date) <= cutoffDate
-                )
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
-            : null;
-          const repaymentDate = repaymentTxn ? repaymentTxn.date : '-';
-
-          // परतफेड 31 मार्च पूर्वी झाली का?
-          const repaidBeforeCutoff = repaymentTxn
-            ? new Date(repaymentTxn.date) <= cutoffDate
-            : false;
-
-          // फक्त 31 मार्च पूर्वी परतफेड केलेल्यांना रक्कम दाखवा - व्याज वगळून फक्त मुद्दल
-          // NOTE: principalPaid नाही, actualLoanAmount (मूळ DEBIT txn) वापरतो
-          // कारण Admin ने व्याज माफ केल्यास principalPaid कमी होतो, पण मूळ कर्ज रक्कम बदलत नाही
-          const repaymentAmount = repaidBeforeCutoff
-            ? actualLoanAmount
-            : 0;
-
-          const days = repaidBeforeCutoff && repaymentTxn
-            ? differenceInDays(new Date(repaymentDate), new Date(loanDate))
-            : 0;
-          const productValue = repaidBeforeCutoff ? (actualLoanAmount * days) : 0;
-
-          // व्याज फक्त 31 मार्च पूर्वी परतफेड झाल्यासच दाखवा
-          const interest3 = repaidBeforeCutoff ? Math.round((productValue * 0.03) / 365) : null;
-          const interest2_5 = repaidBeforeCutoff ? Math.round((productValue * 0.025) / 365) : null;
-
-          return {
-            id: idx + 1,
-            name: m.name,
-            loanDate: loanDate,
-            loanAmount: actualLoanAmount,
-            repaymentDate: repaidBeforeCutoff ? repaymentDate : '-',
-            repaymentAmount: repaymentAmount,
-            days: days > 0 ? days : 0,
-            product: productValue,
-            interest3: interest3,
-            interest2_5: interest2_5
-          };
-        });
-
-      // तारीख DD-MM-YYYY format मध्ये convert करण्यासाठी helper
       const fmtDate = (dateStr: string) => {
         if (!dateStr || dateStr === '-') return '-';
         try {
@@ -2264,124 +2244,22 @@ const Reports = () => {
     }
 
     if (activeSubTab === 'Summary') {
-      const startDate = new Date('2025-04-01');
-      const endDate = new Date('2026-03-31');
-
       const limits = [
         { title: '50,000 /- पावेतो', threshold: 50000, above: false },
         { title: '50,000 /- चे वरील', threshold: 50000, above: true }
       ];
 
       const summaryData = limits.map((l, idx) => {
-        const filtered = members.filter(m => {
-          // Target Year Check: शोधून काढा की या आर्थिक वर्षात (2025-04-01 ते 2026-03-31) कर्ज वाटप (Debit Transaction) झाले आहे का
-          const loanDebitInFY = transactions.find(t => 
-            t.memberId === m.id && 
-            t.type === 'Debit' && 
-            t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
-            new Date(t.date) <= endDate
-          );
-
-          let loanDateStr = '';
-          if (loanDebitInFY) {
-            loanDateStr = loanDebitInFY.date;
-          } else {
-            // Fallback for legacy / imported data
-            const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
-            if (dStr) {
-              const d = new Date(dStr);
-              if (d >= startDate && d <= endDate) {
-                loanDateStr = dStr;
-              }
-            }
-          }
-
-          if (!loanDateStr) return false;
-
-          // मूळ कर्ज रक्कम: DEBIT txn → नसल्यास (amount - interestPaid) + waivedAmount + outstanding
-          const totalDebits = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-            .reduce((sum, t) => sum + t.amount, 0);
-          const effectivePrincipal = totalDebits > 0
-            ? totalDebits
-            : (() => {
-                const creditTxns = transactions
-                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan');
-                const creditNet = creditTxns
-                  .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
-                const waived = creditTxns.reduce((sum, t) => {
-                  if (t.waivedAmount) return sum + t.waivedAmount;
-                  const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
-                  return sum + (match ? parseInt(match[1]) : 0);
-                }, 0);
-                return creditNet + waived + Math.max(0, m.loanPrincipal) || 0;
-              })();
-
-          if (effectivePrincipal === 0) return false;
-
-          const matches = l.above ? effectivePrincipal > l.threshold : effectivePrincipal <= l.threshold;
-          return matches;
+        const filtered = allIncentiveLoans.filter(item => {
+          return l.above ? item.loanAmount > l.threshold : item.loanAmount <= l.threshold;
         });
 
-        let disbursement = 0, repayment = 0, product = 0, int3 = 0, int2_5 = 0, repaidCount = 0;
-
-        filtered.forEach(m => {
-          const loanDebitInFY = transactions.find(t => 
-            t.memberId === m.id && 
-            t.type === 'Debit' && 
-            t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
-            new Date(t.date) <= endDate
-          );
-          const loanDate = loanDebitInFY ? loanDebitInFY.date : (m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01');
-          const isRepaid = m.loanPrincipal <= 0;
-
-          // मूळ कर्ज रक्कम: DEBIT txn total → नसल्यास (amount - interestPaid) + waivedAmount + outstanding
-          const totalDebits2 = transactions
-            .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
-            .reduce((sum, t) => sum + t.amount, 0);
-          const principal = totalDebits2 > 0
-            ? totalDebits2
-            : (() => {
-                const creditTxns2 = transactions
-                  .filter(t => t.memberId === m.id && t.type === 'Credit' && t.accountType === 'Loan');
-                const creditNet = creditTxns2
-                  .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
-                const waived = creditTxns2.reduce((sum, t) => {
-                  if (t.waivedAmount) return sum + t.waivedAmount;
-                  const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
-                  return sum + (match ? parseInt(match[1]) : 0);
-                }, 0);
-                return creditNet + waived + Math.max(0, m.loanPrincipal) || 0;
-              })();
-
-          disbursement += principal;
-
-          if (isRepaid) {
-            // cutoff पूर्वी परतफेड झाली का?
-            const cutoffDate = new Date('2026-03-31');
-            const repaymentTxn = transactions
-              .filter(t =>
-                t.memberId === m.id &&
-                t.type === 'Credit' &&
-                t.accountType === 'Loan' &&
-                new Date(t.date) <= cutoffDate
-              )
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-
-            if (repaymentTxn) {
-              repaidCount++;
-              repayment += principal;
-              const days = differenceInDays(new Date(repaymentTxn.date), new Date(loanDate));
-              const prod = principal * days;
-              product += prod;
-              int3 += Math.round((prod * 0.03) / 365);
-              int2_5 += Math.round((prod * 0.025) / 365);
-            }
-          }
-        });
-
+        const disbursement = filtered.reduce((sum, item) => sum + item.loanAmount, 0);
+        const repayment = filtered.reduce((sum, item) => sum + item.repaymentAmount, 0);
+        const product = filtered.reduce((sum, item) => sum + item.product, 0);
+        const int3 = filtered.reduce((sum, item) => sum + (item.interest3 || 0), 0);
+        const int2_5 = filtered.reduce((sum, item) => sum + (item.interest2_5 || 0), 0);
+        const repaidCount = filtered.filter(item => item.isRepaid).length;
         const balance = disbursement - repayment;
 
         return {
@@ -2401,8 +2279,6 @@ const Reports = () => {
         };
       });
 
-
-      // Total Row
       if (summaryData.length > 0) {
         const totals = summaryData.reduce((acc, curr) => ({
           id: 0,
@@ -2435,13 +2311,12 @@ const Reports = () => {
         { header: '3% प्रमाणे व्याज', accessorKey: 'interest3', render: (i) => i.interest3.toLocaleString(), className: 'text-blue-600' },
         { header: '2.50% प्रमाणे व्याज', accessorKey: 'interest2_5', render: (i) => i.interest2_5.toLocaleString(), className: 'text-indigo-600' },
         { header: 'चालु कर्जबाकी', accessorKey: 'balance', render: (i) => i.balance.toLocaleString() },
-        { header: 'एकुण', accessorKey: 'total', render: (i) => i.total === 0 ? '-' : i.total.toLocaleString(), className: 'font-bold' },
+        { header: 'एकूण', accessorKey: 'total', render: (i) => i.total === 0 ? '-' : i.total.toLocaleString(), className: 'font-bold' },
       ];
 
       return <ReportTable title="Bank Incentive Summary (गोषवारा)" columns={columns} data={summaryData} />;
     }
 
-    return <div className="p-8 text-center text-slate-500">Feature '{activeSubTab}' is under development.</div>;
   };
 
   const renderContent = () => {
