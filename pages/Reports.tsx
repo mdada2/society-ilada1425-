@@ -620,9 +620,9 @@ const Reports = () => {
       },
       { header: 'Village', accessorKey: 'village' },
       { header: 'Loan Date', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
-      { header: 'Principal', accessorKey: 'principal', render: (i) => `₹${i.principal.toLocaleString()}` },
-      { header: 'Interest', accessorKey: 'interest', render: (i) => `₹${i.interest.toLocaleString()}` },
-      { header: 'Total', accessorKey: 'total', render: (i) => `₹${i.total.toLocaleString()}` },
+      { header: 'Principal', accessorKey: 'principal', render: (i) => `${i.principal.toLocaleString()}` },
+      { header: 'Interest', accessorKey: 'interest', render: (i) => `${i.interest.toLocaleString()}` },
+      { header: 'Total', accessorKey: 'total', render: (i) => `${i.total.toLocaleString()}` },
     ];
 
     // Filter logic for Loan tabs
