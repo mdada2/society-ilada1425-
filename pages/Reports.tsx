@@ -71,7 +71,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Loan Reports',
     icon: <Wallet size={24} />,
     color: 'bg-amber-500',
-    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'NPA List', 'Summary']
+    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary']
   },
   {
     id: 'membership',
@@ -853,6 +853,73 @@ const Reports = () => {
           title={`Repaid Loans (FY) - ${settings.financialYearStart} to ${settings.financialYearEnd}`}
           columns={repaidColumns}
           data={repaidLoans}
+          onRowClick={(item) => handleMemberClick(item.id)}
+        />
+      );
+    }
+
+    if (activeSubTab === 'Overdue Recoveries') {
+      const fyStart = new Date(settings.financialYearStart || '2026-04-01');
+      const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
+
+      // Find all Credit transactions of type Loan during this FY
+      const recoveryTxns = transactions.filter(t => 
+        t.type === 'Credit' && 
+        t.accountType === 'Loan' && 
+        new Date(t.date) >= fyStart && 
+        new Date(t.date) <= fyEnd
+      );
+
+      // Group by member, filtering only members whose original loan was disbursed before fyStart
+      const memberRecoveries = members.map(m => {
+        const loanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
+        if (!loanDateStr || new Date(loanDateStr) >= fyStart) {
+          return null; // Exclude current FY loans
+        }
+
+        // Get all recoveries for this member in this FY
+        const memberTxns = recoveryTxns.filter(t => t.memberId === m.id);
+        if (memberTxns.length === 0) return null;
+
+        const totalRecovered = memberTxns.reduce((sum, t) => 
+          sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
+        );
+
+        if (totalRecovered <= 0) return null;
+
+        const sortedTxns = [...memberTxns].sort((a, b) => a.date.localeCompare(b.date));
+        const lastPaymentDate = sortedTxns[sortedTxns.length - 1].date;
+
+        return {
+          id: m.id,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          loanDate: loanDateStr,
+          recoveredAmount: totalRecovered,
+          lastPaymentDate,
+          remainingBalance: Math.max(0, m.loanPrincipal)
+        };
+      }).filter(Boolean) as any[];
+
+      const recoveryColumns: Column<any>[] = [
+        { header: 'No.', accessorKey: 'memberNo', width: '60px' },
+        {
+          header: 'Name', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
+          render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
+        },
+        { header: 'Village', accessorKey: 'village' },
+        { header: 'Loan Date (Original)', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
+        { header: 'Recovered Amount', accessorKey: 'recoveredAmount', render: (i) => i.recoveredAmount.toLocaleString(), className: 'text-green-600 font-bold' },
+        { header: 'Last Payment Date', accessorKey: 'lastPaymentDate', render: (i) => fmtDateDMY(i.lastPaymentDate) },
+        { header: 'Remaining Balance', accessorKey: 'remainingBalance', render: (i) => i.remainingBalance.toLocaleString(), className: 'text-slate-600 font-medium' },
+      ];
+
+      return (
+        <ReportTable
+          title={`Overdue Recoveries (थकीत वसुली) - ${settings.financialYearStart} to ${settings.financialYearEnd}`}
+          columns={recoveryColumns}
+          data={memberRecoveries}
           onRowClick={(item) => handleMemberClick(item.id)}
         />
       );
