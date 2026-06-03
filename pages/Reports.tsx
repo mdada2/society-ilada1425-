@@ -2151,13 +2151,39 @@ const Reports = () => {
 
         // Determine loan amount
         let loanAmount = 0;
-        if (loanDebitInFY) {
-          loanAmount = loanDebitInFY.amount;
-        } else if (loanCreditInFY) {
-          loanAmount = loanCreditInFY.principalPaid || (loanCreditInFY.amount - (loanCreditInFY.interestPaid || 0)) || 30000;
+        const totalDebitsInFY = transactions
+          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) >= startDate && new Date(t.date) <= endDate)
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        if (totalDebitsInFY > 0) {
+          loanAmount = totalDebitsInFY;
         } else {
-          // If no transactions, fall back to current principal (or original loan principal if it was imported)
-          loanAmount = m.loanPrincipal || 30000;
+          // Reconstruct from all repayments in the period + waived + outstanding
+          const creditTxnsInPeriod = transactions.filter(t => 
+            t.memberId === m.id && 
+            t.type === 'Credit' && 
+            t.accountType === 'Loan' && 
+            new Date(t.date) >= startDate && 
+            new Date(t.date) <= new Date('2026-06-30')
+          );
+          
+          const creditNet = creditTxnsInPeriod.reduce((sum, t) => 
+            sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
+          );
+          
+          const waived = creditTxnsInPeriod.reduce((sum, t) => {
+            if (t.waivedAmount) return sum + t.waivedAmount;
+            const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
+            return sum + (match ? parseInt(match[1]) : 0);
+          }, 0);
+
+          const outstanding = currentLoanInFY ? Math.max(0, m.loanPrincipal) : 0;
+          
+          loanAmount = creditNet + waived + outstanding;
+
+          if (loanAmount === 0) {
+            loanAmount = currentLoanInFY ? (m.loanPrincipal || 30000) : 30000;
+          }
         }
 
         // Determine if they repaid this specific loan before 31-03-2026
