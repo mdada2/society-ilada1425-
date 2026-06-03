@@ -103,6 +103,36 @@ function ReportTable<T extends { id?: string | number }>({
         const headers = columns.map(c => c.header);
         const rows = data.map(item => columns.map(col => getExcelValue(item, col)));
 
+        // Add total row if it's a Bank Incentive report (Within / Above 50,000)
+        if (title.startsWith("Bank_Incentive_-_Within") || title.startsWith("Bank_Incentive_-_Above") || title.includes("Incentive")) {
+            let totalLoanAmount = 0;
+            let totalRepaymentAmount = 0;
+            let totalProduct = 0;
+            let totalInterest3 = 0;
+            let totalInterest2_5 = 0;
+
+            data.forEach((item: any) => {
+                totalLoanAmount += Number(item.loanAmount || 0);
+                totalRepaymentAmount += Number(item.repaymentAmount || 0);
+                totalProduct += Number(item.product || 0);
+                totalInterest3 += Number(item.interest3 || 0);
+                totalInterest2_5 += Number(item.interest2_5 || 0);
+            });
+
+            const totalRow = columns.map(col => {
+                if (col.accessorKey === 'id') return '';
+                if (col.accessorKey === 'name') return 'एकूण (Total)';
+                if (col.accessorKey === 'loanAmount') return totalLoanAmount;
+                if (col.accessorKey === 'repaymentAmount') return totalRepaymentAmount;
+                if (col.accessorKey === 'product') return totalProduct;
+                if (col.accessorKey === 'interest3') return totalInterest3;
+                if (col.accessorKey === 'interest2_5') return totalInterest2_5;
+                return '';
+            });
+
+            rows.push(totalRow);
+        }
+
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Report");
