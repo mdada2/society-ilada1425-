@@ -2553,7 +2553,7 @@ const Reports = () => {
         </div>
       );
     }
-
+    return null;
   };
 
   const renderContent = () => {
