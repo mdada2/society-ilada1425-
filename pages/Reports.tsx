@@ -109,6 +109,12 @@ const Reports = () => {
   const [showPinModal, setShowPinModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [filterLedgerAccount, setFilterLedgerAccount] = useState<string>('All');
+  const [selectedFYRange, setSelectedFYRange] = useState<{ start: string; end: string } | null>(null);
+
+  // Reset selected financial year range when category or sub-tab changes
+  useEffect(() => {
+    setSelectedFYRange(null);
+  }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string) => {
     const startDate = new Date(startDateStr);
@@ -767,6 +773,51 @@ const Reports = () => {
     } catch { return dateStr; }
   };
 
+  const renderFYSelector = () => {
+    const currentStartYear = new Date(settings.financialYearStart || '2026-04-01').getFullYear();
+    
+    const options = [
+      {
+        label: `चालू आर्थिक वर्ष ${currentStartYear}-${(currentStartYear + 1).toString().slice(-2)}`,
+        start: `${currentStartYear}-04-01`,
+        end: `${currentStartYear + 1}-03-31`
+      },
+      {
+        label: `मागील आर्थिक वर्ष ${currentStartYear - 1}-${currentStartYear.toString().slice(-2)}`,
+        start: `${currentStartYear - 1}-04-01`,
+        end: `${currentStartYear}-03-31`
+      },
+      {
+        label: `आर्थिक वर्ष ${currentStartYear - 2}-${(currentStartYear - 1).toString().slice(-2)}`,
+        start: `${currentStartYear - 2}-04-01`,
+        end: `${currentStartYear - 1}-03-31`
+      }
+    ];
+
+    const currentRange = selectedFYRange || { start: settings.financialYearStart, end: settings.financialYearEnd };
+    const currentVal = `${currentRange.start}_${currentRange.end}`;
+
+    return (
+      <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-auto self-start print:hidden mb-2">
+        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">आर्थिक वर्ष निवडा (FY):</span>
+        <select
+          value={currentVal}
+          onChange={(e) => {
+            const [start, end] = e.target.value.split('_');
+            setSelectedFYRange({ start, end });
+          }}
+          className="px-3 py-1.5 text-xs font-bold border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          {options.map(opt => (
+            <option key={`${opt.start}_${opt.end}`} value={`${opt.start}_${opt.end}`}>
+              {opt.label} ({opt.start.split('-').reverse().join('.')} ते {opt.end.split('-').reverse().join('.')})
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
   const renderLoan = () => {
     const columns: Column<typeof loanData[0]>[] = [
       { header: 'No.', accessorKey: 'memberNo', width: '60px' },
@@ -781,14 +832,17 @@ const Reports = () => {
       { header: 'Total', accessorKey: 'total', render: (i) => `${i.total.toLocaleString()}` },
     ];
 
+    const activeStart = selectedFYRange ? selectedFYRange.start : settings.financialYearStart;
+    const activeEnd = selectedFYRange ? selectedFYRange.end : settings.financialYearEnd;
+
     // Filter logic for Loan tabs
     let displayData = loanData;
 
     if (activeSubTab === 'Recovery Report') {
       // Filter for Recovery Report - show only TRUE defaulters
       // Exclude current FY regular loans
-      const fyStart = new Date(settings.financialYearStart || '2026-04-01');
-      const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
+      const fyStart = new Date(activeStart);
+      const fyEnd = new Date(activeEnd);
 
       displayData = loanData.filter(item => {
         // Must have outstanding loan balance
@@ -811,18 +865,30 @@ const Reports = () => {
 
     if (activeSubTab === 'Regular (FY)') {
       // Filter for Current Financial Year
-      const fyStart = new Date(settings.financialYearStart || '2026-04-01');
-      const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
+      const fyStart = new Date(activeStart);
+      const fyEnd = new Date(activeEnd);
 
       displayData = loanData.filter(item => {
         if (item.loanDate === 'N/A') return false;
         const d = new Date(item.loanDate);
         return d >= fyStart && d <= fyEnd;
       });
+
+      return (
+        <div className="flex flex-col gap-4 h-full">
+          {renderFYSelector()}
+          <ReportTable
+            title={`Regular Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
+            columns={columns}
+            data={displayData}
+            onRowClick={(item) => handleMemberClick(item.id)}
+          />
+        </div>
+      );
     }
 
     if (activeSubTab === 'Repaid (FY)') {
-      const repaidLoans = getFYLoans(settings.financialYearStart, settings.financialYearEnd)
+      const repaidLoans = getFYLoans(activeStart, activeEnd)
         .filter(item => item.isRepaid)
         .map((item) => ({
           id: item.member.id,
@@ -849,18 +915,21 @@ const Reports = () => {
       ];
 
       return (
-        <ReportTable
-          title={`Repaid Loans (FY) - ${settings.financialYearStart} to ${settings.financialYearEnd}`}
-          columns={repaidColumns}
-          data={repaidLoans}
-          onRowClick={(item) => handleMemberClick(item.id)}
-        />
+        <div className="flex flex-col gap-4 h-full">
+          {renderFYSelector()}
+          <ReportTable
+            title={`Repaid Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
+            columns={repaidColumns}
+            data={repaidLoans}
+            onRowClick={(item) => handleMemberClick(item.id)}
+          />
+        </div>
       );
     }
 
     if (activeSubTab === 'Overdue Recoveries') {
-      const fyStart = new Date(settings.financialYearStart || '2026-04-01');
-      const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
+      const fyStart = new Date(activeStart);
+      const fyEnd = new Date(activeEnd);
 
       // Find all Credit transactions of type Loan during this FY
       const recoveryTxns = transactions.filter(t => 
@@ -916,12 +985,15 @@ const Reports = () => {
       ];
 
       return (
-        <ReportTable
-          title={`Overdue Recoveries (थकीत वसुली) - ${settings.financialYearStart} to ${settings.financialYearEnd}`}
-          columns={recoveryColumns}
-          data={memberRecoveries}
-          onRowClick={(item) => handleMemberClick(item.id)}
-        />
+        <div className="flex flex-col gap-4 h-full">
+          {renderFYSelector()}
+          <ReportTable
+            title={`Overdue Recoveries (थकीत वसुली) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
+            columns={recoveryColumns}
+            data={memberRecoveries}
+            onRowClick={(item) => handleMemberClick(item.id)}
+          />
+        </div>
       );
     }
 
