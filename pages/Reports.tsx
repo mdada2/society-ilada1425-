@@ -2500,7 +2500,7 @@ const Reports = () => {
           limit: l.title,
           disbDate: '-',
           disbAmount: disbursement,
-          repaidDate: '31.03.2026',
+          repaidDate: activeEnd.split('-').reverse().join('.'),
           repaidMemberCount: repaidCount,
           repaymentAmount: repayment,
           product: product,
