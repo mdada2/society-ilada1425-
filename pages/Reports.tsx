@@ -2186,9 +2186,9 @@ const Reports = () => {
           }
         }
 
-        // Determine if they repaid this specific loan before 31-03-2026
-        // Repayment would be a Credit transaction after the loanDate and before cutoffDate
-        const repaymentTxn = transactions.find(t => 
+        // Determine if they fully repaid this specific loan before 31-03-2026 (cutoffDate)
+        // Sum all Credit repayments and waived amounts up to cutoffDate
+        const creditTxnsBeforeCutoff = transactions.filter(t => 
           t.memberId === m.id && 
           t.type === 'Credit' && 
           t.accountType === 'Loan' && 
@@ -2196,8 +2196,24 @@ const Reports = () => {
           new Date(t.date) <= cutoffDate
         );
 
-        const isRepaid = !!repaymentTxn;
-        const repaymentDate = isRepaid ? repaymentTxn.date : '-';
+        const principalPaidBeforeCutoff = creditTxnsBeforeCutoff.reduce((sum, t) => 
+          sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
+        );
+
+        const waivedBeforeCutoff = creditTxnsBeforeCutoff.reduce((sum, t) => {
+          if (t.waivedAmount) return sum + t.waivedAmount;
+          const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
+          return sum + (match ? parseInt(match[1]) : 0);
+        }, 0);
+
+        const totalRepaidBeforeCutoff = principalPaidBeforeCutoff + waivedBeforeCutoff;
+
+        // Fully repaid if total repaid is >= loanAmount (allowing a small 5 Rs tolerance for rounding/waivers)
+        const isRepaid = totalRepaidBeforeCutoff >= (loanAmount - 5);
+
+        // Repayment date is the date of the last installment/payment that cleared the loan
+        const sortedRepayments = [...creditTxnsBeforeCutoff].sort((a, b) => a.date.localeCompare(b.date));
+        const repaymentDate = isRepaid && sortedRepayments.length > 0 ? sortedRepayments[sortedRepayments.length - 1].date : '-';
         const repaymentAmount = isRepaid ? loanAmount : 0;
 
         const days = isRepaid
