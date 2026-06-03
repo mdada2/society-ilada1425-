@@ -630,9 +630,9 @@ const Reports = () => {
 
     if (activeSubTab === 'Recovery Report') {
       // Filter for Recovery Report - show only TRUE defaulters
-      // Exclude current FY regular loans (01-04-2025 to 31-03-2026)
-      const fyStart = new Date('2025-04-01');
-      const fyEnd = new Date('2026-03-31');
+      // Exclude current FY regular loans
+      const fyStart = new Date(settings.financialYearStart || '2026-04-01');
+      const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
 
       displayData = loanData.filter(item => {
         // Must have outstanding loan balance
@@ -654,9 +654,9 @@ const Reports = () => {
     }
 
     if (activeSubTab === 'Regular (FY)') {
-      // Filter for Current Financial Year (01/04/2025 to 31/03/2026)
-      const fyStart = new Date('2025-04-01');
-      const fyEnd = new Date('2026-03-31');
+      // Filter for Current Financial Year
+      const fyStart = new Date(settings.financialYearStart || '2026-04-01');
+      const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
 
       displayData = loanData.filter(item => {
         if (item.loanDate === 'N/A') return false;

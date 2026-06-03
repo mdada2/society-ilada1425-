@@ -680,7 +680,7 @@ const Members = () => {
       } else if (filterStatus === 'Inactive') {
         matchesStatus = !m.isActive;
       } else if (filterStatus === 'Regular (FY)') {
-        // Current FY borrowers ONLY - members with loans from current FY (01-04-2025 to 31-03-2026)
+        // Current FY borrowers ONLY - members with loans from current FY
         // Exclude defaulters from previous years
         const hasLoan = (m.loanPrincipal || 0) > 0;
         if (!hasLoan) {
@@ -689,8 +689,8 @@ const Members = () => {
           // Check if loan is from current FY
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
           if (loanDate) {
-            const fyStart = new Date('2025-04-01');
-            const fyEnd = new Date('2026-03-31');
+            const fyStart = new Date(settings.financialYearStart || '2026-04-01');
+            const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
             const loanDateObj = new Date(loanDate);
             // Include ONLY current FY loans
             matchesStatus = loanDateObj >= fyStart && loanDateObj <= fyEnd;
@@ -700,7 +700,7 @@ const Members = () => {
         }
       } else if (filterStatus === 'Defaulters') {
         // TRUE Defaulters - members with outstanding loans from BEFORE current FY
-        // Exclude current FY (01-04-2025 to 31-03-2026) - they are regular borrowers, not defaulters
+        // Exclude current FY - they are regular borrowers, not defaulters
         const hasOutstanding = (m.loanPrincipal || 0) > 0 || (m.loanInterestDue || 0) > 0;
         if (!hasOutstanding) {
           matchesStatus = false;
@@ -708,8 +708,8 @@ const Members = () => {
           // Check if loan is from current FY
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
           if (loanDate) {
-            const fyStart = new Date('2025-04-01');
-            const fyEnd = new Date('2026-03-31');
+            const fyStart = new Date(settings.financialYearStart || '2026-04-01');
+            const fyEnd = new Date(settings.financialYearEnd || '2027-03-31');
             const loanDateObj = new Date(loanDate);
             // Exclude current FY loans
             if (loanDateObj >= fyStart && loanDateObj <= fyEnd) {
