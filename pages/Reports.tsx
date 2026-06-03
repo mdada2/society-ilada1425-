@@ -2470,7 +2470,7 @@ const Reports = () => {
       return (
         <div className="flex flex-col gap-4 h-full">
           {renderFYSelector()}
-          <ReportTable title={`Bank Incentive - ${activeSubTab}`} columns={columns} data={incentiveData} />
+          <ReportTable title={`Bank Incentive - ${activeSubTab}`} columns={columns} data={incentiveData} enableDateFilter={false} />
         </div>
       );
     }
@@ -2549,7 +2549,7 @@ const Reports = () => {
       return (
         <div className="flex flex-col gap-4 h-full">
           {renderFYSelector()}
-          <ReportTable title="Bank Incentive Summary (गोषवारा)" columns={columns} data={summaryData} />
+          <ReportTable title="Bank Incentive Summary (गोषवारा)" columns={columns} data={summaryData} enableDateFilter={false} />
         </div>
       );
     }
