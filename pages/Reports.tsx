@@ -2423,7 +2423,7 @@ const Reports = () => {
   };
 
   const renderBankIncentive = () => {
-    const allIncentiveLoans = getFYLoans(settings.financialYearStart, settings.financialYearEnd);
+    const allIncentiveLoans = getFYLoans(activeStart, activeEnd);
 
     if (activeSubTab === 'Within ₹50,000' || activeSubTab === 'Above ₹50,000') {
       const isAbove = activeSubTab === 'Above ₹50,000';
@@ -2467,7 +2467,12 @@ const Reports = () => {
         { header: '2.50% व्याज', accessorKey: 'interest2_5', render: (i) => i.interest2_5 ? `${i.interest2_5.toLocaleString()}` : '-', className: 'text-indigo-600 font-bold text-center' },
       ];
 
-      return <ReportTable title={`Bank Incentive - ${activeSubTab}`} columns={columns} data={incentiveData} />;
+      return (
+        <div className="flex flex-col gap-4 h-full">
+          {renderFYSelector()}
+          <ReportTable title={`Bank Incentive - ${activeSubTab}`} columns={columns} data={incentiveData} />
+        </div>
+      );
     }
 
     if (activeSubTab === 'Summary') {
@@ -2541,7 +2546,12 @@ const Reports = () => {
         { header: 'एकूण', accessorKey: 'total', render: (i) => i.total === 0 ? '-' : i.total.toLocaleString(), className: 'font-bold' },
       ];
 
-      return <ReportTable title="Bank Incentive Summary (गोषवारा)" columns={columns} data={summaryData} />;
+      return (
+        <div className="flex flex-col gap-4 h-full">
+          {renderFYSelector()}
+          <ReportTable title="Bank Incentive Summary (गोषवारा)" columns={columns} data={summaryData} />
+        </div>
+      );
     }
 
   };
