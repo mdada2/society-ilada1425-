@@ -2098,35 +2098,46 @@ const Reports = () => {
 
       const incentiveData = members
         .filter(m => {
-          // Target Year Check: लोन तारीख FY 2025-26 मध्ये असावी
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
-          if (!dStr) return false;
-          const d = new Date(dStr);
-          if (!(d >= startDate && d <= endDate)) return false;
+          // Target Year Check: शोधून काढा की या आर्थिक वर्षात (2025-04-01 ते 2026-03-31) कर्ज वाटप (Debit Transaction) झाले आहे का
+          const loanDebitInFY = transactions.find(t => 
+            t.memberId === m.id && 
+            t.type === 'Debit' && 
+            t.accountType === 'Loan' && 
+            new Date(t.date) >= startDate && 
+            new Date(t.date) <= endDate
+          );
+
+          let loanDateStr = '';
+          if (loanDebitInFY) {
+            loanDateStr = loanDebitInFY.date;
+          } else {
+            // Fallback for legacy / imported data
+            const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
+            if (dStr) {
+              const d = new Date(dStr);
+              if (d >= startDate && d <= endDate) {
+                loanDateStr = dStr;
+              }
+            }
+          }
+
+          if (!loanDateStr) return false;
 
           // मूळ कर्ज रक्कम: सर्व DEBIT Loan txn ची बेरीज
-          // DEBIT txn नसल्यास: (amount - interestPaid) + waivedAmount + outstanding
-          // waivedAmount: नवीन transactions मध्ये field म्हणून, जुन्यांसाठी details string मधून parse
           const getMemberOriginalLoan = (memberId: string, currentPrincipal: number) => {
             const loanDebits = transactions
               .filter(t => t.memberId === memberId && t.type === 'Debit' && t.accountType === 'Loan')
               .reduce((sum, t) => sum + t.amount, 0);
             if (loanDebits > 0) return loanDebits;
 
-            // DEBIT txn नसल्यास:
-            // 1. CREDIT txn मधील (amount - interestPaid) = मुद्दलात गेलेली रक्कम
-            // 2. + waivedAmount (नवीन field किंवा details मधून parse)
-            // 3. + outstanding principal = मूळ कर्ज
             const creditLoanTxns = transactions
               .filter(t => t.memberId === memberId && t.type === 'Credit' && t.accountType === 'Loan');
 
             const netPrincipalPaid = creditLoanTxns
               .reduce((sum, t) => sum + Math.max(0, t.amount - (t.interestPaid || 0)), 0);
 
-            // Waiver amount: नवीन field असल्यास वापरा, नसल्यास details मधून parse करा
             const totalWaived = creditLoanTxns.reduce((sum, t) => {
               if (t.waivedAmount) return sum + t.waivedAmount;
-              // जुन्या transactions साठी details मधून "कर्ज माफी: ₹X" parse करा
               const match = (t.details || '').match(/कर्ज माफी: ₹(\d+)/);
               return sum + (match ? parseInt(match[1]) : 0);
             }, 0);
@@ -2142,8 +2153,14 @@ const Reports = () => {
           return matchesThreshold;
         })
         .map((m, idx) => {
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
-          // loanPrincipal <= 0 = repaid (negative value = waiver artifact)
+          const loanDebitInFY = transactions.find(t => 
+            t.memberId === m.id && 
+            t.type === 'Debit' && 
+            t.accountType === 'Loan' && 
+            new Date(t.date) >= startDate && 
+            new Date(t.date) <= endDate
+          );
+          const loanDate = loanDebitInFY ? loanDebitInFY.date : (m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01');
           const isRepaid = m.loanPrincipal <= 0;
 
           // मूळ कर्ज रक्कम: सर्व DEBIT LOAN txn ची बेरीज
@@ -2257,6 +2274,31 @@ const Reports = () => {
 
       const summaryData = limits.map((l, idx) => {
         const filtered = members.filter(m => {
+          // Target Year Check: शोधून काढा की या आर्थिक वर्षात (2025-04-01 ते 2026-03-31) कर्ज वाटप (Debit Transaction) झाले आहे का
+          const loanDebitInFY = transactions.find(t => 
+            t.memberId === m.id && 
+            t.type === 'Debit' && 
+            t.accountType === 'Loan' && 
+            new Date(t.date) >= startDate && 
+            new Date(t.date) <= endDate
+          );
+
+          let loanDateStr = '';
+          if (loanDebitInFY) {
+            loanDateStr = loanDebitInFY.date;
+          } else {
+            // Fallback for legacy / imported data
+            const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
+            if (dStr) {
+              const d = new Date(dStr);
+              if (d >= startDate && d <= endDate) {
+                loanDateStr = dStr;
+              }
+            }
+          }
+
+          if (!loanDateStr) return false;
+
           // मूळ कर्ज रक्कम: DEBIT txn → नसल्यास (amount - interestPaid) + waivedAmount + outstanding
           const totalDebits = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
@@ -2279,19 +2321,21 @@ const Reports = () => {
           if (effectivePrincipal === 0) return false;
 
           const matches = l.above ? effectivePrincipal > l.threshold : effectivePrincipal <= l.threshold;
-          if (!matches) return false;
-
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate;
-          if (!dStr) return false;
-          const d = new Date(dStr);
-          return d >= startDate && d <= endDate;
+          return matches;
         });
 
         let disbursement = 0, repayment = 0, product = 0, int3 = 0, int2_5 = 0, repaidCount = 0;
 
         filtered.forEach(m => {
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
-          const isRepaid = m.loanPrincipal === 0;
+          const loanDebitInFY = transactions.find(t => 
+            t.memberId === m.id && 
+            t.type === 'Debit' && 
+            t.accountType === 'Loan' && 
+            new Date(t.date) >= startDate && 
+            new Date(t.date) <= endDate
+          );
+          const loanDate = loanDebitInFY ? loanDebitInFY.date : (m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01');
+          const isRepaid = m.loanPrincipal <= 0;
 
           // मूळ कर्ज रक्कम: DEBIT txn total → नसल्यास (amount - interestPaid) + waivedAmount + outstanding
           const totalDebits2 = transactions
