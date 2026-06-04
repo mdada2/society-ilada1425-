@@ -942,8 +942,8 @@ const Members = () => {
 
         const idxMemberNo = findCol(['memberno', 'member no', 'no', 'id', 'no.']);
         const idxName = findCol(['name', 'membername', 'full name', 'fullname', 'member name']);
-        if (idxMemberNo === -1 || idxName === -1) {
-          alert(`Import Failed: Could not find 'MemberNo' or 'Name' columns.`);
+        if (idxMemberNo === -1) {
+          alert(`Import Failed: Could not find 'MemberNo' column.`);
           if (e.target) e.target.value = ''; return;
         }
         const idxGender = findCol(['gender', 'sex']);
@@ -984,8 +984,12 @@ const Members = () => {
           const values = rows[i].map(v => String(v ?? '').trim());
           if (values.length < 2) continue;
           const memberNo = values[idxMemberNo];
-          const name = values[idxName];
-          if (!memberNo || !name) continue;
+          const name = idxName !== -1 ? values[idxName] : '';
+          if (!memberNo) continue;
+
+          // Check if member already exists
+          const existingMember = existingMembersMap.get(memberNo);
+          if (!existingMember && !name) continue;
 
           stats.total++;
 
@@ -1011,9 +1015,6 @@ const Members = () => {
           const dob = idxDOB !== -1 ? parseDateSafe(rows[i][idxDOB]) : undefined;
           const originalLoanPrincipal = idxOriginalLoanPrin !== -1 ? parseNumberSafe(values[idxOriginalLoanPrin]) : 0;
           const lastLoanPrincipal = idxLastLoanPrin !== -1 ? parseNumberSafe(values[idxLastLoanPrin]) : 0;
-
-          // Check if member already exists
-          const existingMember = existingMembersMap.get(memberNo);
 
           if (existingMember) {
             // Use type assertion since we've already checked that existingMember is truthy
