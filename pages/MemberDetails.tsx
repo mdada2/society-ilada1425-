@@ -337,7 +337,7 @@ const MemberDetails = () => {
 
                             <div className="flex-1 min-w-0">
                                 {isEditing ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-2 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-2 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600">
                                         <div className="md:col-span-1">
                                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Name</label>
                                             <input
@@ -377,10 +377,30 @@ const MemberDetails = () => {
                                                 <option value="Other">Other</option>
                                             </select>
                                         </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Successor (वारस)</label>
+                                            <div className="flex items-center h-10">
+                                                <input
+                                                    type="checkbox"
+                                                    id="isSuccessor"
+                                                    checked={formData.isSuccessor || false}
+                                                    onChange={e => setFormData({ ...formData, isSuccessor: e.target.checked })}
+                                                    className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-600 dark:bg-slate-800"
+                                                />
+                                                <label htmlFor="isSuccessor" className="ml-2 text-sm text-slate-700 dark:text-slate-300 font-medium cursor-pointer">वारस आहे</label>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <>
-                                        <h1 className="text-xl md:text-3xl font-bold text-slate-800 dark:text-white print:text-black truncate">{member.name}</h1>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h1 className="text-xl md:text-3xl font-bold text-slate-800 dark:text-white print:text-black truncate">{member.name}</h1>
+                                            {member.isSuccessor && (
+                                                <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-lg border border-red-600 shadow-sm shrink-0">
+                                                    वारस
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-slate-500 dark:text-slate-400 print:text-slate-600 text-sm md:text-base">
                                             #{member.memberNo} | {member.village} | {member.gender || 'Male'}
                                             {member.membershipDate ? ` | Reg: ${formatDateDisplay(member.membershipDate)}` : ''}

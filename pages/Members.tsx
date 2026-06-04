@@ -1307,6 +1307,11 @@ const Members = () => {
                           {member.photoUrl ? <img src={member.photoUrl} alt="" loading="lazy" className="w-full h-full object-cover" /> : <User size={14} className="text-slate-400" />}
                         </div>
                         <span className={member.isActive ? '' : 'text-slate-400 italic'}>{member.name} {!member.isActive && '(Inactive)'}</span>
+                        {member.isSuccessor && (
+                          <span className="ml-2 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded shrink-0">
+                            वारस
+                          </span>
+                        )}
                       </Link>
                     </td>
                     <td className="p-4 text-slate-600 dark:text-slate-300 whitespace-nowrap">{member.village}</td>
@@ -1948,6 +1953,19 @@ const Members = () => {
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Bank Acc No</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.bankAccountNo || ''} onChange={e => setNewMember({ ...newMember, bankAccountNo: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Loan Acc No</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.loanAccountNo || ''} onChange={e => setNewMember({ ...newMember, loanAccountNo: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Land (Ha.R)</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.landArea || ''} onChange={e => setNewMember({ ...newMember, landArea: e.target.value })} /></div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Successor (वारस)</label>
+                <div className="flex items-center h-10">
+                  <input
+                    type="checkbox"
+                    id="newIsSuccessor"
+                    className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-600 dark:bg-slate-700"
+                    checked={newMember.isSuccessor || false}
+                    onChange={e => setNewMember({ ...newMember, isSuccessor: e.target.checked })}
+                  />
+                  <label htmlFor="newIsSuccessor" className="ml-2 text-sm text-slate-700 dark:text-slate-300 font-medium cursor-pointer">वारस आहे</label>
+                </div>
+              </div>
               <div className="md:col-span-2 flex gap-4 mt-4"><button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-2 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={isDuplicateMemberNo} className={`flex-1 py-2 rounded font-medium text-white transition ${isDuplicateMemberNo ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>{isDuplicateMemberNo ? 'Fix Error' : 'Save Member'}</button></div>
             </form>
           </div>

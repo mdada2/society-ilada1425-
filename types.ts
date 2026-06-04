@@ -198,6 +198,7 @@ export interface Member {
   fdBalance: number;
   lastLoanCalculationDate?: string;
   originalLoanDate?: string;
+  isSuccessor?: boolean;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';
