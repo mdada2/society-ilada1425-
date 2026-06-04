@@ -895,12 +895,25 @@ const Members = () => {
     return parseFloat(clean) || 0;
   };
 
-  const parseDateSafe = (dateStr: string) => {
-    if (!dateStr) return undefined;
-    const clean = dateStr.trim().replace(/^"|"$/g, '');
-    if (!clean) return undefined;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-    const parts = clean.split(/[-/]/);
+  const parseDateSafe = (val: any) => {
+    if (val === undefined || val === null || val === '') return undefined;
+    if (val instanceof Date) {
+      return format(val, 'yyyy-MM-dd');
+    }
+    const strVal = String(val).trim().replace(/^"|"$/g, '');
+    if (/^\d+(\.\d+)?$/.test(strVal)) {
+      const serial = parseFloat(strVal);
+      if (serial > 29221 && serial < 65743) {
+        const utc_days = Math.floor(serial - 25569);
+        const utc_value = utc_days * 86400;
+        const date_info = new Date(utc_value * 1000);
+        const localDate = new Date(date_info.getTime() + date_info.getTimezoneOffset() * 60000);
+        return format(localDate, 'yyyy-MM-dd');
+      }
+    }
+    if (!strVal) return undefined;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(strVal)) return strVal;
+    const parts = strVal.split(/[-/]/);
     if (parts.length === 3) {
       if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
       if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
@@ -992,9 +1005,10 @@ const Members = () => {
             if (rawType.includes('medium') || rawType.includes('m.t')) parsedLoanType = 'Medium Term';
             else if (rawType.includes('short') || rawType.includes('s.t') || rawType) parsedLoanType = 'Short Term';
           }
-          const originalLoanDate = idxOriginalLoanDate !== -1 ? parseDateSafe(values[idxOriginalLoanDate]) : undefined;
-          const lastPaymentDate = idxLastPaymentDate !== -1 ? parseDateSafe(values[idxLastPaymentDate]) : undefined;
-          const membershipDate = idxMembershipDate !== -1 ? parseDateSafe(values[idxMembershipDate]) : undefined;
+          const originalLoanDate = idxOriginalLoanDate !== -1 ? parseDateSafe(rows[i][idxOriginalLoanDate]) : undefined;
+          const lastPaymentDate = idxLastPaymentDate !== -1 ? parseDateSafe(rows[i][idxLastPaymentDate]) : undefined;
+          const membershipDate = idxMembershipDate !== -1 ? parseDateSafe(rows[i][idxMembershipDate]) : undefined;
+          const dob = idxDOB !== -1 ? parseDateSafe(rows[i][idxDOB]) : undefined;
           const originalLoanPrincipal = idxOriginalLoanPrin !== -1 ? parseNumberSafe(values[idxOriginalLoanPrin]) : 0;
           const lastLoanPrincipal = idxLastLoanPrin !== -1 ? parseNumberSafe(values[idxLastLoanPrin]) : 0;
 
@@ -1023,7 +1037,7 @@ const Members = () => {
               membershipDate: mergeField(existing.membershipDate, membershipDate) as string | undefined,
               mobile: mergeField(existing.mobile, idxMobile !== -1 ? (values[idxMobile] || '') : '') as string,
               category: mergeField(existing.category, idxCategory !== -1 ? ((values[idxCategory] || 'OPEN') as any) : 'OPEN') as any,
-              dob: mergeField(existing.dob, idxDOB !== -1 ? (values[idxDOB] || '') : '') as string,
+              dob: mergeField(existing.dob, dob || '') as string,
               aadhar: mergeField(existing.aadhar, idxAadhar !== -1 ? (values[idxAadhar] || '') : '') as string,
               farmerId: mergeField(existing.farmerId, idxFarmerId !== -1 ? (values[idxFarmerId] || '') : '') as string,
               bankAccountNo: mergeField(existing.bankAccountNo, idxBankAcc !== -1 ? (values[idxBankAcc] || '') : '') as string,
@@ -1049,7 +1063,7 @@ const Members = () => {
               village: idxVillage !== -1 ? (values[idxVillage] || '') : '',
               membershipDate: membershipDate, mobile: idxMobile !== -1 ? (values[idxMobile] || '') : '',
               category: idxCategory !== -1 ? ((values[idxCategory] || 'OPEN') as any) : 'OPEN',
-              dob: idxDOB !== -1 ? (values[idxDOB] || '') : '',
+              dob: dob || '',
               aadhar: idxAadhar !== -1 ? (values[idxAadhar] || '') : '',
               farmerId: idxFarmerId !== -1 ? (values[idxFarmerId] || '') : '',
               bankAccountNo: idxBankAcc !== -1 ? (values[idxBankAcc] || '') : '',
