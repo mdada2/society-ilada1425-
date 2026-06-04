@@ -1167,16 +1167,18 @@ const Reports = () => {
         { id: 4, label: 'लघु कृषक गैर आदिवासी', farmerType: 'Small Farmer', isTribal: false },
       ];
 
-      // Time period buckets
+      // Time period buckets (shifted by 365 days for year-end logic)
       const timePeriods = [
         { key: 'total', label: 'एकूण कर्ज बाकी', minDays: 0, maxDays: Infinity },
-        { key: '1yr', label: '१ वर्ष वरीत', minDays: 365, maxDays: 730 },
-        { key: '2yr', label: '२ वर्ष वरीत', minDays: 730, maxDays: 1095 },
-        { key: '3yr', label: '३ वर्ष वरीत', minDays: 1095, maxDays: 1460 },
-        { key: '4yr', label: '४ वर्ष वरीत', minDays: 1460, maxDays: 1825 },
-        { key: '5yr', label: '५ वर्ष वरीत', minDays: 1825, maxDays: 2190 },
-        { key: 'above5yr', label: '५ वर्ष वरील वरीत', minDays: 2190, maxDays: Infinity },
+        { key: '1yr', label: '१ वर्ष वरीत', minDays: -1, maxDays: 365 },
+        { key: '2yr', label: '२ वर्ष वरीत', minDays: 365, maxDays: 730 },
+        { key: '3yr', label: '३ वर्ष वरीत', minDays: 730, maxDays: 1095 },
+        { key: '4yr', label: '४ वर्ष वरीत', minDays: 1095, maxDays: 1460 },
+        { key: '5yr', label: '५ वर्ष वरीत', minDays: 1460, maxDays: 1825 },
+        { key: 'above5yr', label: '५ वर्ष वरील वरीत', minDays: 1825, maxDays: Infinity },
       ];
+
+      const activeUnpaid = getFYLoans(activeStart, activeEnd).filter(item => !item.isRepaid);
 
       // Calculate summary data
       const summaryData = categories.map(category => {
@@ -1185,88 +1187,22 @@ const Reports = () => {
           category: category.label,
         };
 
-        // Filter members for this category
-        const categoryMembers = members.filter(m => {
+        // Filter active unpaid loans for this category
+        const categoryUnpaid = activeUnpaid.filter(item => {
+          const m = item.member;
           if (m.farmerType !== category.farmerType) return false;
           const isTribal = m.category === 'ST';
           if (isTribal !== category.isTribal) return false;
-          return m.loanPrincipal > 0;
+          return true;
         });
 
-        // Calculate Total Overdue Interest for the category (including live accrued interest)
-        // EXCLUDE current FY loans (01-04-2025 to 31-03-2026) - they are not defaulters yet
-        const fyStart = new Date('2025-04-01');
-        const fyEnd = new Date('2026-03-31');
-
-        row.overdueInterest_amount = categoryMembers.reduce((sum, m) => {
-          // Exclude current FY loans
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
-          if (loanDate) {
-            const loanDateObj = new Date(loanDate);
-            if (loanDateObj >= fyStart && loanDateObj <= fyEnd) {
-              return sum; // Skip current FY loans
-            }
-          }
-
-          // Calculate accrued interest (same logic as loanData)
-          let accruedInterest = 0;
-          if (m.loanPrincipal > 0 && m.lastLoanCalculationDate) {
-            const today = format(new Date(), 'yyyy-MM-dd');
-            const result = calculateLoanInterest(
-              m.loanPrincipal,
-              m.lastLoanCalculationDate,
-              today,
-              settings.financialYearStart,
-              settings.financialYearEnd,
-              false, // Show interest in reports
-              m.originalLoanDate,
-              settings.firstYearInterestRate || 6,
-              settings.subsequentYearInterestRate || 12
-            );
-            accruedInterest = result.interest;
-          }
-          const totalInterest = (Number(m.loanInterestDue) || 0) + accruedInterest;
-          return sum + totalInterest;
-        }, 0);
-
-        row.overdueInterest_count = categoryMembers.filter(m => {
-          // Exclude current FY loans
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
-          if (loanDate) {
-            const loanDateObj = new Date(loanDate);
-            if (loanDateObj >= fyStart && loanDateObj <= fyEnd) {
-              return false; // Skip current FY loans
-            }
-          }
-
-          // Calculate accrued interest
-          let accruedInterest = 0;
-          if (m.loanPrincipal > 0 && m.lastLoanCalculationDate) {
-            const today = format(new Date(), 'yyyy-MM-dd');
-            const result = calculateLoanInterest(
-              m.loanPrincipal,
-              m.lastLoanCalculationDate,
-              today,
-              settings.financialYearStart,
-              settings.financialYearEnd,
-              false,
-              m.originalLoanDate,
-              settings.firstYearInterestRate || 6,
-              settings.subsequentYearInterestRate || 12
-            );
-            accruedInterest = result.interest;
-          }
-          const totalInterest = (Number(m.loanInterestDue) || 0) + accruedInterest;
-          return totalInterest > 0;
-        }).length;
+        // Calculate Total Overdue Interest for the category
+        row.overdueInterest_amount = categoryUnpaid.reduce((sum, item) => sum + (item.interest6 || 0), 0);
+        row.overdueInterest_count = categoryUnpaid.filter(item => (item.interest6 || 0) > 0).length;
 
         timePeriods.forEach(period => {
-          const filteredMembers = categoryMembers.filter(m => {
-            // Calculate overdue days
-            const loanDate = m.originalLoanDate || m.lastLoanCalculationDate;
-            if (!loanDate) return false;
-
-            const days = differenceInDays(new Date(), parseISO(loanDate));
+          const filteredItems = categoryUnpaid.filter(item => {
+            const days = item.daysUpToCutoff;
 
             // For total, include all loans
             if (period.key === 'total') return days >= 0;
@@ -1276,14 +1212,14 @@ const Reports = () => {
           });
 
           // Alp Mudat (Short Term)
-          const alpMembers = filteredMembers.filter(m => m.loanType === 'Short Term');
-          const alp_count = alpMembers.length;
-          const alp_amount = alpMembers.reduce((sum, m) => sum + m.loanPrincipal, 0);
+          const alpItems = filteredItems.filter(item => item.member.loanType === 'Short Term');
+          const alp_count = alpItems.length;
+          const alp_amount = alpItems.reduce((sum, item) => sum + item.loanAmount, 0);
 
           // Madhyam Mudat (Medium Term)
-          const madhyamMembers = filteredMembers.filter(m => m.loanType === 'Medium Term');
-          const madhyam_count = madhyamMembers.length;
-          const madhyam_amount = madhyamMembers.reduce((sum, m) => sum + m.loanPrincipal, 0);
+          const madhyamItems = filteredItems.filter(item => item.member.loanType === 'Medium Term');
+          const madhyam_count = madhyamItems.length;
+          const madhyam_amount = madhyamItems.reduce((sum, item) => sum + item.loanAmount, 0);
 
           row[`${period.key}_alp_count`] = alp_count;
           row[`${period.key}_alp_amount`] = alp_amount;
@@ -1436,7 +1372,9 @@ const Reports = () => {
 
       // Render custom table
       return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+        <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
+          {renderFYSelector()}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
           <div className="bg-blue-900 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
               <h2 className="text-xl font-bold text-center md:text-left">NPA Summary (गोषवारा)</h2>
@@ -1714,6 +1652,7 @@ const Reports = () => {
             </div>
           </div>
         </div>
+      </div>
       );
     }
 
