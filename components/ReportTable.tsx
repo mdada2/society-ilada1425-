@@ -278,7 +278,7 @@ function ReportTable<T extends { id?: string | number }>({
 
             {/* Table Content */}
             <div className="flex-1 overflow-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-max text-left border-collapse">
                     <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10">
                         <tr>
                             {columns.map((col, idx) => (

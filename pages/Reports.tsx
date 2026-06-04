@@ -1076,70 +1076,50 @@ const Reports = () => {
           new Date(t.date) <= cutoffDate
         );
 
-        if (loanDebits.length === 0) {
-          const loanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
-          if (loanDateStr && new Date(loanDateStr) <= cutoffDate && m.loanPrincipal > 0) {
-            const loanDate = new Date(loanDateStr);
-            const loanYear = loanDate.getFullYear();
-            const ageYears = activeEndYear - loanYear;
-            const days = Math.max(0, differenceInDays(cutoffDate, loanDate));
-            const principal = m.loanPrincipal;
-            const interest = Math.round((principal * days * 0.06) / 365);
-
-            return {
-              id: m.id,
-              memberNo: m.memberNo,
-              name: m.name,
-              village: m.village,
-              ledgerPage: m.memberNo || '-',
-              stTotal: principal,
-              mtTotal: 0,
-              st1: ageYears <= 1 ? principal : 0,
-              mt1: 0,
-              st2: ageYears === 2 ? principal : 0,
-              mt2: 0,
-              st3: ageYears === 3 ? principal : 0,
-              mt3: 0,
-              st4: ageYears === 4 ? principal : 0,
-              mt4: 0,
-              st5: ageYears === 5 ? principal : 0,
-              mt5: 0,
-              stAbove5: ageYears > 5 ? principal : 0,
-              mtAbove5: 0,
-              stOverdueAmt: principal,
-              mtOverdueAmt: 0,
-              stOverdueInt: interest,
-              mtOverdueInt: 0
-            };
-          }
-          return null;
-        }
-
-        const sortedDebits = [...loanDebits].sort((a, b) => b.date.localeCompare(a.date));
-        const latestLoan = sortedDebits[0];
-        const loanDate = new Date(latestLoan.date);
+        const totalDebits = loanDebits.reduce((sum, t) => sum + t.amount, 0);
 
         const loanCredits = transactions.filter(t =>
           t.memberId === m.id &&
           t.type === 'Credit' &&
           t.accountType === 'Loan' &&
-          t.date >= latestLoan.date &&
           new Date(t.date) <= cutoffDate
         );
 
-        const totalRepaid = loanCredits.reduce((sum, t) =>
+        const totalCredits = loanCredits.reduce((sum, t) =>
           sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
         );
 
-        const outstandingPrincipal = latestLoan.amount - totalRepaid;
+        let outstandingPrincipal = 0;
+        let latestLoanDateStr = '';
 
-        if (outstandingPrincipal <= 5) {
-          return null;
+        if (loanDebits.length > 0) {
+          outstandingPrincipal = totalDebits - totalCredits;
+          const sortedDebits = [...loanDebits].sort((a, b) => b.date.localeCompare(a.date));
+          latestLoanDateStr = sortedDebits[0].date;
+        } else {
+          // Fallback to database profile
+          const loanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (loanDateStr && new Date(loanDateStr) <= cutoffDate && m.loanPrincipal > 0) {
+            outstandingPrincipal = m.loanPrincipal;
+            latestLoanDateStr = loanDateStr;
+          }
         }
 
-        const loanYear = loanDate.getFullYear();
-        const ageYears = activeEndYear - loanYear;
-        const days = Math.max(0, differenceInDays(cutoffDate, loanDate));
+        if (outstandingPrincipal <= 5) {
+          return null; // Repaid
+        }
+
+        const getFYStartYear = (d: Date) => {
+          const y = d.getFullYear();
+          const month = d.getMonth();
+          return month >= 3 ? y : y - 1;
+        };
+
+        const activeEndFY = getFYStartYear(cutoffDate);
+        const loanFY = getFYStartYear(new Date(latestLoanDateStr));
+        const ageYears = activeEndFY - loanFY + 1;
+
+        const days = Math.max(0, differenceInDays(cutoffDate, new Date(latestLoanDateStr)));
         const interest = Math.round((outstandingPrincipal * days * 0.06) / 365);
 
         return {
