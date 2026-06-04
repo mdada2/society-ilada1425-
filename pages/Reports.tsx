@@ -111,6 +111,18 @@ const Reports = () => {
   const [filterLedgerAccount, setFilterLedgerAccount] = useState<string>('All');
   const [selectedFYRange, setSelectedFYRange] = useState<{ start: string; end: string } | null>(null);
 
+  const activeStart = selectedFYRange
+    ? selectedFYRange.start
+    : (categoryId === 'bank_incentive'
+        ? `${new Date(settings.financialYearStart || '2026-04-01').getFullYear() - 1}-04-01`
+        : (settings.financialYearStart || '2026-04-01'));
+
+  const activeEnd = selectedFYRange
+    ? selectedFYRange.end
+    : (categoryId === 'bank_incentive'
+        ? `${new Date(settings.financialYearStart || '2026-04-01').getFullYear()}-03-31`
+        : (settings.financialYearEnd || '2027-03-31'));
+
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
     setSelectedFYRange(null);
@@ -831,9 +843,6 @@ const Reports = () => {
       { header: 'Interest', accessorKey: 'interest', render: (i) => `${i.interest.toLocaleString()}` },
       { header: 'Total', accessorKey: 'total', render: (i) => `${i.total.toLocaleString()}` },
     ];
-
-    const activeStart = selectedFYRange ? selectedFYRange.start : settings.financialYearStart;
-    const activeEnd = selectedFYRange ? selectedFYRange.end : settings.financialYearEnd;
 
     // Filter logic for Loan tabs
     let displayData = loanData;
