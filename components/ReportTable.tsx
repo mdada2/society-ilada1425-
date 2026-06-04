@@ -176,6 +176,41 @@ function ReportTable<T extends { id?: string | number }>({
         }
     };
 
+    const hasTotalsRow = sortedData.some(item => 
+        (item as any).id === 0 || 
+        String((item as any).name || '').includes('एकूण') || 
+        String((item as any).limit || '').includes('एकूण') || 
+        String((item as any).category || '').includes('एकूण')
+    );
+
+    const getColumnTotal = (colKey: string) => {
+        const sumKeys = [
+            'principal', 'recoveredAmount', 'remainingBalance', 'repaymentAmount', 
+            'interest', 'totalDue', 'balance', 'loanAmount', 'interest3', 'interest2_5',
+            'disbAmount', 'total', 'subsidy', 'disbursement', 'repayment', 'product'
+        ];
+        
+        if (!sumKeys.some(k => k.toLowerCase() === colKey.toLowerCase())) {
+            return null;
+        }
+
+        let total = 0;
+        let hasValues = false;
+        sortedData.forEach(item => {
+            if ((item as any).id === 0) return;
+            const val = (item as any)[colKey];
+            if (val !== undefined && val !== null && val !== '') {
+                const num = Number(val);
+                if (!isNaN(num)) {
+                    total += num;
+                    hasValues = true;
+                }
+            }
+        });
+
+        return hasValues ? total : null;
+    };
+
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col h-full">
             {/* Header Controls */}
@@ -308,6 +343,34 @@ function ReportTable<T extends { id?: string | number }>({
                             </tr>
                         )}
                     </tbody>
+                    {!hasTotalsRow && sortedData.length > 0 && (
+                        <tfoot className="bg-slate-50 dark:bg-slate-900 border-t-2 border-slate-200 dark:border-slate-700 sticky bottom-0 z-10 font-bold text-slate-800 dark:text-white">
+                            <tr>
+                                {columns.map((col, idx) => {
+                                    const totalVal = getColumnTotal(col.accessorKey as string);
+                                    let content: React.ReactNode = '';
+
+                                    if (idx === 0 || col.accessorKey === 'memberNo' || col.accessorKey === 'id' || col.header.toLowerCase() === 'no.') {
+                                        content = `${sortedData.length}`;
+                                    } else if (col.accessorKey === 'name') {
+                                        content = 'एकूण (Total)';
+                                    } else if (totalVal !== null) {
+                                        content = totalVal.toLocaleString();
+                                    }
+
+                                    return (
+                                        <td
+                                            key={idx}
+                                            className={`p-4 text-sm font-bold whitespace-nowrap ${col.className || ''}`}
+                                        >
+                                            {content}
+                                        </td>
+                                    );
+                                })}
+                                {onDelete && <td className="p-4 w-16 sticky right-0 bg-slate-50 dark:bg-slate-900 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.1)] dark:shadow-none"></td>}
+                            </tr>
+                        </tfoot>
+                    )}
                 </table>
             </div>
 
