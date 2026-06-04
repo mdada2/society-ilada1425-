@@ -1064,90 +1064,48 @@ const Reports = () => {
     }
 
     if (activeSubTab === 'NPA List') {
-      const activeEndYear = new Date(activeEnd).getFullYear();
-      const cutoffDate = new Date(activeEnd);
+      const unpaidLoans = getFYLoans(activeStart, activeEnd).filter(item => !item.isRepaid);
 
-      const npaData = members.map(m => {
-        // Find all Debit transactions of type Loan before or on activeEnd
-        const loanDebits = transactions.filter(t =>
-          t.memberId === m.id &&
-          t.type === 'Debit' &&
-          t.accountType === 'Loan' &&
-          new Date(t.date) <= cutoffDate
-        );
-
-        const totalDebits = loanDebits.reduce((sum, t) => sum + t.amount, 0);
-
-        const loanCredits = transactions.filter(t =>
-          t.memberId === m.id &&
-          t.type === 'Credit' &&
-          t.accountType === 'Loan' &&
-          new Date(t.date) <= cutoffDate
-        );
-
-        const totalCredits = loanCredits.reduce((sum, t) =>
-          sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
-        );
-
-        let outstandingPrincipal = 0;
-        let latestLoanDateStr = '';
-
-        if (loanDebits.length > 0) {
-          outstandingPrincipal = totalDebits - totalCredits;
-          const sortedDebits = [...loanDebits].sort((a, b) => b.date.localeCompare(a.date));
-          latestLoanDateStr = sortedDebits[0].date;
-        } else {
-          // Fallback to database profile
-          const loanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
-          if (loanDateStr && new Date(loanDateStr) <= cutoffDate && m.loanPrincipal > 0) {
-            outstandingPrincipal = m.loanPrincipal;
-            latestLoanDateStr = loanDateStr;
-          }
-        }
-
-        if (outstandingPrincipal <= 5) {
-          return null; // Repaid
-        }
-
+      const npaData = unpaidLoans.map(item => {
         const getFYStartYear = (d: Date) => {
           const y = d.getFullYear();
           const month = d.getMonth();
           return month >= 3 ? y : y - 1;
         };
 
-        const activeEndFY = getFYStartYear(cutoffDate);
-        const loanFY = getFYStartYear(new Date(latestLoanDateStr));
+        const activeEndFY = getFYStartYear(new Date(activeEnd));
+        const loanFY = getFYStartYear(new Date(item.loanDate));
         const ageYears = activeEndFY - loanFY + 1;
 
-        const days = Math.max(0, differenceInDays(cutoffDate, new Date(latestLoanDateStr)));
-        const interest = Math.round((outstandingPrincipal * days * 0.06) / 365);
+        const principal = item.loanAmount;
+        const interest = item.interest6 || 0;
 
         return {
-          id: m.id,
-          memberNo: m.memberNo,
-          name: m.name,
-          village: m.village,
-          ledgerPage: m.memberNo || '-',
-          stTotal: outstandingPrincipal,
+          id: item.member.id,
+          memberNo: item.member.memberNo,
+          name: item.member.name,
+          village: item.member.village,
+          ledgerPage: item.member.memberNo || '-',
+          stTotal: principal,
           mtTotal: 0,
-          st1: ageYears <= 1 ? outstandingPrincipal : 0,
+          st1: ageYears <= 1 ? principal : 0,
           mt1: 0,
-          st2: ageYears === 2 ? outstandingPrincipal : 0,
+          st2: ageYears === 2 ? principal : 0,
           mt2: 0,
-          st3: ageYears === 3 ? outstandingPrincipal : 0,
+          st3: ageYears === 3 ? principal : 0,
           mt3: 0,
-          st4: ageYears === 4 ? outstandingPrincipal : 0,
+          st4: ageYears === 4 ? principal : 0,
           mt4: 0,
-          st5: ageYears === 5 ? outstandingPrincipal : 0,
+          st5: ageYears === 5 ? principal : 0,
           mt5: 0,
-          stAbove5: ageYears > 5 ? outstandingPrincipal : 0,
+          stAbove5: ageYears > 5 ? principal : 0,
           mtAbove5: 0,
-          stOverdueAmt: outstandingPrincipal,
+          stOverdueAmt: principal,
           mtOverdueAmt: 0,
           stOverdueInt: interest,
           mtOverdueInt: 0
         };
-      }).filter(Boolean) as any[];
+      });
 
       const npaColumns: Column<any>[] = [
         { header: 'अ. क्र.', accessorKey: 'memberNo', width: '50px' },
