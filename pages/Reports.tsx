@@ -1187,7 +1187,7 @@ const Reports = () => {
       ];
 
       return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
           {renderFYSelector()}
           <ReportTable
             title={`दिनांक ${activeEnd.split('-').reverse().join('.')} ची थकीत कर्जदार व चालू कर्ज बाकी यादी`}
