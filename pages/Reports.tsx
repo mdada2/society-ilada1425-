@@ -271,6 +271,14 @@ const Reports = () => {
         const interest3 = isRepaid ? Math.round((productValue * 0.03) / 365) : null;
         const interest2_5 = isRepaid ? Math.round((productValue * 0.025) / 365) : null;
 
+        const daysUpToCutoff = !isRepaid
+          ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(loanDate)))
+          : days;
+
+        const interest6 = !isRepaid
+          ? Math.round((loanAmount * daysUpToCutoff * 0.06) / 365)
+          : null;
+
         return {
           member: m,
           loanDate,
@@ -281,7 +289,9 @@ const Reports = () => {
           product: productValue,
           interest3,
           interest2_5,
-          isRepaid
+          isRepaid,
+          daysUpToCutoff,
+          interest6
         };
       })
       .filter(Boolean) as any[];
@@ -910,7 +920,10 @@ const Reports = () => {
           loanDate: item.loanDate,
           principal: item.loanAmount,
           repaymentDate: item.repaymentDate,
-          repaymentAmount: item.repaymentAmount
+          repaymentAmount: item.repaymentAmount,
+          days: item.daysUpToCutoff,
+          interest: item.interest6,
+          totalDue: item.loanAmount + (item.interest6 || 0)
         }));
 
       const columnsToUse: Column<any>[] = repaidFilter === 'repaid'
@@ -935,7 +948,9 @@ const Reports = () => {
             { header: 'Village', accessorKey: 'village' },
             { header: 'Loan Date', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
             { header: 'Principal', accessorKey: 'principal', render: (i) => i.principal.toLocaleString() },
-            { header: 'Status', accessorKey: 'status', render: () => <span className="text-red-500 font-bold">थकीत (Unpaid)</span> },
+            { header: 'Days (to 31 Mar)', accessorKey: 'days', render: (i) => i.days },
+            { header: '6% Interest (to 31 Mar)', accessorKey: 'interest', render: (i) => i.interest ? i.interest.toLocaleString() : '0', className: 'text-red-500 font-bold' },
+            { header: 'Total (to 31 Mar)', accessorKey: 'totalDue', render: (i) => i.totalDue.toLocaleString(), className: 'font-bold' },
           ];
 
       return (
