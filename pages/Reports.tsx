@@ -123,9 +123,12 @@ const Reports = () => {
         ? `${new Date(settings.financialYearStart || '2026-04-01').getFullYear()}-03-31`
         : (settings.financialYearEnd || '2027-03-31'));
 
+  const [repaidFilter, setRepaidFilter] = useState<'repaid' | 'outstanding'>('repaid');
+
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
     setSelectedFYRange(null);
+    setRepaidFilter('repaid');
   }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string) => {
@@ -897,8 +900,8 @@ const Reports = () => {
     }
 
     if (activeSubTab === 'Repaid (FY)') {
-      const repaidLoans = getFYLoans(activeStart, activeEnd)
-        .filter(item => item.isRepaid)
+      const displayLoans = getFYLoans(activeStart, activeEnd)
+        .filter(item => repaidFilter === 'repaid' ? item.isRepaid : !item.isRepaid)
         .map((item) => ({
           id: item.member.id,
           memberNo: item.member.memberNo,
@@ -910,26 +913,65 @@ const Reports = () => {
           repaymentAmount: item.repaymentAmount
         }));
 
-      const repaidColumns: Column<any>[] = [
-        { header: 'No.', accessorKey: 'memberNo', width: '60px' },
-        {
-          header: 'Name', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
-          render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
-        },
-        { header: 'Village', accessorKey: 'village' },
-        { header: 'Loan Date', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
-        { header: 'Principal', accessorKey: 'principal', render: (i) => i.principal.toLocaleString() },
-        { header: 'Repayment Date', accessorKey: 'repaymentDate', render: (i) => fmtDateDMY(i.repaymentDate) },
-        { header: 'Repayment Amount', accessorKey: 'repaymentAmount', render: (i) => i.repaymentAmount.toLocaleString() },
-      ];
+      const columnsToUse: Column<any>[] = repaidFilter === 'repaid'
+        ? [
+            { header: 'No.', accessorKey: 'memberNo', width: '60px' },
+            {
+              header: 'Name', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
+              render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
+            },
+            { header: 'Village', accessorKey: 'village' },
+            { header: 'Loan Date', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
+            { header: 'Principal', accessorKey: 'principal', render: (i) => i.principal.toLocaleString() },
+            { header: 'Repayment Date', accessorKey: 'repaymentDate', render: (i) => fmtDateDMY(i.repaymentDate) },
+            { header: 'Repayment Amount', accessorKey: 'repaymentAmount', render: (i) => i.repaymentAmount.toLocaleString() },
+          ]
+        : [
+            { header: 'No.', accessorKey: 'memberNo', width: '60px' },
+            {
+              header: 'Name', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
+              render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
+            },
+            { header: 'Village', accessorKey: 'village' },
+            { header: 'Loan Date', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
+            { header: 'Principal', accessorKey: 'principal', render: (i) => i.principal.toLocaleString() },
+            { header: 'Status', accessorKey: 'status', render: () => <span className="text-red-500 font-bold">थकीत (Unpaid)</span> },
+          ];
 
       return (
         <div className="flex flex-col gap-4 h-full">
-          {renderFYSelector()}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {renderFYSelector()}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRepaidFilter('repaid')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg border transition ${
+                  repaidFilter === 'repaid'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                पूर्ण परतफेड केलेले (Repaid)
+              </button>
+              <button
+                onClick={() => setRepaidFilter('outstanding')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg border transition ${
+                  repaidFilter === 'outstanding'
+                    ? 'bg-red-600 border-red-600 text-white shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                थकीत सभासद (Outstanding)
+              </button>
+            </div>
+          </div>
           <ReportTable
-            title={`Repaid Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
-            columns={repaidColumns}
-            data={repaidLoans}
+            title={repaidFilter === 'repaid'
+              ? `Repaid Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
+              : `Outstanding Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
+            }
+            columns={columnsToUse}
+            data={displayLoans}
             onRowClick={(item) => handleMemberClick(item.id)}
           />
         </div>
