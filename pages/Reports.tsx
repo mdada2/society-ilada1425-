@@ -1064,47 +1064,160 @@ const Reports = () => {
     }
 
     if (activeSubTab === 'NPA List') {
-      const buckets = ['1 Year', '2 Years', '3 Years', '4 Years', '5 Years', '> 5 Years'];
+      const activeEndYear = new Date(activeEnd).getFullYear();
+      const cutoffDate = new Date(activeEnd);
 
-      const filteredByBucket = loanData.filter(item => {
-        const days = item.overdueDays;
-        switch (activeBucket) {
-          case '1 Year': return days > 365 && days <= 730;
-          case '2 Years': return days > 730 && days <= 1095;
-          case '3 Years': return days > 1095 && days <= 1460;
-          case '4 Years': return days > 1460 && days <= 1825;
-          case '5 Years': return days > 1825 && days <= 2190;
-          case '> 5 Years': return days > 2190;
-          default: return false;
+      const npaData = members.map(m => {
+        // Find all Debit transactions of type Loan before or on activeEnd
+        const loanDebits = transactions.filter(t =>
+          t.memberId === m.id &&
+          t.type === 'Debit' &&
+          t.accountType === 'Loan' &&
+          new Date(t.date) <= cutoffDate
+        );
+
+        if (loanDebits.length === 0) {
+          const loanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
+          if (loanDateStr && new Date(loanDateStr) <= cutoffDate && m.loanPrincipal > 0) {
+            const loanDate = new Date(loanDateStr);
+            const loanYear = loanDate.getFullYear();
+            const ageYears = activeEndYear - loanYear;
+            const days = Math.max(0, differenceInDays(cutoffDate, loanDate));
+            const principal = m.loanPrincipal;
+            const interest = Math.round((principal * days * 0.06) / 365);
+
+            return {
+              id: m.id,
+              memberNo: m.memberNo,
+              name: m.name,
+              village: m.village,
+              ledgerPage: m.memberNo || '-',
+              stTotal: principal,
+              mtTotal: 0,
+              st1: ageYears <= 1 ? principal : 0,
+              mt1: 0,
+              st2: ageYears === 2 ? principal : 0,
+              mt2: 0,
+              st3: ageYears === 3 ? principal : 0,
+              mt3: 0,
+              st4: ageYears === 4 ? principal : 0,
+              mt4: 0,
+              st5: ageYears === 5 ? principal : 0,
+              mt5: 0,
+              stAbove5: ageYears > 5 ? principal : 0,
+              mtAbove5: 0,
+              stOverdueAmt: principal,
+              mtOverdueAmt: 0,
+              stOverdueInt: interest,
+              mtOverdueInt: 0
+            };
+          }
+          return null;
         }
-      });
+
+        const sortedDebits = [...loanDebits].sort((a, b) => b.date.localeCompare(a.date));
+        const latestLoan = sortedDebits[0];
+        const loanDate = new Date(latestLoan.date);
+
+        const loanCredits = transactions.filter(t =>
+          t.memberId === m.id &&
+          t.type === 'Credit' &&
+          t.accountType === 'Loan' &&
+          t.date >= latestLoan.date &&
+          new Date(t.date) <= cutoffDate
+        );
+
+        const totalRepaid = loanCredits.reduce((sum, t) =>
+          sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
+        );
+
+        const outstandingPrincipal = latestLoan.amount - totalRepaid;
+
+        if (outstandingPrincipal <= 5) {
+          return null;
+        }
+
+        const loanYear = loanDate.getFullYear();
+        const ageYears = activeEndYear - loanYear;
+        const days = Math.max(0, differenceInDays(cutoffDate, loanDate));
+        const interest = Math.round((outstandingPrincipal * days * 0.06) / 365);
+
+        return {
+          id: m.id,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          ledgerPage: m.memberNo || '-',
+          stTotal: outstandingPrincipal,
+          mtTotal: 0,
+          st1: ageYears <= 1 ? outstandingPrincipal : 0,
+          mt1: 0,
+          st2: ageYears === 2 ? outstandingPrincipal : 0,
+          mt2: 0,
+          st3: ageYears === 3 ? outstandingPrincipal : 0,
+          mt3: 0,
+          st4: ageYears === 4 ? outstandingPrincipal : 0,
+          mt4: 0,
+          st5: ageYears === 5 ? outstandingPrincipal : 0,
+          mt5: 0,
+          stAbove5: ageYears > 5 ? outstandingPrincipal : 0,
+          mtAbove5: 0,
+          stOverdueAmt: outstandingPrincipal,
+          mtOverdueAmt: 0,
+          stOverdueInt: interest,
+          mtOverdueInt: 0
+        };
+      }).filter(Boolean) as any[];
+
+      const npaColumns: Column<any>[] = [
+        { header: 'अ. क्र.', accessorKey: 'memberNo', width: '50px' },
+        {
+          header: 'कर्जदार सभासदाचे नाव', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
+          render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
+        },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'खाते पान क्र.', accessorKey: 'ledgerPage', className: 'text-center' },
+        
+        { header: 'एकूण कर्ज बाकी (अमु)', accessorKey: 'stTotal', render: (i) => i.stTotal > 0 ? i.stTotal.toLocaleString() : '-' },
+        { header: 'एकूण कर्ज बाकी (ममु)', accessorKey: 'mtTotal', render: (i) => i.mtTotal > 0 ? i.mtTotal.toLocaleString() : '-' },
+        
+        { header: '1 वर्ष थकीत (अमु)', accessorKey: 'st1', render: (i) => i.st1 > 0 ? i.st1.toLocaleString() : '-' },
+        { header: '1 वर्ष थकीत (ममु)', accessorKey: 'mt1', render: (i) => i.mt1 > 0 ? i.mt1.toLocaleString() : '-' },
+        
+        { header: '2 वर्ष थकीत (अमु)', accessorKey: 'st2', render: (i) => i.st2 > 0 ? i.st2.toLocaleString() : '-' },
+        { header: '2 वर्ष थकीत (ममु)', accessorKey: 'mt2', render: (i) => i.mt2 > 0 ? i.mt2.toLocaleString() : '-' },
+        
+        { header: '3 वर्ष थकीत (अमु)', accessorKey: 'st3', render: (i) => i.st3 > 0 ? i.st3.toLocaleString() : '-' },
+        { header: '3 वर्ष थकीत (ममु)', accessorKey: 'mt3', render: (i) => i.mt3 > 0 ? i.mt3.toLocaleString() : '-' },
+        
+        { header: '4 वर्ष थकीत (अमु)', accessorKey: 'st4', render: (i) => i.st4 > 0 ? i.st4.toLocaleString() : '-' },
+        { header: '4 वर्ष थकीत (ममु)', accessorKey: 'mt4', render: (i) => i.mt4 > 0 ? i.mt4.toLocaleString() : '-' },
+        
+        { header: '5 वर्ष थकीत (अमु)', accessorKey: 'st5', render: (i) => i.st5 > 0 ? i.st5.toLocaleString() : '-' },
+        { header: '5 वर्ष थकीत (ममु)', accessorKey: 'mt5', render: (i) => i.mt5 > 0 ? i.mt5.toLocaleString() : '-' },
+        
+        { header: '५ वर्ष वरील (अमु)', accessorKey: 'stAbove5', render: (i) => i.stAbove5 > 0 ? i.stAbove5.toLocaleString() : '-' },
+        { header: '५ वर्ष वरील (ममु)', accessorKey: 'mtAbove5', render: (i) => i.mtAbove5 > 0 ? i.mtAbove5.toLocaleString() : '-' },
+        
+        { header: 'एकूण थकीत रक्कम (अमु)', accessorKey: 'stOverdueAmt', render: (i) => i.stOverdueAmt > 0 ? i.stOverdueAmt.toLocaleString() : '-' },
+        { header: 'एकूण थकीत रक्कम (ममु)', accessorKey: 'mtOverdueAmt', render: (i) => i.mtOverdueAmt > 0 ? i.mtOverdueAmt.toLocaleString() : '-' },
+        
+        { header: 'एकूण थकीत व्याज (अमु)', accessorKey: 'stOverdueInt', render: (i) => i.stOverdueInt > 0 ? i.stOverdueInt.toLocaleString() : '-' },
+        { header: 'एकूण थकीत व्याज (ममु)', accessorKey: 'mtOverdueInt', render: (i) => i.mtOverdueInt > 0 ? i.mtOverdueInt.toLocaleString() : '-' },
+      ];
 
       return (
         <div className="flex flex-col gap-4 h-full">
-          <div className="flex flex-wrap gap-2 pb-2">
-            {buckets.map(bucket => (
-              <button
-                key={bucket}
-                onClick={() => setActiveBucket(bucket)}
-                className={`
-                  px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors flex-grow sm:flex-grow-0 text-center
-                  ${activeBucket === bucket
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}
-                `}
-              >
-                {bucket}
-              </button>
-            ))}
-          </div>
+          {renderFYSelector()}
           <ReportTable
-            title={`NPA List - ${activeBucket}`}
-            columns={[...columns, { header: 'Overdue Days', accessorKey: 'overdueDays' }]}
-            data={filteredByBucket}
+            title={`दिनांक ${activeEnd.split('-').reverse().join('.')} ची थकीत कर्जदार व चालू कर्ज बाकी यादी`}
+            columns={npaColumns}
+            data={npaData}
             onRowClick={(item) => handleMemberClick(item.id)}
+            enableDateFilter={false}
           />
         </div>
-      )
+      );
     }
 
     if (activeSubTab === 'Summary') {
