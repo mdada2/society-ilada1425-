@@ -121,7 +121,8 @@ const Transactions = () => {
                     false,
                     selectedMember.originalLoanDate,
                     settings.firstYearInterestRate || 6,
-                    settings.subsequentYearInterestRate || 12
+                    settings.subsequentYearInterestRate || 12,
+                    selectedMember.loanInterestDue || 0
                 );
 
                 // चालू वर्षातील नवीन कर्ज आहे का? (Is this a current FY loan?)

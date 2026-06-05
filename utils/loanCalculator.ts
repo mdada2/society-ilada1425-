@@ -25,7 +25,8 @@ export const calculateLoanInterest = (
   hideFirstYearInterest: boolean = true, // Hide interest display during first FY
   originalLoanDateStr?: string, // YYYY-MM-DD (Original loan date - used to determine first FY)
   firstYearRate: number = 6, // Interest rate for first financial year (default: 6%)
-  subsequentYearRate: number = 12 // Interest rate for subsequent years (default: 12%)
+  subsequentYearRate: number = 12, // Interest rate for subsequent years (default: 12%)
+  bookedInterest: number = 0 // Stored/booked interest due (used to enforce Damdupat cap)
 ): { interest: number; breakdown: string[] } => {
 
   if (principal <= 0) return { interest: 0, breakdown: ['No principal pending'] };
@@ -103,6 +104,13 @@ export const calculateLoanInterest = (
       interest += intP2;
       breakdown.push(`Subsequent FYs (${subsequentYearRate}%): ${daysP2} days (${period2Start.toISOString().split('T')[0]} to ${currentDateStr}) = ₹${intP2}`);
     }
+  }
+
+  // Enforce Damdupat rule (Section 44A): Total Interest (booked + accrued) cannot exceed principal
+  const maxAllowedInterest = Math.max(0, principal - bookedInterest);
+  if (interest > maxAllowedInterest) {
+    interest = maxAllowedInterest;
+    breakdown.push(`Damdupat Cap (दमदुपट नियम): Interest capped so that total interest (booked ₹${bookedInterest} + accrued) does not exceed principal (₹${principal})`);
   }
 
   return { interest, breakdown };

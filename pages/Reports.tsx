@@ -338,7 +338,8 @@ const Reports = () => {
           false,
           m.originalLoanDate,
           settings.firstYearInterestRate || 6,
-          settings.subsequentYearInterestRate || 12
+          settings.subsequentYearInterestRate || 12,
+          m.loanInterestDue || 0
         );
         accruedInterest = result.interest;
       }
@@ -2122,7 +2123,8 @@ const Reports = () => {
               true,
               m.originalLoanDate,
               settings.firstYearInterestRate || 6,
-              settings.subsequentYearInterestRate || 12
+              settings.subsequentYearInterestRate || 12,
+              m.loanInterestDue || 0
             );
             memberInterest += accrued;
           }

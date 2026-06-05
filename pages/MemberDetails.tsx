@@ -72,7 +72,8 @@ const MemberDetails = () => {
                 true, // Hide interest during first FY
                 member.originalLoanDate, // Pass original loan date for first FY calculation
                 settings.firstYearInterestRate || 6,
-                settings.subsequentYearInterestRate || 12
+                settings.subsequentYearInterestRate || 12,
+                member.loanInterestDue || 0
             );
 
             setAccruedInterest(interest);
