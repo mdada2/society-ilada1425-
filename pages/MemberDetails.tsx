@@ -16,7 +16,7 @@ import { Capacitor } from '@capacitor/core';
 const MemberDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { getMember, transactions, updateMember, deleteTransaction, settings } = useApp();
+    const { members, getMember, transactions, updateMember, deleteTransaction, settings } = useApp();
     const { showConfirm } = useDialog();
     const member = getMember(id || '');
 
@@ -57,12 +57,12 @@ const MemberDetails = () => {
     }, [member]);
 
     const counterpart = useMemo(() => {
-        if (!member) return null;
+        if (!member || !members) return null;
         return members.find(m => 
             m.id !== member.id && 
             ((member.aadhar && m.aadhar === member.aadhar) || 
-             (m.name.trim().toLowerCase() === member.name.trim().toLowerCase() && 
-              m.village.trim().toLowerCase() === member.village.trim().toLowerCase()))
+             (m.name?.trim().toLowerCase() === member.name?.trim().toLowerCase() && 
+              m.village?.trim().toLowerCase() === member.village?.trim().toLowerCase()))
         );
     }, [member, members]);
 
