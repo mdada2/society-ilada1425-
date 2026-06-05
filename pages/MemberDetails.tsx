@@ -56,6 +56,18 @@ const MemberDetails = () => {
         }
     }, [member]);
 
+    const counterpart = useMemo(() => {
+        if (!member) return null;
+        return members.find(m => 
+            m.id !== member.id && 
+            ((member.aadhar && m.aadhar === member.aadhar) || 
+             (m.name.trim().toLowerCase() === member.name.trim().toLowerCase() && 
+              m.village.trim().toLowerCase() === member.village.trim().toLowerCase()))
+        );
+    }, [member, members]);
+
+    const [accruedInterestCounterpart, setAccruedInterestCounterpart] = useState(0);
+
     // Calculate Accrued Interest dynamically
     useEffect(() => {
         if (member && member.loanPrincipal > 0) {
@@ -84,6 +96,30 @@ const MemberDetails = () => {
         }
     }, [member, settings]);
 
+    // Calculate Accrued Interest for counterpart loan
+    useEffect(() => {
+        if (counterpart && counterpart.loanPrincipal > 0) {
+            const lastDate = counterpart.lastLoanCalculationDate || '2022-04-01';
+            const today = format(new Date(), 'yyyy-MM-dd');
+
+            const { interest } = calculateLoanInterest(
+                counterpart.loanPrincipal,
+                lastDate,
+                today,
+                settings.financialYearStart,
+                settings.financialYearEnd,
+                true,
+                counterpart.originalLoanDate,
+                settings.firstYearInterestRate || 6,
+                settings.subsequentYearInterestRate || 12,
+                counterpart.loanInterestDue || 0
+            );
+            setAccruedInterestCounterpart(interest);
+        } else {
+            setAccruedInterestCounterpart(0);
+        }
+    }, [counterpart, settings]);
+
     const memberTransactions = useMemo(() => {
         if (!member) return [];
         return transactions.filter(t => t.memberId === member.id).sort((a, b) => b.timestamp - a.timestamp);
@@ -93,9 +129,16 @@ const MemberDetails = () => {
         return (member ? (member.loanInterestDue || 0) : 0) + accruedInterest;
     }, [member, accruedInterest]);
 
+    const counterpartInterest = useMemo(() => {
+        if (!counterpart) return 0;
+        return (counterpart.loanInterestDue || 0) + accruedInterestCounterpart;
+    }, [counterpart, accruedInterestCounterpart]);
+
     const totalLoanOutstanding = useMemo(() => {
-        return Math.max(0, (member ? (member.loanPrincipal || 0) : 0) + totalInterestToShow);
-    }, [member, totalInterestToShow]);
+        const primaryOutstanding = Math.max(0, (member ? (member.loanPrincipal || 0) : 0) + totalInterestToShow);
+        const counterpartOutstanding = counterpart ? Math.max(0, (counterpart.loanPrincipal || 0) + counterpartInterest) : 0;
+        return primaryOutstanding + counterpartOutstanding;
+    }, [member, totalInterestToShow, counterpart, counterpartInterest]);
 
     const handleResetInterest = async () => {
         if (!member) return;
@@ -490,13 +533,35 @@ const MemberDetails = () => {
                             <p className="text-[10px] md:text-xs text-red-600 dark:text-red-400 uppercase font-bold truncate flex items-center gap-1">
                                 <CreditCard size={12} /> Loan Principal (मुद्दल)
                             </p>
-                            <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white print:text-black truncate">
-                                ₹{Math.max(0, member.loanPrincipal).toLocaleString()}
-                            </p>
-                            {member.loanPrincipal < 0 && (
-                                <p className="text-[10px] font-bold text-green-600 dark:text-green-400">
-                                    + ₹{Math.abs(member.loanPrincipal).toLocaleString()} (Advance)
-                                </p>
+                            {counterpart ? (
+                                <div className="space-y-1 mt-1">
+                                    <div className="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-1 rounded border dark:border-slate-700">
+                                        <span className="text-[9px] text-slate-500 font-bold">Short Term (अल्प):</span>
+                                        <span className="text-xs font-bold text-slate-800 dark:text-white">
+                                            ₹{Math.max(0, member.loanType === 'Short Term' ? member.loanPrincipal : counterpart.loanPrincipal).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-1 rounded border dark:border-slate-700">
+                                        <span className="text-[9px] text-slate-500 font-bold">Medium Term (मध्यम):</span>
+                                        <span className="text-xs font-bold text-slate-800 dark:text-white">
+                                            ₹{Math.max(0, member.loanType === 'Medium Term' ? member.loanPrincipal : counterpart.loanPrincipal).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <p onClick={(e) => { e.stopPropagation(); navigate(`/members/${counterpart.id}`); }} className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline mt-1 cursor-pointer font-bold block no-print text-center">
+                                        {member.loanType === 'Short Term' ? 'MT खाते उघडा ➔' : 'ST खाते उघडा ➔'}
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white print:text-black truncate">
+                                        ₹{Math.max(0, member.loanPrincipal).toLocaleString()}
+                                    </p>
+                                    {member.loanPrincipal < 0 && (
+                                        <p className="text-[10px] font-bold text-green-600 dark:text-green-400">
+                                            + ₹{Math.abs(member.loanPrincipal).toLocaleString()} (Advance)
+                                        </p>
+                                    )}
+                                </>
                             )}
                             <div className="flex flex-wrap gap-1 mt-1">
                                 {member.loanType && (
@@ -536,14 +601,32 @@ const MemberDetails = () => {
                             <p className="text-[10px] md:text-xs text-orange-600 dark:text-orange-400 uppercase font-bold flex items-center gap-1 truncate">
                                 <Info size={12} /> Loan Interest (व्याज)
                             </p>
-                            <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white print:text-black truncate">₹{totalInterestToShow.toLocaleString()}</p>
+                            {counterpart ? (
+                                <div className="space-y-1 mt-1">
+                                    <div className="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-1 rounded border dark:border-slate-700">
+                                        <span className="text-[9px] text-slate-500 font-bold">Short Term (अल्प):</span>
+                                        <span className="text-xs font-bold text-slate-800 dark:text-white">
+                                            ₹{Math.round(member.loanType === 'Short Term' ? totalInterestToShow : counterpartInterest).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-1 rounded border dark:border-slate-700">
+                                        <span className="text-[9px] text-slate-500 font-bold">Medium Term (मध्यम):</span>
+                                        <span className="text-xs font-bold text-slate-800 dark:text-white">
+                                            ₹{Math.round(member.loanType === 'Medium Term' ? totalInterestToShow : counterpartInterest).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white print:text-black truncate">₹{totalInterestToShow.toLocaleString()}</p>
+                                    {accruedInterest === 0 && Number(member.loanPrincipal || 0) > 0 && (
+                                        <p className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium bg-green-50 dark:bg-green-900/30 inline-block px-1.5 rounded truncate max-w-full">
+                                            Interest Free
+                                        </p>
+                                    )}
+                                </>
+                            )}
                         </div>
-
-                        {accruedInterest === 0 && Number(member.loanPrincipal || 0) > 0 && (
-                            <p className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium bg-green-50 dark:bg-green-900/30 inline-block px-1.5 rounded truncate max-w-full">
-                                Interest Free
-                            </p>
-                        )}
 
                         {!isEditing && (
                             <div className="mt-auto pt-2 no-print flex gap-2 flex-wrap">

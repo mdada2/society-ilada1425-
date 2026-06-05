@@ -1067,45 +1067,85 @@ const Reports = () => {
     if (activeSubTab === 'NPA List') {
       const unpaidLoans = getFYLoans(activeStart, activeEnd).filter(item => !item.isRepaid);
 
-      const npaData = unpaidLoans.map(item => {
+      // Group unpaid loans by member name + village to merge ST and MT loans for the same person
+      const groupedMap = new Map<string, any[]>();
+      unpaidLoans.forEach(item => {
+        const key = `${item.member.name.trim()}_${item.member.village.trim()}`;
+        if (!groupedMap.has(key)) {
+          groupedMap.set(key, []);
+        }
+        groupedMap.get(key)!.push(item);
+      });
+
+      const npaData = Array.from(groupedMap.values()).map((groupItems) => {
+        const first = groupItems[0];
+        
+        // Combine member numbers (e.g. "83, 83-M")
+        const memberNo = groupItems.map(item => item.member.memberNo).filter((v, idx, arr) => arr.indexOf(v) === idx).join(', ');
+
+        const row: any = {
+          id: first.member.id,
+          memberNo: memberNo,
+          name: first.member.name,
+          village: first.member.village,
+          ledgerPage: memberNo || '-',
+          
+          stTotal: 0,
+          mtTotal: 0,
+          
+          st1: 0, mt1: 0,
+          st2: 0, mt2: 0,
+          st3: 0, mt3: 0,
+          st4: 0, mt4: 0,
+          st5: 0, mt5: 0,
+          stAbove5: 0, mtAbove5: 0,
+          
+          stOverdueAmt: 0,
+          mtOverdueAmt: 0,
+          stOverdueInt: 0,
+          mtOverdueInt: 0
+        };
+
         const getFYStartYear = (d: Date) => {
           const y = d.getFullYear();
           const month = d.getMonth();
           return month >= 3 ? y : y - 1;
         };
-
         const activeEndFY = getFYStartYear(new Date(activeEnd));
-        const loanFY = getFYStartYear(new Date(item.loanDate));
-        const ageYears = activeEndFY - loanFY + 1;
 
-        const principal = item.loanAmount;
-        const interest = item.interest6 || 0;
+        groupItems.forEach(item => {
+          const loanFY = getFYStartYear(new Date(item.loanDate));
+          const ageYears = activeEndFY - loanFY + 1;
+          const principal = item.loanAmount;
+          const interest = item.interest6 || 0;
 
-        return {
-          id: item.member.id,
-          memberNo: item.member.memberNo,
-          name: item.member.name,
-          village: item.member.village,
-          ledgerPage: item.member.memberNo || '-',
-          stTotal: principal,
-          mtTotal: 0,
-          st1: ageYears <= 1 ? principal : 0,
-          mt1: 0,
-          st2: ageYears === 2 ? principal : 0,
-          mt2: 0,
-          st3: ageYears === 3 ? principal : 0,
-          mt3: 0,
-          st4: ageYears === 4 ? principal : 0,
-          mt4: 0,
-          st5: ageYears === 5 ? principal : 0,
-          mt5: 0,
-          stAbove5: ageYears > 5 ? principal : 0,
-          mtAbove5: 0,
-          stOverdueAmt: principal,
-          mtOverdueAmt: 0,
-          stOverdueInt: interest,
-          mtOverdueInt: 0
-        };
+          if (item.member.loanType === 'Medium Term') {
+            row.mtTotal += principal;
+            row.mtOverdueAmt += principal;
+            row.mtOverdueInt += interest;
+
+            if (ageYears <= 1) row.mt1 += principal;
+            else if (ageYears === 2) row.mt2 += principal;
+            else if (ageYears === 3) row.mt3 += principal;
+            else if (ageYears === 4) row.mt4 += principal;
+            else if (ageYears === 5) row.mt5 += principal;
+            else if (ageYears > 5) row.mtAbove5 += principal;
+          } else {
+            // Default to Short Term
+            row.stTotal += principal;
+            row.stOverdueAmt += principal;
+            row.stOverdueInt += interest;
+
+            if (ageYears <= 1) row.st1 += principal;
+            else if (ageYears === 2) row.st2 += principal;
+            else if (ageYears === 3) row.st3 += principal;
+            else if (ageYears === 4) row.st4 += principal;
+            else if (ageYears === 5) row.st5 += principal;
+            else if (ageYears > 5) row.stAbove5 += principal;
+          }
+        });
+
+        return row;
       });
 
       const npaColumns: Column<any>[] = [
