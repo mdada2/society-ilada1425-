@@ -131,10 +131,11 @@ const Reports = () => {
     setRepaidFilter('repaid');
   }, [categoryId, subTab]);
 
-  const getFYLoans = (startDateStr: string, endDateStr: string) => {
+  const getFYLoans = (startDateStr: string, endDateStr: string, isNPAMode = false) => {
     const startDate = new Date(startDateStr);
     const endDate = new Date(endDateStr);
     const cutoffDate = new Date(endDateStr);
+    const effectiveStartDate = isNPAMode ? new Date('1970-01-01') : startDate;
 
     return members
       .map(m => {
@@ -143,7 +144,7 @@ const Reports = () => {
           t.memberId === m.id && 
           t.type === 'Debit' && 
           t.accountType === 'Loan' && 
-          new Date(t.date) >= startDate && 
+          new Date(t.date) >= effectiveStartDate && 
           new Date(t.date) <= endDate
         );
 
@@ -153,13 +154,13 @@ const Reports = () => {
           t.memberId === m.id && 
           t.type === 'Credit' && 
           t.accountType === 'Loan' && 
-          new Date(t.date) >= startDate && 
+          new Date(t.date) >= effectiveStartDate && 
           new Date(t.date) <= nextFYCutoff
         );
 
         // 3. Check if their current active loan is from the FY
         const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
-        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
+        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= effectiveStartDate && new Date(currentLoanDateStr) <= endDate;
 
         // If none of these match, this member had no loan in the FY
         if (!loanDebitInFY && !loanCreditInFY && !currentLoanInFY) {
@@ -192,14 +193,14 @@ const Reports = () => {
 
         // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
         const parsedLoanDate = new Date(loanDate);
-        if (parsedLoanDate < startDate || parsedLoanDate > endDate) {
+        if (parsedLoanDate < effectiveStartDate || parsedLoanDate > endDate) {
           return null;
         }
 
         // Determine loan amount
         let loanAmount = 0;
         const totalDebitsInFY = transactions
-          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) >= startDate && new Date(t.date) <= endDate)
+          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) >= effectiveStartDate && new Date(t.date) <= endDate)
           .reduce((sum, t) => sum + t.amount, 0);
 
         if (totalDebitsInFY > 0) {
@@ -210,7 +211,7 @@ const Reports = () => {
             t.memberId === m.id && 
             t.type === 'Credit' && 
             t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
+            new Date(t.date) >= effectiveStartDate && 
             new Date(t.date) <= nextFYCutoff
           );
           
@@ -1065,7 +1066,7 @@ const Reports = () => {
     }
 
     if (activeSubTab === 'NPA List') {
-      const unpaidLoans = getFYLoans(activeStart, activeEnd).filter(item => !item.isRepaid);
+      const unpaidLoans = getFYLoans(activeStart, activeEnd, true).filter(item => !item.isRepaid);
 
       // Group unpaid loans by member name + village to merge ST and MT loans for the same person
       const groupedMap = new Map<string, any[]>();
@@ -1219,7 +1220,7 @@ const Reports = () => {
         { key: 'above5yr', label: '५ वर्ष वरील वरीत', minDays: 1825, maxDays: Infinity },
       ];
 
-      const activeUnpaid = getFYLoans(activeStart, activeEnd).filter(item => !item.isRepaid);
+      const activeUnpaid = getFYLoans(activeStart, activeEnd, true).filter(item => !item.isRepaid);
 
       // Calculate summary data
       const summaryData = categories.map(category => {
