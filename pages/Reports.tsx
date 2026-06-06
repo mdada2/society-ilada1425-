@@ -276,9 +276,13 @@ const Reports = () => {
           ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(loanDate)))
           : days;
 
-        const interest6 = !isRepaid
+        let interest6 = !isRepaid
           ? Math.round((loanAmount * daysUpToCutoff * 0.06) / 365)
           : null;
+
+        if (interest6 !== null && interest6 > loanAmount) {
+          interest6 = loanAmount;
+        }
 
         return {
           member: m,
