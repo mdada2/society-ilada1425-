@@ -120,20 +120,33 @@ function ReportTable<T extends { id?: string | number }>({
         // col.render असल्यास वापरा - जर plain string/number असेल तर Excel मध्ये टाका
         // React element असल्यास raw value वापरा
         const getExcelValue = (item: T, col: Column<T>): string | number => {
+            let val: any = '';
             if (col.render) {
                 const rendered = col.render(item);
-                // React element नसल्यास (म्हणजे string/number/null) directly वापरा
                 if (typeof rendered === 'string' || typeof rendered === 'number') {
-                    return rendered;
+                    val = rendered;
+                } else {
+                    val = (item as any)[col.accessorKey] ?? '';
+                }
+            } else {
+                val = (item as any)[col.accessorKey] ?? '';
+            }
+
+            if (typeof val === 'string') {
+                // ISO date → DD-MM-YYYY
+                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                    return `${val.slice(8, 10)}-${val.slice(5, 7)}-${val.slice(0, 4)}`;
+                }
+                if (val.trim() === '-' || val.trim() === 'N/A') {
+                    return '';
+                }
+                // Convert formatted strings like "30,000" or "₹ 30,000" to actual numbers for Excel formulas
+                const cleanStr = val.replace(/[₹\s,R]/g, '').trim();
+                if (cleanStr !== '' && !isNaN(Number(cleanStr))) {
+                    return Number(cleanStr);
                 }
             }
-            // Raw value fallback - yyyy-MM-dd dates DD-MM-YYYY मध्ये convert करा
-            const raw = (item as any)[col.accessorKey] ?? '';
-            if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-                // ISO date → DD-MM-YYYY
-                return `${raw.slice(8, 10)}-${raw.slice(5, 7)}-${raw.slice(0, 4)}`;
-            }
-            return raw;
+            return val;
         };
 
         const headers = columns.map(c => c.header);
