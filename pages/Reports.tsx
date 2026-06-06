@@ -276,12 +276,21 @@ const Reports = () => {
           ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(loanDate)))
           : days;
 
-        let interest6 = !isRepaid
-          ? Math.round((loanAmount * daysUpToCutoff * 0.06) / 365)
-          : null;
-
-        if (interest6 !== null && interest6 > loanAmount) {
-          interest6 = loanAmount;
+        let interest6 = null;
+        if (!isRepaid) {
+          const result = calculateLoanInterest(
+            loanAmount,
+            loanDate,
+            endDateStr,
+            settings.financialYearStart,
+            settings.financialYearEnd,
+            false,
+            loanDate,
+            settings.firstYearInterestRate || 6,
+            settings.subsequentYearInterestRate || 12,
+            0
+          );
+          interest6 = result.interest;
         }
 
         return {
