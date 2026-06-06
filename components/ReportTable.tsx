@@ -67,6 +67,42 @@ function ReportTable<T extends { id?: string | number }>({
         });
     }, [filteredData, sortConfig]);
 
+    const hasTotalsRow = sortedData.some(item => 
+        (item as any).id === 0 || 
+        String((item as any).name || '').includes('एकूण') || 
+        String((item as any).limit || '').includes('एकूण') || 
+        String((item as any).category || '').includes('एकूण')
+    );
+
+    const getColumnTotal = (colKey: string) => {
+        const sumKeys = [
+            'principal', 'recoveredAmount', 'remainingBalance', 'repaymentAmount', 
+            'interest', 'totalDue', 'balance', 'loanAmount', 'interest3', 'interest2_5',
+            'disbAmount', 'total', 'subsidy', 'disbursement', 'repayment', 'product',
+            'stTotal', 'mtTotal', 'st1', 'mt1', 'st2', 'mt2', 'st3', 'mt3', 'st4', 'mt4',
+            'st5', 'mt5', 'stAbove5', 'mtAbove5', 'stOverdueAmt', 'mtOverdueAmt', 'stOverdueInt', 'mtOverdueInt'
+        ];
+        
+        if (!sumKeys.some(k => k.toLowerCase() === colKey.toLowerCase())) {
+            return null;
+        }
+
+        let total = 0;
+        let hasValues = false;
+        sortedData.forEach(item => {
+            if ((item as any).id === 0) return;
+            const val = (item as any)[colKey];
+            if (val !== undefined && val !== null && val !== '') {
+                const num = Number(val);
+                if (!isNaN(num)) {
+                    total += num;
+                    hasValues = true;
+                }
+            }
+        });
+
+        return hasValues ? total : null;
+    };
 
     const handleSort = (key: string) => {
         setSortConfig((current) => {
@@ -103,33 +139,19 @@ function ReportTable<T extends { id?: string | number }>({
         const headers = columns.map(c => c.header);
         const rows = data.map(item => columns.map(col => getExcelValue(item, col)));
 
-        // Add total row if it's a Bank Incentive report (Within / Above 50,000)
-        if (title.startsWith("Bank_Incentive_-_Within") || title.startsWith("Bank_Incentive_-_Above") || title.includes("Incentive")) {
-            let totalLoanAmount = 0;
-            let totalRepaymentAmount = 0;
-            let totalProduct = 0;
-            let totalInterest3 = 0;
-            let totalInterest2_5 = 0;
-
-            data.forEach((item: any) => {
-                totalLoanAmount += Number(item.loanAmount || 0);
-                totalRepaymentAmount += Number(item.repaymentAmount || 0);
-                totalProduct += Number(item.product || 0);
-                totalInterest3 += Number(item.interest3 || 0);
-                totalInterest2_5 += Number(item.interest2_5 || 0);
-            });
-
-            const totalRow = columns.map(col => {
-                if (col.accessorKey === 'id') return '';
-                if (col.accessorKey === 'name') return 'एकूण (Total)';
-                if (col.accessorKey === 'loanAmount') return totalLoanAmount;
-                if (col.accessorKey === 'repaymentAmount') return totalRepaymentAmount;
-                if (col.accessorKey === 'product') return totalProduct;
-                if (col.accessorKey === 'interest3') return totalInterest3;
-                if (col.accessorKey === 'interest2_5') return totalInterest2_5;
+        // Add total row if table has totals enabled (i.e. tfoot would render)
+        if (!hasTotalsRow && data.length > 0) {
+            const totalRow = columns.map((col, idx) => {
+                const totalVal = getColumnTotal(col.accessorKey as string);
+                if (idx === 0 || col.accessorKey === 'memberNo' || col.accessorKey === 'id' || col.header.toLowerCase() === 'no.') {
+                    return data.length;
+                } else if (col.accessorKey === 'name') {
+                    return 'एकूण (Total)';
+                } else if (totalVal !== null) {
+                    return totalVal;
+                }
                 return '';
             });
-
             rows.push(totalRow);
         }
 
@@ -174,41 +196,6 @@ function ReportTable<T extends { id?: string | number }>({
         } catch (error) {
             console.log('Error sharing:', error);
         }
-    };
-
-    const hasTotalsRow = sortedData.some(item => 
-        (item as any).id === 0 || 
-        String((item as any).name || '').includes('एकूण') || 
-        String((item as any).limit || '').includes('एकूण') || 
-        String((item as any).category || '').includes('एकूण')
-    );
-
-    const getColumnTotal = (colKey: string) => {
-        const sumKeys = [
-            'principal', 'recoveredAmount', 'remainingBalance', 'repaymentAmount', 
-            'interest', 'totalDue', 'balance', 'loanAmount', 'interest3', 'interest2_5',
-            'disbAmount', 'total', 'subsidy', 'disbursement', 'repayment', 'product'
-        ];
-        
-        if (!sumKeys.some(k => k.toLowerCase() === colKey.toLowerCase())) {
-            return null;
-        }
-
-        let total = 0;
-        let hasValues = false;
-        sortedData.forEach(item => {
-            if ((item as any).id === 0) return;
-            const val = (item as any)[colKey];
-            if (val !== undefined && val !== null && val !== '') {
-                const num = Number(val);
-                if (!isNaN(num)) {
-                    total += num;
-                    hasValues = true;
-                }
-            }
-        });
-
-        return hasValues ? total : null;
     };
 
     return (
