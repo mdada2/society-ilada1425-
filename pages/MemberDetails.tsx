@@ -780,6 +780,11 @@ const MemberDetails = () => {
                             <input type="date" value={formData.membershipDate || ''} onChange={e => setFormData({ ...formData, membershipDate: e.target.value })}
                                 className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
                         </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Last Payment Date (शेवटची पेमेंट तारीख)</label>
+                            <input type="date" value={formData.lastLoanCalculationDate || ''} onChange={e => setFormData({ ...formData, lastLoanCalculationDate: e.target.value })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm border-t dark:border-slate-700 pt-4 text-slate-600 dark:text-slate-300">
@@ -793,6 +798,7 @@ const MemberDetails = () => {
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Bank Acc:</span> {member.bankAccountNo}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">DOB:</span> {formatDateDisplay(member.dob)}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Orig. Loan Date:</span> {formatDateDisplay(member.originalLoanDate)}</div>
+                        <div><span className="text-slate-500 dark:text-slate-400 font-medium">Last Payment Date:</span> {formatDateDisplay(member.lastLoanCalculationDate)}</div>
 
                         <div className="sm:col-span-2 md:col-span-4 mt-2 pt-2 border-t dark:border-slate-700 flex flex-col sm:flex-row sm:gap-4 font-bold text-slate-800 dark:text-slate-200">
                             <span className="block mb-1 sm:mb-0">Total Loan Outstanding (एकूण बाकी): <span className="text-red-600 dark:text-red-400">₹{Math.max(0, totalLoanOutstanding).toLocaleString()}</span></span>
