@@ -276,10 +276,12 @@ const Reports = () => {
           ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(loanDate)))
           : days;
 
+        const remainingPrincipal = Math.max(0, loanAmount - totalRepaidBeforeCutoff);
+
         let interest6 = null;
         if (!isRepaid) {
           const result = calculateLoanInterest(
-            loanAmount,
+            remainingPrincipal,
             loanDate,
             endDateStr,
             settings.financialYearStart,
@@ -297,6 +299,7 @@ const Reports = () => {
           member: m,
           loanDate,
           loanAmount,
+          remainingPrincipal,
           repaymentDate,
           repaymentAmount,
           days: days > 0 ? days : 0,
@@ -933,12 +936,12 @@ const Reports = () => {
           name: item.member.name,
           village: item.member.village,
           loanDate: item.loanDate,
-          principal: item.loanAmount,
+          principal: repaidFilter === 'repaid' ? item.loanAmount : item.remainingPrincipal,
           repaymentDate: item.repaymentDate,
           repaymentAmount: item.repaymentAmount,
           days: item.daysUpToCutoff,
           interest: item.interest6,
-          totalDue: item.loanAmount + (item.interest6 || 0)
+          totalDue: (repaidFilter === 'repaid' ? item.loanAmount : item.remainingPrincipal) + (item.interest6 || 0)
         }));
 
       const columnsToUse: Column<any>[] = repaidFilter === 'repaid'
@@ -1130,7 +1133,7 @@ const Reports = () => {
         groupItems.forEach(item => {
           const loanFY = getFYStartYear(new Date(item.loanDate));
           const ageYears = activeEndFY - loanFY + 1;
-          const principal = item.loanAmount;
+          const principal = item.remainingPrincipal;
           const interest = item.interest6 || 0;
 
           if (item.member.loanType === 'Medium Term') {
