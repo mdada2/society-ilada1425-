@@ -199,6 +199,7 @@ export interface Member {
   lastLoanCalculationDate?: string;
   originalLoanDate?: string;
   isSuccessor?: boolean;
+  ledgerPageNo?: string;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

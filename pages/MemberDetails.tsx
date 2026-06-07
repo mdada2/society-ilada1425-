@@ -740,6 +740,11 @@ const MemberDetails = () => {
                                 className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
                         </div>
                         <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Loan Ledger Page No. (खाते पान क्र.)</label>
+                            <input type="text" value={formData.ledgerPageNo || ''} onChange={e => setFormData({ ...formData, ledgerPageNo: e.target.value })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <div>
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Loan Type</label>
                             <select value={formData.loanType || 'Short Term'} onChange={e => setFormData({ ...formData, loanType: e.target.value as any })}
                                 className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white">
@@ -794,6 +799,7 @@ const MemberDetails = () => {
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Aadhar:</span> {member.aadhar}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Farmer ID:</span> {member.farmerId || 'N/A'}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Loan Acc:</span> {member.loanAccountNo}</div>
+                        <div><span className="text-slate-500 dark:text-slate-400 font-medium">Loan Ledger Page No. (खाते पान क्र.):</span> {member.ledgerPageNo || '-'}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Land:</span> {member.landArea}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">Bank Acc:</span> {member.bankAccountNo}</div>
                         <div><span className="text-slate-500 dark:text-slate-400 font-medium">DOB:</span> {formatDateDisplay(member.dob)}</div>

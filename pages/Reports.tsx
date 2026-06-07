@@ -1118,7 +1118,7 @@ const Reports = () => {
           memberNo: memberNo,
           name: first.member.name,
           village: first.member.village,
-          ledgerPage: memberNo || '-',
+          ledgerPage: first.member.ledgerPageNo || memberNo || '-',
           
           stTotal: 0,
           mtTotal: 0,
