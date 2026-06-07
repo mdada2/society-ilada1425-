@@ -272,22 +272,35 @@ const Reports = () => {
         const interest3 = isRepaid ? Math.round((productValue * 0.03) / 365) : null;
         const interest2_5 = isRepaid ? Math.round((productValue * 0.025) / 365) : null;
 
-        const daysUpToCutoff = !isRepaid
-          ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(loanDate)))
-          : days;
-
         const remainingPrincipal = Math.max(0, loanAmount - totalRepaidBeforeCutoff);
+
+        // Find the last transaction that paid interest before or on cutoffDate
+        const lastInterestPaymentTxn = transactions
+          .filter(t => 
+            t.memberId === m.id && 
+            t.type === 'Credit' && 
+            t.accountType === 'Loan' && 
+            (t.interestPaid && t.interestPaid > 0) && 
+            new Date(t.date) <= cutoffDate
+          )
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+        const calculationStartDate = lastInterestPaymentTxn ? lastInterestPaymentTxn.date : loanDate;
+
+        const daysUpToCutoff = !isRepaid
+          ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(calculationStartDate)))
+          : days;
 
         let interest6 = null;
         if (!isRepaid) {
           const result = calculateLoanInterest(
             remainingPrincipal,
-            loanDate,
+            calculationStartDate,
             endDateStr,
             settings.financialYearStart,
             settings.financialYearEnd,
             false,
-            loanDate,
+            loanDate, // Pass original loan date
             settings.firstYearInterestRate || 6,
             settings.subsequentYearInterestRate || 12,
             0
