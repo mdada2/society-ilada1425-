@@ -880,8 +880,8 @@ const Members = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance"];
-    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0"];
+    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance", "खाते पान क्र."];
+    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0", "45"];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -967,6 +967,7 @@ const Members = () => {
         const idxSavings = findCol(['savingsbalance', 'savings']);
         const idxShare = findCol(['sharebalance', 'share', 'shares']);
         const idxFD = findCol(['fdbalance', 'fd']);
+        const idxLedgerPageNo = findCol(['ledgerpageno', 'ledger page no', 'ledger page', 'ledgerpage', 'ledgerpageo', 'खाते पान क्र', 'खाते पान क्र.', 'खाते पान', 'खतावणी पान', 'ledger_page']);
 
         // Create map of existing members by Member Number for quick lookup
         const existingMembersMap = new Map<string, Member>(members.map(m => [m.memberNo, m]));
@@ -1052,6 +1053,7 @@ const Members = () => {
               savingsBalance: mergeField(existing.savingsBalance, idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0) as number,
               shareBalance: mergeField(existing.shareBalance, idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0) as number,
               fdBalance: mergeField(existing.fdBalance, idxFD !== -1 ? parseNumberSafe(values[idxFD]) : 0) as number,
+              ledgerPageNo: mergeField(existing.ledgerPageNo, idxLedgerPageNo !== -1 ? values[idxLedgerPageNo] : '') as string | undefined,
             };
             updatedMembers.push(updatedMember);
             stats.updated++;
@@ -1076,6 +1078,7 @@ const Members = () => {
               loanInterestDue: idxLoanInterest !== -1 ? parseNumberSafe(values[idxLoanInterest]) : 0, savingsBalance: idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0,
               shareBalance: idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0,
               fdBalance: idxFD !== -1 ? parseNumberSafe(values[idxFD]) : 0,
+              ledgerPageNo: idxLedgerPageNo !== -1 ? values[idxLedgerPageNo] : '',
               isActive: true, photoUrl: ''
             };
             newMembers.push(newM);

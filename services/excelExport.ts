@@ -18,6 +18,7 @@ export const exportMembersToExcel = (members: Member[], returnBlob: boolean = fa
         'Designation': m.designation || 'शेतकरी',
         'Category': m.category,
         'Farmer ID': m.farmerId || '',
+        'Ledger Page No / खाते पान क्र.': m.ledgerPageNo || '',
         'Savings Balance': m.savingsBalance || 0,
         'Share Balance': m.shareBalance || 0,
         'Loan Principal': m.loanPrincipal || 0,
@@ -39,6 +40,7 @@ export const exportMembersToExcel = (members: Member[], returnBlob: boolean = fa
         { wch: 15 }, // Designation
         { wch: 12 }, // Category
         { wch: 16 }, // Farmer ID
+        { wch: 25 }, // Ledger Page No / खाते पान क्र.
         { wch: 15 }, // Savings Balance
         { wch: 15 }, // Share Balance
         { wch: 15 }, // Loan Principal
