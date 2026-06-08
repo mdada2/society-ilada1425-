@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import XLSXStyle from 'xlsx-js-style';
 import {
   BarChart3,
   Wallet,
@@ -1271,6 +1272,15 @@ const Reports = () => {
         row.overdueInterest_amount = categoryUnpaid.reduce((sum, item) => sum + (item.interest6 || 0), 0);
         row.overdueInterest_count = categoryUnpaid.filter(item => (item.interest6 || 0) > 0).length;
 
+        // Calculate separate Alp and Madhyam interest for the category
+        const categoryAlpUnpaid = categoryUnpaid.filter(item => item.member.loanType === 'Short Term');
+        row.overdueInterest_alp_amount = categoryAlpUnpaid.reduce((sum, item) => sum + (item.interest6 || 0), 0);
+        row.overdueInterest_alp_count = categoryAlpUnpaid.filter(item => (item.interest6 || 0) > 0).length;
+
+        const categoryMadhyamUnpaid = categoryUnpaid.filter(item => item.member.loanType === 'Medium Term');
+        row.overdueInterest_madhyam_amount = categoryMadhyamUnpaid.reduce((sum, item) => sum + (item.interest6 || 0), 0);
+        row.overdueInterest_madhyam_count = categoryMadhyamUnpaid.filter(item => (item.interest6 || 0) > 0).length;
+
         timePeriods.forEach(period => {
           const filteredItems = categoryUnpaid.filter(item => {
             const days = item.daysUpToCutoff;
@@ -1316,18 +1326,38 @@ const Reports = () => {
       // Sum Interest first
       sumProps(largeFarmerTotal, summaryData[0], summaryData[1], 'overdueInterest_amount');
       sumProps(largeFarmerTotal, summaryData[0], summaryData[1], 'overdueInterest_count');
+      sumProps(largeFarmerTotal, summaryData[0], summaryData[1], 'overdueInterest_alp_amount');
+      sumProps(largeFarmerTotal, summaryData[0], summaryData[1], 'overdueInterest_alp_count');
+      sumProps(largeFarmerTotal, summaryData[0], summaryData[1], 'overdueInterest_madhyam_amount');
+      sumProps(largeFarmerTotal, summaryData[0], summaryData[1], 'overdueInterest_madhyam_count');
 
       sumProps(smallFarmerTotal, summaryData[2], summaryData[3], 'overdueInterest_amount');
       sumProps(smallFarmerTotal, summaryData[2], summaryData[3], 'overdueInterest_count');
+      sumProps(smallFarmerTotal, summaryData[2], summaryData[3], 'overdueInterest_alp_amount');
+      sumProps(smallFarmerTotal, summaryData[2], summaryData[3], 'overdueInterest_alp_count');
+      sumProps(smallFarmerTotal, summaryData[2], summaryData[3], 'overdueInterest_madhyam_amount');
+      sumProps(smallFarmerTotal, summaryData[2], summaryData[3], 'overdueInterest_madhyam_count');
 
       sumProps(tribalTotal, summaryData[0], summaryData[2], 'overdueInterest_amount');
       sumProps(tribalTotal, summaryData[0], summaryData[2], 'overdueInterest_count');
+      sumProps(tribalTotal, summaryData[0], summaryData[2], 'overdueInterest_alp_amount');
+      sumProps(tribalTotal, summaryData[0], summaryData[2], 'overdueInterest_alp_count');
+      sumProps(tribalTotal, summaryData[0], summaryData[2], 'overdueInterest_madhyam_amount');
+      sumProps(tribalTotal, summaryData[0], summaryData[2], 'overdueInterest_madhyam_count');
 
       sumProps(generalTotal, summaryData[1], summaryData[3], 'overdueInterest_amount');
       sumProps(generalTotal, summaryData[1], summaryData[3], 'overdueInterest_count');
+      sumProps(generalTotal, summaryData[1], summaryData[3], 'overdueInterest_alp_amount');
+      sumProps(generalTotal, summaryData[1], summaryData[3], 'overdueInterest_alp_count');
+      sumProps(generalTotal, summaryData[1], summaryData[3], 'overdueInterest_madhyam_amount');
+      sumProps(generalTotal, summaryData[1], summaryData[3], 'overdueInterest_madhyam_count');
 
       sumProps(grandTotal, tribalTotal, generalTotal, 'overdueInterest_amount');
       sumProps(grandTotal, tribalTotal, generalTotal, 'overdueInterest_count');
+      sumProps(grandTotal, tribalTotal, generalTotal, 'overdueInterest_alp_amount');
+      sumProps(grandTotal, tribalTotal, generalTotal, 'overdueInterest_alp_count');
+      sumProps(grandTotal, tribalTotal, generalTotal, 'overdueInterest_madhyam_amount');
+      sumProps(grandTotal, tribalTotal, generalTotal, 'overdueInterest_madhyam_count');
 
       timePeriods.forEach(period => {
         // Large Farmer subtotal (rows 1 and 2)
@@ -1361,54 +1391,340 @@ const Reports = () => {
         sumProps(grandTotal, tribalTotal, generalTotal, `${period.key}_madhyam_amount`);
       });
 
-      // Export to CSV Function
+      // Export to CSV Function (Generates styled spreadsheet via xlsx-js-style)
       const handleNPASummaryCSV = async () => {
-        // Prepare headers
-        const headers = [
-          'Category',
-          ...timePeriods.flatMap(p => [
-            `${p.label} - Alp Count`,
-            `${p.label} - Alp Amount`,
-            `${p.label} - Madhyam Count`,
-            `${p.label} - Madhyam Amount`
-          ]),
-          'Total Overdue Interest Count',
-          'Total Overdue Interest Amount'
+        const ws: any = {};
+        const merges: any[] = [];
+
+        // Styles configuration
+        const titleStyle = {
+          font: { name: 'Calibri', sz: 14, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+        const subtitleStyle = {
+          font: { name: 'Calibri', sz: 11, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+        const headerStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'E2E8F0' } }, // Slate 200
+          border: {
+            top: { style: 'thin', color: { rgb: '94A3B8' } },
+            bottom: { style: 'thin', color: { rgb: '94A3B8' } },
+            left: { style: 'thin', color: { rgb: '94A3B8' } },
+            right: { style: 'thin', color: { rgb: '94A3B8' } }
+          }
+        };
+        const subHeaderStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } }, // Slate 100
+          border: {
+            top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+          }
+        };
+        const countStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        };
+        const amountStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          }
+        };
+        const serialStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '94A3B8' } },
+            bottom: { style: 'thin', color: { rgb: '94A3B8' } },
+            left: { style: 'thin', color: { rgb: '94A3B8' } },
+            right: { style: 'thin', color: { rgb: '94A3B8' } }
+          }
+        };
+        const categoryStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '94A3B8' } },
+            bottom: { style: 'thin', color: { rgb: '94A3B8' } },
+            left: { style: 'thin', color: { rgb: '94A3B8' } },
+            right: { style: 'thin', color: { rgb: '94A3B8' } }
+          }
+        };
+        const categoryStyleTotal = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'F8FAFC' } }, // Slate 50
+          border: {
+            top: { style: 'thin', color: { rgb: '94A3B8' } },
+            bottom: { style: 'double', color: { rgb: '475569' } },
+            left: { style: 'thin', color: { rgb: '94A3B8' } },
+            right: { style: 'thin', color: { rgb: '94A3B8' } }
+          }
+        };
+        const totalCountStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F8FAFC' } }, // Slate 50
+          border: {
+            top: { style: 'thin', color: { rgb: '94A3B8' } },
+            bottom: { style: 'double', color: { rgb: '475569' } },
+            left: { style: 'thin', color: { rgb: '94A3B8' } },
+            right: { style: 'thin', color: { rgb: '94A3B8' } }
+          }
+        };
+        const totalAmountStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F8FAFC' } }, // Slate 50
+          border: {
+            top: { style: 'thin', color: { rgb: '94A3B8' } },
+            bottom: { style: 'double', color: { rgb: '475569' } },
+            left: { style: 'thin', color: { rgb: '94A3B8' } },
+            right: { style: 'thin', color: { rgb: '94A3B8' } }
+          }
+        };
+
+        const setCell = (r: number, c: number, val: any, style: any = {}, z: string | null = null) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r, c });
+          ws[cellRef] = {
+            v: val,
+            t: typeof val === 'number' ? 'n' : 's',
+            s: style
+          };
+          if (z) ws[cellRef].z = z;
+        };
+
+        // Write Title (A1:T1 merged)
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 19 } });
+        setCell(0, 0, "आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५", titleStyle);
+        for (let c = 1; c < 20; c++) setCell(0, c, "", titleStyle);
+
+        // Write Subtitle (A2:T2 merged)
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 19 } });
+        setCell(1, 0, `दिनांक ${format(activeEnd, 'dd/MM/yyyy')} ची थकीत कर्जदार व चालू कर्ज बाकी यादीचे एकत्रीकरण`, subtitleStyle);
+        for (let c = 1; c < 20; c++) setCell(1, c, "", subtitleStyle);
+
+        // Write Headers (Row 3 and 4)
+        // अ. क्र. (merged A3:A4)
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 3, c: 0 } });
+        setCell(2, 0, "अ. क्र.", headerStyle);
+        setCell(3, 0, "", headerStyle);
+
+        // कृषकाचे प्रकार (merged B3:B4)
+        merges.push({ s: { r: 2, c: 1 }, e: { r: 3, c: 1 } });
+        setCell(2, 1, "कृषकाचे प्रकार", headerStyle);
+        setCell(3, 1, "", headerStyle);
+
+        const headerTitles = [
+          "एकुण कर्ज बाकी",
+          "१ वर्ष थकीत",
+          "२ वर्ष थकीत",
+          "३ वर्ष थकीत",
+          "४ वर्ष थकीत",
+          "५ वर्ष थकीत",
+          "५ वर्षा वरील थकीत",
+          "एकुण थकीत रक्कम",
+          "एकुण थकीत व्याज"
         ];
 
-        // Prepare data rows
-        const rows = [
-          ...summaryData,
-          largeFarmerTotal,
-          smallFarmerTotal,
-          tribalTotal,
-          generalTotal,
-          grandTotal
-        ].map(row => [
-          row.category,
-          ...timePeriods.flatMap(p => [
-            row[`${p.key}_alp_count`] || 0,
-            row[`${p.key}_alp_amount`] || 0,
-            row[`${p.key}_madhyam_count`] || 0,
-            row[`${p.key}_madhyam_amount`] || 0
-          ]),
-          row.overdueInterest_count || 0,
-          row.overdueInterest_amount || 0
-        ]);
+        let colHIdx = 2;
+        headerTitles.forEach(title => {
+          merges.push({ s: { r: 2, c: colHIdx }, e: { r: 2, c: colHIdx + 1 } });
+          setCell(2, colHIdx, title, headerStyle);
+          setCell(2, colHIdx + 1, "", headerStyle);
 
-        // Export using shared utility for proper Excel Unicode support
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "NPA Summary");
-        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          setCell(3, colHIdx, "अनु", subHeaderStyle);
+          setCell(3, colHIdx + 1, "गनु", subHeaderStyle);
+          colHIdx += 2;
+        });
+
+        let currentExcelRow = 4;
+
+        // Block writing helper
+        const writeDataBlock = (sNo: string | null, label: string, dataObj: any, isTotal = false) => {
+          merges.push({ s: { r: currentExcelRow, c: 0 }, e: { r: currentExcelRow + 1, c: 0 } });
+          setCell(currentExcelRow, 0, sNo || "", isTotal ? totalCountStyle : serialStyle);
+          setCell(currentExcelRow + 1, 0, "", isTotal ? totalCountStyle : serialStyle);
+
+          merges.push({ s: { r: currentExcelRow, c: 1 }, e: { r: currentExcelRow + 1, c: 1 } });
+          setCell(currentExcelRow, 1, label, isTotal ? categoryStyleTotal : categoryStyle);
+          setCell(currentExcelRow + 1, 1, "", isTotal ? categoryStyleTotal : categoryStyle);
+
+          const periods = ['total', '1yr', '2yr', '3yr', '4yr', '5yr', 'above5yr'];
+          let colIdx = 2;
+
+          periods.forEach(p => {
+            const alpCount = dataObj[`${p}_alp_count`] || 0;
+            const alpAmount = dataObj[`${p}_alp_amount`] || 0;
+            setCell(currentExcelRow, colIdx, alpCount, isTotal ? totalCountStyle : countStyle);
+            setCell(currentExcelRow + 1, colIdx, alpAmount, isTotal ? totalAmountStyle : amountStyle, '#,##,##0');
+
+            const madhyamCount = dataObj[`${p}_madhyam_count`] || 0;
+            const madhyamAmount = dataObj[`${p}_madhyam_amount`] || 0;
+            setCell(currentExcelRow, colIdx + 1, madhyamCount, isTotal ? totalCountStyle : countStyle);
+            setCell(currentExcelRow + 1, colIdx + 1, madhyamAmount, isTotal ? totalAmountStyle : amountStyle, '#,##,##0');
+
+            colIdx += 2;
+          });
+
+          // Overdue total
+          const overdue_alp_count = (dataObj['1yr_alp_count'] || 0) + (dataObj['2yr_alp_count'] || 0) + (dataObj['3yr_alp_count'] || 0) + (dataObj['4yr_alp_count'] || 0) + (dataObj['5yr_alp_count'] || 0) + (dataObj['above5yr_alp_count'] || 0);
+          const overdue_alp_amount = (dataObj['1yr_alp_amount'] || 0) + (dataObj['2yr_alp_amount'] || 0) + (dataObj['3yr_alp_amount'] || 0) + (dataObj['4yr_alp_amount'] || 0) + (dataObj['5yr_alp_amount'] || 0) + (dataObj['above5yr_alp_amount'] || 0);
+
+          const overdue_madhyam_count = (dataObj['1yr_madhyam_count'] || 0) + (dataObj['2yr_madhyam_count'] || 0) + (dataObj['3yr_madhyam_count'] || 0) + (dataObj['4yr_madhyam_count'] || 0) + (dataObj['5yr_madhyam_count'] || 0) + (dataObj['above5yr_madhyam_count'] || 0);
+          const overdue_madhyam_amount = (dataObj['1yr_madhyam_amount'] || 0) + (dataObj['2yr_madhyam_amount'] || 0) + (dataObj['3yr_madhyam_amount'] || 0) + (dataObj['4yr_madhyam_amount'] || 0) + (dataObj['5yr_madhyam_amount'] || 0) + (dataObj['above5yr_madhyam_amount'] || 0);
+
+          setCell(currentExcelRow, colIdx, overdue_alp_count, isTotal ? totalCountStyle : countStyle);
+          setCell(currentExcelRow + 1, colIdx, overdue_alp_amount, isTotal ? totalAmountStyle : amountStyle, '#,##,##0');
+
+          setCell(currentExcelRow, colIdx + 1, overdue_madhyam_count, isTotal ? totalCountStyle : countStyle);
+          setCell(currentExcelRow + 1, colIdx + 1, overdue_madhyam_amount, isTotal ? totalAmountStyle : amountStyle, '#,##,##0');
+
+          colIdx += 2;
+
+          // Interest ST/MT
+          const overdueInt_alp_count = dataObj['overdueInterest_alp_count'] || 0;
+          const overdueInt_alp_amount = dataObj['overdueInterest_alp_amount'] || 0;
+          const overdueInt_madhyam_count = dataObj['overdueInterest_madhyam_count'] || 0;
+          const overdueInt_madhyam_amount = dataObj['overdueInterest_madhyam_amount'] || 0;
+
+          setCell(currentExcelRow, colIdx, overdueInt_alp_count, isTotal ? totalCountStyle : countStyle);
+          setCell(currentExcelRow + 1, colIdx, overdueInt_alp_amount, isTotal ? totalAmountStyle : amountStyle, '#,##,##0');
+
+          setCell(currentExcelRow, colIdx + 1, overdueInt_madhyam_count, isTotal ? totalCountStyle : countStyle);
+          setCell(currentExcelRow + 1, colIdx + 1, overdueInt_madhyam_amount, isTotal ? totalAmountStyle : amountStyle, '#,##,##0');
+
+          currentExcelRow += 2;
+        };
+
+        // Write groups
+        writeDataBlock("१", "मोठे कृषक आदिवासी", summaryData[0]);
+        writeDataBlock("२", "मोठे कृषक गैर आदिवासी", summaryData[1]);
+        writeDataBlock(null, "एकूण मोठे कृषक बेरीज", largeFarmerTotal, true);
+
+        writeDataBlock("१", "लघु कृषक आदिवासी", summaryData[2]);
+        writeDataBlock("२", "लघु कृषक गैर आदिवासी", summaryData[3]);
+        writeDataBlock(null, "एकूण लघु कृषक बेरीज", smallFarmerTotal, true);
+
+        writeDataBlock("१", "एकूण मोठे कृषक बेरीज", largeFarmerTotal, true);
+        writeDataBlock("२", "एकूण लघु कृषक बेरीज", smallFarmerTotal, true);
+        writeDataBlock(null, "एकूण", grandTotal, true);
+
+        writeDataBlock("१", "आदिवासी कृषक", tribalTotal, true);
+        writeDataBlock("२", "गैर आदिवासी कृषक", generalTotal, true);
+        writeDataBlock(null, "एकूण", grandTotal, true);
+
+        // Leave empty space and write bottom summary table
+        currentExcelRow += 3;
+
+        merges.push({ s: { r: currentExcelRow, c: 0 }, e: { r: currentExcelRow, c: 6 } });
+        setCell(currentExcelRow, 0, "एकूण कर्ज बाकी व थकीतचा गोषवारा", subtitleStyle);
+        for (let c = 1; c < 7; c++) setCell(currentExcelRow, c, "", subtitleStyle);
+
+        currentExcelRow += 1;
+
+        merges.push({ s: { r: currentExcelRow, c: 0 }, e: { r: currentExcelRow + 1, c: 0 } });
+        setCell(currentExcelRow, 0, "अ. क्र.", headerStyle);
+        setCell(currentExcelRow + 1, 0, "", headerStyle);
+
+        merges.push({ s: { r: currentExcelRow, c: 1 }, e: { r: currentExcelRow + 1, c: 1 } });
+        setCell(currentExcelRow, 1, "प्रकार", headerStyle);
+        setCell(currentExcelRow + 1, 1, "", headerStyle);
+
+        merges.push({ s: { r: currentExcelRow, c: 2 }, e: { r: currentExcelRow, c: 3 } });
+        setCell(currentExcelRow, 2, "एकूण कर्ज बाकी रक्कम", headerStyle);
+        setCell(currentExcelRow, 3, "", headerStyle);
+
+        merges.push({ s: { r: currentExcelRow, c: 4 }, e: { r: currentExcelRow, c: 6 } });
+        setCell(currentExcelRow, 4, "एकूण थकीत रक्कम", headerStyle);
+        setCell(currentExcelRow, 5, "", headerStyle);
+        setCell(currentExcelRow, 6, "", headerStyle);
+
+        currentExcelRow += 1;
+
+        setCell(currentExcelRow, 2, "सभासद", subHeaderStyle);
+        setCell(currentExcelRow, 3, "रक्कम", subHeaderStyle);
+        setCell(currentExcelRow, 4, "सभासद", subHeaderStyle);
+        setCell(currentExcelRow, 5, "रक्कम", subHeaderStyle);
+        setCell(currentExcelRow, 6, "एकूण प्रलंबित होणारे व्याज", subHeaderStyle);
+
+        currentExcelRow += 1;
+
+        const overdue_alp_count = (grandTotal['1yr_alp_count'] || 0) + (grandTotal['2yr_alp_count'] || 0) + (grandTotal['3yr_alp_count'] || 0) + (grandTotal['4yr_alp_count'] || 0) + (grandTotal['5yr_alp_count'] || 0) + (grandTotal['above5yr_alp_count'] || 0);
+        const overdue_alp_amount = (grandTotal['1yr_alp_amount'] || 0) + (grandTotal['2yr_alp_amount'] || 0) + (grandTotal['3yr_alp_amount'] || 0) + (grandTotal['4yr_alp_amount'] || 0) + (grandTotal['5yr_alp_amount'] || 0) + (grandTotal['above5yr_alp_amount'] || 0);
+
+        const overdue_madhyam_count = (grandTotal['1yr_madhyam_count'] || 0) + (grandTotal['2yr_madhyam_count'] || 0) + (grandTotal['3yr_madhyam_count'] || 0) + (grandTotal['4yr_madhyam_count'] || 0) + (grandTotal['5yr_madhyam_count'] || 0) + (grandTotal['above5yr_madhyam_count'] || 0);
+        const overdue_madhyam_amount = (grandTotal['1yr_madhyam_amount'] || 0) + (grandTotal['2yr_madhyam_amount'] || 0) + (grandTotal['3yr_madhyam_amount'] || 0) + (grandTotal['4yr_madhyam_amount'] || 0) + (grandTotal['5yr_madhyam_amount'] || 0) + (grandTotal['above5yr_madhyam_amount'] || 0);
+
+        // Row 1: Short Term
+        setCell(currentExcelRow, 0, "१)", countStyle);
+        setCell(currentExcelRow, 1, "अल्पमुदती कर्ज", categoryStyle);
+        setCell(currentExcelRow, 2, grandTotal.total_alp_count || 0, countStyle);
+        setCell(currentExcelRow, 3, grandTotal.total_alp_amount || 0, amountStyle, '#,##,##0');
+        setCell(currentExcelRow, 4, overdue_alp_count || 0, countStyle);
+        setCell(currentExcelRow, 5, overdue_alp_amount || 0, amountStyle, '#,##,##0');
+        setCell(currentExcelRow, 6, grandTotal.overdueInterest_alp_amount || 0, amountStyle, '#,##,##0');
+
+        currentExcelRow += 1;
+
+        // Row 2: Medium Term
+        setCell(currentExcelRow, 0, "२)", countStyle);
+        setCell(currentExcelRow, 1, "मध्यम मुदती कर्ज", categoryStyle);
+        setCell(currentExcelRow, 2, grandTotal.total_madhyam_count || 0, countStyle);
+        setCell(currentExcelRow, 3, grandTotal.total_madhyam_amount || 0, amountStyle, '#,##,##0');
+        setCell(currentExcelRow, 4, overdue_madhyam_count || 0, countStyle);
+        setCell(currentExcelRow, 5, overdue_madhyam_amount || 0, amountStyle, '#,##,##0');
+        setCell(currentExcelRow, 6, grandTotal.overdueInterest_madhyam_amount || 0, amountStyle, '#,##,##0');
+
+        currentExcelRow += 1;
+
+        // Total Row
+        setCell(currentExcelRow, 0, "", totalCountStyle);
+        setCell(currentExcelRow, 1, "एकूण बेरीज :-", categoryStyleTotal);
+        setCell(currentExcelRow, 2, (grandTotal.total_alp_count || 0) + (grandTotal.total_madhyam_count || 0), totalCountStyle);
+        setCell(currentExcelRow, 3, (grandTotal.total_alp_amount || 0) + (grandTotal.total_madhyam_amount || 0), totalAmountStyle, '#,##,##0');
+        setCell(currentExcelRow, 4, overdue_alp_count + overdue_madhyam_count, totalCountStyle);
+        setCell(currentExcelRow, 5, overdue_alp_amount + overdue_madhyam_amount, totalAmountStyle, '#,##,##0');
+        setCell(currentExcelRow, 6, (grandTotal.overdueInterest_alp_amount || 0) + (grandTotal.overdueInterest_madhyam_amount || 0), totalAmountStyle, '#,##,##0');
+
+        ws['!merges'] = merges;
+        ws['!cols'] = [
+          { wch: 8 },   // S.No
+          { wch: 26 },  // Category
+          ...Array(18).fill({ wch: 14 }) // C to T
+        ];
+        const maxCell = XLSXStyle.utils.encode_cell({ r: currentExcelRow + 1, c: 19 });
+        ws['!ref'] = `A1:${maxCell}`;
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "NPA Summary");
+
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         downloadBlob(blob, `NPA_Summary_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
 
         await showConfirm({
           title: 'Export Successful!',
           titleMr: 'एक्सपोर्ट यशस्वी झाले!',
-          message: 'NPA Summary report exported successfully to Excel.',
-          messageMr: 'NPA Summary रिपोर्ट एक्सेलमध्ये यशस्वीपणे एक्सपोर्ट झाला.',
+          message: 'Styled NPA Summary report exported successfully to Excel.',
+          messageMr: 'NPA Summary रिपोर्ट एक्सेलमध्ये हुबेहूब रचनेसह एक्सपोर्ट झाला.',
           icon: '✅',
           confirmText: 'OK',
           confirmTextMr: 'ठीक आहे',
