@@ -1295,12 +1295,12 @@ const Reports = () => {
           // Alp Mudat (Short Term)
           const alpItems = filteredItems.filter(item => item.member.loanType === 'Short Term');
           const alp_count = alpItems.length;
-          const alp_amount = alpItems.reduce((sum, item) => sum + item.loanAmount, 0);
+          const alp_amount = alpItems.reduce((sum, item) => sum + item.remainingPrincipal, 0);
 
           // Madhyam Mudat (Medium Term)
           const madhyamItems = filteredItems.filter(item => item.member.loanType === 'Medium Term');
           const madhyam_count = madhyamItems.length;
-          const madhyam_amount = madhyamItems.reduce((sum, item) => sum + item.loanAmount, 0);
+          const madhyam_amount = madhyamItems.reduce((sum, item) => sum + item.remainingPrincipal, 0);
 
           row[`${period.key}_alp_count`] = alp_count;
           row[`${period.key}_alp_amount`] = alp_amount;
