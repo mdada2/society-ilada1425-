@@ -593,6 +593,36 @@ const Transactions = () => {
                                 </div>
                             )}
 
+                            {/* Savings Balance Display */}
+                            {selectedMember && accountType === AccountType.SAVINGS && (
+                                <div className="p-3 rounded-lg text-xs border border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/20 text-slate-700 dark:text-slate-300 animate-fade-in">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-bold">Savings Balance (बचत खात्यावरील रक्कम):</span>
+                                        <span className="font-mono font-bold text-green-600 dark:text-green-400">₹{(selectedMember.savingsBalance || 0).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Shares Balance Display */}
+                            {selectedMember && accountType === AccountType.SHARES && (
+                                <div className="p-3 rounded-lg text-xs border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 text-slate-700 dark:text-slate-300 animate-fade-in">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-bold">Shares Balance (हिस्से रक्कम):</span>
+                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">₹{(selectedMember.shareBalance || 0).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* FD Balance Display */}
+                            {selectedMember && accountType === AccountType.FD && (
+                                <div className="p-3 rounded-lg text-xs border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 text-slate-700 dark:text-slate-300 animate-fade-in">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-bold">FD Balance (मुदत ठेव रक्कम):</span>
+                                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">₹{(selectedMember.fdBalance || 0).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Amount (एकूण रक्कम) ₹</label>
                                 <input type="number" required min="1" value={amount || ''} onChange={e => handleInputChange(setAmount, parseFloat(e.target.value))} className="w-full p-2 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none shadow-inner" />
