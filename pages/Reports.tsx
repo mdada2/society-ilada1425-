@@ -2051,14 +2051,227 @@ const Reports = () => {
 
   const renderMembership = () => {
     if (activeSubTab === 'Shares Capital') {
-      const columns = [
-        { header: 'No.', accessorKey: 'id', width: '60px' },
-        { header: 'Name', accessorKey: 'name' },
-        { header: 'Share Bal', accessorKey: 'shareBalance', render: (i: any) => `₹${i.shareBalance}` },
-        { header: 'Dividend', accessorKey: 'dividend', render: (i: any) => `₹${i.dividend}` },
-        { header: 'Mobile', accessorKey: 'mobile' },
-      ];
-      return <ReportTable title="Shares Capital" columns={columns} data={memberReportData} onRowClick={(item) => handleMemberClick(item.realId)} />;
+      // Filter members who have shares > 0 and sort alphabetically
+      const sharesMembers = members
+        .filter(m => (m.shareBalance || 0) > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const halfLength = Math.ceil(sharesMembers.length / 2);
+      const leftHalf = sharesMembers.slice(0, halfLength);
+      const rightHalf = sharesMembers.slice(halfLength);
+
+      const leftTotal = leftHalf.reduce((sum, m) => sum + (m.shareBalance || 0), 0);
+      const rightTotal = rightHalf.reduce((sum, m) => sum + (m.shareBalance || 0), 0);
+
+      const handleSharesCapitalExport = () => {
+        const ws: any = {};
+        const merges: any[] = [];
+
+        // Styles
+        const titleStyle = { font: { name: 'Calibri', sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const subtitleStyleLeft = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'left', vertical: 'center' } };
+        const subtitleStyleRight = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'right', vertical: 'center' } };
+        const headerStyle = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, fill: { fgColor: { rgb: 'E2E8F0' } }, border: { top: { style: 'thin', color: { rgb: '000000' } }, bottom: { style: 'thin', color: { rgb: '000000' } }, left: { style: 'thin', color: { rgb: '000000' } }, right: { style: 'thin', color: { rgb: '000000' } } } };
+        const cellCenter = { font: { name: 'Calibri', sz: 9 }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+        const cellLeft = { font: { name: 'Calibri', sz: 9 }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+        const cellRight = { font: { name: 'Calibri', sz: 9 }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+        const totalStyle = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'right', vertical: 'center' }, fill: { fgColor: { rgb: 'F1F5F9' } }, border: { top: { style: 'thin', color: { rgb: '000000' } }, bottom: { style: 'double', color: { rgb: '000000' } }, left: { style: 'thin', color: { rgb: '000000' } }, right: { style: 'thin', color: { rgb: '000000' } } } };
+        const totalLabelStyle = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, fill: { fgColor: { rgb: 'F1F5F9' } }, border: { top: { style: 'thin', color: { rgb: '000000' } }, bottom: { style: 'double', color: { rgb: '000000' } }, left: { style: 'thin', color: { rgb: '000000' } }, right: { style: 'thin', color: { rgb: '000000' } } } };
+
+        const setCell = (r: number, c: number, val: any, style: any = {}, z: string | null = null) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r, c });
+          ws[cellRef] = { v: val, t: typeof val === 'number' ? 'n' : 's', s: style };
+          if (z) ws[cellRef].z = z;
+        };
+
+        // Header Title (A1:N1 merged)
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 13 } });
+        setCell(0, 0, "आदिवासी विविध कार्यकारी सहकारी संस्था मयो. ईळदा र. नं. १४२५ विकास खंड- अर्जुनी/मोरगांव", titleStyle);
+        for(let c=1; c<14; c++) setCell(0, c, "");
+
+        // Subtitles (Row 2)
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
+        setCell(1, 0, "हिस्से यादी", subtitleStyleLeft);
+        for(let c=1; c<=6; c++) setCell(1, c, "");
+
+        merges.push({ s: { r: 1, c: 7 }, e: { r: 1, c: 13 } });
+        const curYear = new Date(activeEnd).getFullYear();
+        setCell(1, 7, `सन:- ${curYear - 1}-${String(curYear).slice(2)}`, subtitleStyleRight);
+        for(let c=8; c<14; c++) setCell(1, c, "");
+
+        // Table Headers (Row 3)
+        const leftHeaders = ["अ. क्र.", "सभासदाचे नाव", "गाव", "Gender", "Cast", "सभासद क्रमांक", "हिस्से रक्कम"];
+        const rightHeaders = ["अ. क्र.", "सभासदाचे नाव", "गाव", "Gender", "Cast", "सभासद क्रमांक", "हिस्से रक्कम"];
+
+        leftHeaders.forEach((h, c) => setCell(2, c, h, headerStyle));
+        rightHeaders.forEach((h, c) => setCell(2, c + 7, h, headerStyle));
+
+        // Data Rows
+        for (let i = 0; i < halfLength; i++) {
+          const r = 3 + i;
+          const leftItem = leftHalf[i];
+          const rightItem = rightHalf[i];
+
+          // Left Half
+          if (leftItem) {
+            setCell(r, 0, i + 1, cellCenter);
+            setCell(r, 1, leftItem.name, cellLeft);
+            setCell(r, 2, leftItem.village, cellLeft);
+            setCell(r, 3, leftItem.gender, cellCenter);
+            setCell(r, 4, leftItem.category || 'GEN', cellCenter);
+            setCell(r, 5, leftItem.memberNo, cellCenter);
+            setCell(r, 6, leftItem.shareBalance || 0, cellRight, '#,##,##0');
+          } else {
+            for(let c=0; c<7; c++) setCell(r, c, "", cellCenter);
+          }
+
+          // Right Half
+          if (rightItem) {
+            setCell(r, 7, halfLength + i + 1, cellCenter);
+            setCell(r, 8, rightItem.name, cellLeft);
+            setCell(r, 9, rightItem.village, cellLeft);
+            setCell(r, 10, rightItem.gender, cellCenter);
+            setCell(r, 11, rightItem.category || 'GEN', cellCenter);
+            setCell(r, 12, rightItem.memberNo, cellCenter);
+            setCell(r, 13, rightItem.shareBalance || 0, cellRight, '#,##,##0');
+          } else {
+            for(let c=7; c<14; c++) setCell(r, c, "", cellCenter);
+          }
+        }
+
+        // Totals Row
+        const totalRowIdx = 3 + halfLength;
+        for(let c=0; c<6; c++) setCell(totalRowIdx, c, "", totalLabelStyle);
+        setCell(totalRowIdx, 6, leftTotal, totalStyle, '#,##,##0');
+
+        for(let c=7; c<13; c++) setCell(totalRowIdx, c, "", totalLabelStyle);
+        setCell(totalRowIdx, 13, rightTotal, totalStyle, '#,##,##0');
+
+        ws['!merges'] = merges;
+        ws['!cols'] = [
+          { wch: 6 },  { wch: 22 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, // Left half
+          { wch: 6 },  { wch: 22 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 12 }  // Right half
+        ];
+        ws['!ref'] = `A1:N${totalRowIdx + 1}`;
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Shares List");
+
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Shares_Capital_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      };
+
+      return (
+        <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in duration-300">
+            {/* Header section with print/export */}
+            <div className="bg-blue-900 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="text-center md:text-left">
+                <h2 className="text-xl font-bold">हिस्से यादी (Shares Capital List)</h2>
+                <p className="text-xs opacity-80 mt-1">आदिवासी विविध कार्यकारी सहकारी संस्था मयो. ईळदा र. नं. १४२५</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSharesCapitalExport}
+                  className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+                >
+                  <Download size={16} /> Export Excel
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 flex justify-between text-xs border-b border-slate-200 dark:border-slate-700 font-bold text-slate-500 dark:text-slate-400">
+              <span>एकूण हिस्सेदार: {sharesMembers.length}</span>
+              <span>एकूण हिस्से रक्कम: ₹{(leftTotal + rightTotal).toLocaleString()}</span>
+            </div>
+
+            {/* Split Tables Container */}
+            <div className="flex-1 overflow-auto p-4">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+                
+                {/* Left Table */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200">
+                      <tr>
+                        <th className="p-2 border-b text-center w-12">अ. क्र.</th>
+                        <th className="p-2 border-b">सभासदाचे नाव</th>
+                        <th className="p-2 border-b">गाव</th>
+                        <th className="p-2 border-b text-center">Gender</th>
+                        <th className="p-2 border-b text-center">Cast</th>
+                        <th className="p-2 border-b text-center">क्रमांक</th>
+                        <th className="p-2 border-b text-right">हिस्से रक्कम</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leftHalf.map((m, idx) => (
+                        <tr 
+                          key={m.id} 
+                          onClick={() => handleMemberClick(m.id)}
+                          className="hover:bg-blue-50/50 dark:hover:bg-slate-700/50 cursor-pointer border-b dark:border-slate-700"
+                        >
+                          <td className="p-2 text-center text-slate-500">{idx + 1}</td>
+                          <td className="p-2 font-bold text-blue-600 dark:text-blue-400 hover:underline">{m.name}</td>
+                          <td className="p-2 text-slate-600 dark:text-slate-400">{m.village}</td>
+                          <td className="p-2 text-center text-slate-500">{m.gender}</td>
+                          <td className="p-2 text-center text-slate-500">{m.category || 'GEN'}</td>
+                          <td className="p-2 text-center text-slate-600 dark:text-slate-300 font-mono font-bold">{m.memberNo}</td>
+                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">₹{m.shareBalance.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-800 dark:text-white border-t-2">
+                        <td colSpan={6} className="p-2 text-center">एकूण हिस्से रक्कम (डावी बाजू)</td>
+                        <td className="p-2 text-right font-mono text-lg text-emerald-600 dark:text-emerald-400">₹{leftTotal.toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Right Table */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200">
+                      <tr>
+                        <th className="p-2 border-b text-center w-12">अ. क्र.</th>
+                        <th className="p-2 border-b">सभासदाचे नाव</th>
+                        <th className="p-2 border-b">गाव</th>
+                        <th className="p-2 border-b text-center">Gender</th>
+                        <th className="p-2 border-b text-center">Cast</th>
+                        <th className="p-2 border-b text-center">क्रमांक</th>
+                        <th className="p-2 border-b text-right">हिस्से रक्कम</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rightHalf.map((m, idx) => (
+                        <tr 
+                          key={m.id} 
+                          onClick={() => handleMemberClick(m.id)}
+                          className="hover:bg-blue-50/50 dark:hover:bg-slate-700/50 cursor-pointer border-b dark:border-slate-700"
+                        >
+                          <td className="p-2 text-center text-slate-500">{halfLength + idx + 1}</td>
+                          <td className="p-2 font-bold text-blue-600 dark:text-blue-400 hover:underline">{m.name}</td>
+                          <td className="p-2 text-slate-600 dark:text-slate-400">{m.village}</td>
+                          <td className="p-2 text-center text-slate-500">{m.gender}</td>
+                          <td className="p-2 text-center text-slate-500">{m.category || 'GEN'}</td>
+                          <td className="p-2 text-center text-slate-600 dark:text-slate-300 font-mono font-bold">{m.memberNo}</td>
+                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">₹{m.shareBalance.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-800 dark:text-white border-t-2">
+                        <td colSpan={6} className="p-2 text-center">एकूण हिस्से रक्कम (उजवी बाजू)</td>
+                        <td className="p-2 text-right font-mono text-lg text-emerald-600 dark:text-emerald-400">₹{rightTotal.toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
     }
 
     if (activeSubTab === 'Caste Summary') {
