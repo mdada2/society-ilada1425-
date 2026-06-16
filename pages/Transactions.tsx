@@ -20,6 +20,7 @@ const Transactions = () => {
     const prevFundsRef = useRef({ building: false, joint: false });
     const isInitialLoadRef = useRef(true);
     const isRedirectedRef = useRef(false); // Track if navigation came from Member details
+    const prevMemberIdRef = useRef('');
 
     // Handle Incoming State (Redirection from Member Details)
     useEffect(() => {
@@ -49,8 +50,6 @@ const Transactions = () => {
     // Fund States
     const [includeBuildingFund, setIncludeBuildingFund] = useState(false);
     const [includeJointFund, setIncludeJointFund] = useState(false);
-
-
 
     // AI State
     const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
@@ -99,9 +98,13 @@ const Transactions = () => {
         setLoanBreakdown([]);
 
         if (selectedMember) {
-            // Only auto-switch to LOAN if not redirected and not explicitly set to something else recently
-            if (type === TransactionType.CREDIT && !isRedirectedRef.current) {
-                setAccountType(AccountType.LOAN);
+            // Only auto-switch to LOAN and reset amount if member selection actually changed
+            if (selectedMember.id !== prevMemberIdRef.current) {
+                if (type === TransactionType.CREDIT && !isRedirectedRef.current) {
+                    setAccountType(AccountType.LOAN);
+                }
+                setAmount(0);
+                prevMemberIdRef.current = selectedMember.id;
             }
             // Reset redirect flag after first logic pass
             isRedirectedRef.current = false;
@@ -141,7 +144,7 @@ const Transactions = () => {
                 setNewPeriodInterest(suppressInterest ? 0 : result.interest);
                 setLoanBreakdown(suppressInterest ? [] : result.breakdown);
 
-                // Auto-check funds if not already paid this FY
+                // Auto-check funds and auto-calculate amount ONLY for Loan Credit
                 if (type === TransactionType.CREDIT && accountType === AccountType.LOAN) {
                     const needsBuilding = !fundStatus.building;
                     const needsJoint = !fundStatus.joint;
@@ -162,14 +165,13 @@ const Transactions = () => {
 
                     prevFundsRef.current = { building: needsBuilding, joint: needsJoint };
                 }
-            } else {
-                setAmount(0);
             }
         } else {
             setCurrentLoanAccNo('');
             setIncludeBuildingFund(false);
             setIncludeJointFund(false);
             setAmount(0);
+            prevMemberIdRef.current = '';
         }
         isInitialLoadRef.current = false;
     }, [selectedMember, date, settings, fundStatus, type, accountType]);

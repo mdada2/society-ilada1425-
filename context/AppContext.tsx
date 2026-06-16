@@ -369,6 +369,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }
         } else {
           if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance -= amt;
+          if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance -= amt;
           if (transaction.accountType === AccountType.LOAN) {
             if (updatedMember.loanPrincipal < 0) {
               updatedMember.loanPrincipal = 0;
@@ -420,6 +421,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }
         } else {
           if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
+          if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance += amt;
           if (transaction.accountType === AccountType.LOAN) {
             updatedMember.loanPrincipal -= amt;
             // Clear original loan date if loan is fully repaid
