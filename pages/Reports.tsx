@@ -79,7 +79,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Membership Reports',
     icon: <Users size={24} />,
     color: 'bg-emerald-500',
-    subTabs: ['Shares Capital', 'Caste Summary', 'Gender Summary', 'Gender + Category', 'Gender + Village', 'Gender Financial', 'Land Holding']
+    subTabs: ['Shares Capital', 'Shares Summary', 'Caste Summary', 'Gender Summary', 'Gender + Category', 'Gender + Village', 'Gender Financial', 'Land Holding']
   },
   {
     id: 'schemes',
@@ -2271,6 +2271,328 @@ const Reports = () => {
                   </table>
                 </div>
 
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSubTab === 'Shares Summary') {
+      const gendersList = ['Male', 'Female', 'Other'];
+      const categoriesList = ['OPEN', 'SC', 'ST', 'OBC', 'NT'];
+
+      const getCategoryLabelMr = (cat: string) => {
+        if (cat === 'OPEN') return 'Gen';
+        return cat;
+      };
+
+      const getGenderLabelMr = (gender: string) => {
+        if (gender === 'Male') return 'Male';
+        if (gender === 'Female') return 'Female';
+        return 'Transg';
+      };
+
+      // Calculate counts and amounts
+      const matrix: Record<string, Record<string, { count: number; amount: number }>> = {};
+      gendersList.forEach(g => {
+        matrix[g] = {};
+        categoriesList.forEach(c => {
+          matrix[g][c] = { count: 0, amount: 0 };
+        });
+      });
+
+      members.forEach(m => {
+        const g = gendersList.includes(m.gender) ? m.gender : 'Other';
+        const c = categoriesList.includes(m.category) ? m.category : 'OPEN';
+        if (matrix[g] && matrix[g][c]) {
+          matrix[g][c].count += 1;
+          matrix[g][c].amount += (m.shareBalance || 0);
+        }
+      });
+
+      const genderTotals: Record<string, { count: number; amount: number }> = {};
+      gendersList.forEach(g => {
+        let totalCount = 0;
+        let totalAmount = 0;
+        categoriesList.forEach(c => {
+          totalCount += matrix[g][c].count;
+          totalAmount += matrix[g][c].amount;
+        });
+        genderTotals[g] = { count: totalCount, amount: totalAmount };
+      });
+
+      const categoryTotals: Record<string, { count: number; amount: number }> = {};
+      categoriesList.forEach(c => {
+        let totalCount = 0;
+        let totalAmount = 0;
+        gendersList.forEach(g => {
+          totalCount += matrix[g][c].count;
+          totalAmount += matrix[g][c].amount;
+        });
+        categoryTotals[c] = { count: totalCount, amount: totalAmount };
+      });
+
+      const grandTotalCount = gendersList.reduce((sum, g) => sum + genderTotals[g].count, 0);
+      const grandTotalAmount = gendersList.reduce((sum, g) => sum + genderTotals[g].amount, 0);
+
+      // Bottom distribution statistics
+      const sharesCount = (cond: (val: number) => boolean) => {
+        return members.filter(m => cond(m.shareBalance || 0)).length;
+      };
+
+      const distUnder10 = sharesCount(v => v > 0 && v <= 1000);
+      const distUnder100 = sharesCount(v => v > 0 && v <= 10000);
+      const distAbove100 = sharesCount(v => v > 10000);
+      const distUnder20000 = sharesCount(v => v > 0 && v <= 20000);
+      const distAbove20000 = sharesCount(v => v > 20000);
+
+      const handleSharesSummaryExport = () => {
+        const ws: any = {};
+        const merges: any[] = [];
+
+        // Styles
+        const titleStyle = { font: { name: 'Calibri', sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const headerStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'E2E8F0' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+        const cellCenter = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+        const cellRight = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+        const totalStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+        const totalStyleRight = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        ws['A2'] = { v: "Number of member of the co-operetive society", t: 's', s: titleStyle };
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 13 } });
+
+        ws['A3'] = { v: "संस्थेचे एकुण सभासद त्यांचे हिस्से रक्कम", t: 's', s: titleStyle };
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 13 } });
+
+        const headers1 = [
+          "S. n.", "Gender", "Gen", "", "SC", "", "ST", "", "OBC", "", "NT", "", "Total Member", "Total Amount"
+        ];
+        headers1.forEach((val, colIdx) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 4, c: colIdx });
+          ws[cellRef] = { v: val, t: 's', s: headerStyle };
+        });
+
+        const headers2 = [
+          "", "", "Member", "Amount", "Member", "Amount", "Member", "Amount", "Member", "Amount", "Member", "Amount", "", ""
+        ];
+        headers2.forEach((val, colIdx) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 5, c: colIdx });
+          ws[cellRef] = { v: val, t: 's', s: headerStyle };
+        });
+
+        merges.push({ s: { r: 4, c: 0 }, e: { r: 5, c: 0 } });
+        merges.push({ s: { r: 4, c: 1 }, e: { r: 5, c: 1 } });
+        merges.push({ s: { r: 4, c: 2 }, e: { r: 4, c: 3 } });
+        merges.push({ s: { r: 4, c: 4 }, e: { r: 4, c: 5 } });
+        merges.push({ s: { r: 4, c: 6 }, e: { r: 4, c: 7 } });
+        merges.push({ s: { r: 4, c: 8 }, e: { r: 4, c: 9 } });
+        merges.push({ s: { r: 4, c: 10 }, e: { r: 4, c: 11 } });
+        merges.push({ s: { r: 4, c: 12 }, e: { r: 5, c: 12 } });
+        merges.push({ s: { r: 4, c: 13 }, e: { r: 5, c: 13 } });
+
+        let rowIdx = 6;
+        gendersList.forEach((gender, idx) => {
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: idx + 1, t: 'n', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 1 })] = { v: getGenderLabelMr(gender), t: 's', s: cellCenter };
+
+          let colC = 2;
+          categoriesList.forEach(cat => {
+            const data = matrix[gender][cat];
+            ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: colC })] = { v: data.count, t: 'n', s: cellCenter };
+            ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: colC + 1 })] = { v: data.amount, t: 'n', s: cellRight };
+            colC += 2;
+          });
+
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 12 })] = { v: genderTotals[gender].count, t: 'n', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 13 })] = { v: genderTotals[gender].amount, t: 'n', s: cellRight };
+          rowIdx++;
+        });
+
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: "", t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 1 })] = { v: "Total", t: 's', s: totalStyle };
+
+        let colTotalIdx = 2;
+        categoriesList.forEach(cat => {
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: colTotalIdx })] = { v: categoryTotals[cat].count, t: 'n', s: totalStyle };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: colTotalIdx + 1 })] = { v: "", t: 's', s: totalStyle };
+          colTotalIdx += 2;
+        });
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 12 })] = { v: grandTotalCount, t: 'n', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 13 })] = { v: grandTotalAmount, t: 'n', s: totalStyleRight };
+
+        rowIdx += 3;
+
+        const distHeaders = ["Under 10", "Under 100", "Above 100", "Under 20000", "Above 20000"];
+        distHeaders.forEach((val, colIdx) => {
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: colIdx + 1 })] = { v: val, t: 's', s: headerStyle };
+        });
+        const distValues = [distUnder10, distUnder100, distAbove100, distUnder20000, distAbove20000];
+        distValues.forEach((val, colIdx) => {
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx + 1, c: colIdx + 1 })] = { v: val, t: 'n', s: cellCenter };
+        });
+
+        ws['!merges'] = merges;
+        ws['!ref'] = `A1:N${rowIdx + 3}`;
+        ws['!cols'] = [
+          { wch: 6 },  { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+          { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 },
+          { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 16 }
+        ];
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Shares Summary");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Shares_Capital_Summary_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      };
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">संस्थेचे एकूण सभासद व त्यांचे हिस्से रक्कम गोषवारा</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">Number of member of the co-operative society & Share Capital Summary</p>
+            </div>
+            <button
+              onClick={handleSharesSummaryExport}
+              className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+            >
+              <Download size={16} /> Export Excel
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-auto p-6">
+            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 mb-6">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 text-center">
+                    <th className="p-3 border-r dark:border-slate-600" rowSpan={2}>S. n.</th>
+                    <th className="p-3 border-r dark:border-slate-600" rowSpan={2}>Gender</th>
+                    <th className="p-3 border-r dark:border-slate-600" colSpan={2}>Gen</th>
+                    <th className="p-3 border-r dark:border-slate-600" colSpan={2}>SC</th>
+                    <th className="p-3 border-r dark:border-slate-600" colSpan={2}>ST</th>
+                    <th className="p-3 border-r dark:border-slate-600" colSpan={2}>OBC</th>
+                    <th className="p-3 border-r dark:border-slate-600" colSpan={2}>NT</th>
+                    <th className="p-3 border-r dark:border-slate-600" rowSpan={2}>Total Member</th>
+                    <th className="p-3" rowSpan={2}>Total Amount</th>
+                  </tr>
+                  <tr className="bg-slate-50 dark:bg-slate-700/50 font-bold text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 text-center">
+                    <th className="p-2 border-r dark:border-slate-600">Member</th>
+                    <th className="p-2 border-r dark:border-slate-600">Amount</th>
+                    <th className="p-2 border-r dark:border-slate-600">Member</th>
+                    <th className="p-2 border-r dark:border-slate-600">Amount</th>
+                    <th className="p-2 border-r dark:border-slate-600">Member</th>
+                    <th className="p-2 border-r dark:border-slate-600">Amount</th>
+                    <th className="p-2 border-r dark:border-slate-600">Member</th>
+                    <th className="p-2 border-r dark:border-slate-600">Amount</th>
+                    <th className="p-2 border-r dark:border-slate-600">Member</th>
+                    <th className="p-2 border-r dark:border-slate-600">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gendersList.map((gender, idx) => (
+                    <tr key={gender} className="border-b dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-700/50 text-center">
+                      <td className="p-2 border-r dark:border-slate-600 text-slate-500">{idx + 1}</td>
+                      <td className="p-2 border-r dark:border-slate-600 font-bold">{getGenderLabelMr(gender)}</td>
+                      {categoriesList.map(cat => {
+                        const data = matrix[gender][cat];
+                        return (
+                          <React.Fragment key={cat}>
+                            <td className="p-2 border-r dark:border-slate-600 font-mono">{data.count}</td>
+                            <td className="p-2 border-r dark:border-slate-600 text-right font-mono">₹{data.amount.toLocaleString()}</td>
+                          </React.Fragment>
+                        );
+                      })}
+                      <td className="p-2 border-r dark:border-slate-600 font-bold font-mono text-blue-600 dark:text-blue-400">{genderTotals[gender].count}</td>
+                      <td className="p-2 text-right font-bold font-mono text-emerald-600 dark:text-emerald-400">₹{genderTotals[gender].amount.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-800 dark:text-white text-center border-t-2">
+                    <td className="p-2 border-r dark:border-slate-600" colSpan={2}>Total</td>
+                    {categoriesList.map(cat => (
+                      <React.Fragment key={cat}>
+                        <td className="p-2 border-r dark:border-slate-600 font-mono">{categoryTotals[cat].count}</td>
+                        <td className="p-2 border-r dark:border-slate-600 font-mono">-</td>
+                      </React.Fragment>
+                    ))}
+                    <td className="p-2 border-r dark:border-slate-600 font-bold font-mono text-blue-800 dark:text-blue-200">{grandTotalCount}</td>
+                    <td className="p-2 text-right font-bold font-mono text-emerald-700 dark:text-emerald-300">₹{grandTotalAmount.toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Distribution stats */}
+            <div className="grid grid-cols-5 gap-4 mt-6">
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Under 10</div>
+                <div className="text-xl font-bold font-mono">{distUnder10}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Under 100</div>
+                <div className="text-xl font-bold font-mono">{distUnder100}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Above 100</div>
+                <div className="text-xl font-bold font-mono">{distAbove100}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Under 20000</div>
+                <div className="text-xl font-bold font-mono">{distUnder20000}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Above 20000</div>
+                <div className="text-xl font-bold font-mono">{distAbove20000}</div>
               </div>
             </div>
 
