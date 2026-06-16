@@ -2051,10 +2051,15 @@ const Reports = () => {
 
   const renderMembership = () => {
     if (activeSubTab === 'Shares Capital') {
-      // Filter members who have shares > 0 and sort alphabetically
+      // Filter members who have shares > 0 and sort numerically by memberNo
       const sharesMembers = members
         .filter(m => (m.shareBalance || 0) > 0)
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => {
+          const numA = parseInt(a.memberNo.replace(/\D/g, '')) || 0;
+          const numB = parseInt(b.memberNo.replace(/\D/g, '')) || 0;
+          if (numA !== numB) return numA - numB;
+          return a.memberNo.localeCompare(b.memberNo);
+        });
 
       const halfLength = Math.ceil(sharesMembers.length / 2);
       const leftHalf = sharesMembers.slice(0, halfLength);
