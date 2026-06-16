@@ -217,8 +217,9 @@ const Transactions = () => {
         setStatusMsg(null);
 
         try {
-            const bFundAmt = (includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
-            const jFundAmt = (includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
+            const isLoanCredit = accountType === AccountType.LOAN && type === TransactionType.CREDIT;
+            const bFundAmt = (isLoanCredit && includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
+            const jFundAmt = (isLoanCredit && includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
             const totalFunds = bFundAmt + jFundAmt;
 
             if (amount < totalFunds) {
