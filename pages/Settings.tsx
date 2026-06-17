@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
-import { Lock, Moon, Sun, Monitor, Download, HardDrive, CalendarRange, Loader2, Check, AlertTriangle, AlertCircle, Copy, CloudDownload, RefreshCw, Sliders, Bot, ToggleLeft, ToggleRight, Smartphone, Cloud, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
+import { Lock, Moon, Sun, Monitor, Download, Upload, HardDrive, CalendarRange, Loader2, Check, AlertTriangle, AlertCircle, Copy, CloudDownload, RefreshCw, Sliders, Bot, ToggleLeft, ToggleRight, Smartphone, Cloud, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { ThemeMode } from '../types';
 import { format } from 'date-fns';
 import { downloadBlob } from '../utils/downloadUtils';
