@@ -79,6 +79,51 @@ const Settings = () => {
         }, 1000);
     };
 
+    const handleUploadBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = JSON.parse(e.target?.result as string);
+                
+                if (!data.members || !Array.isArray(data.members)) {
+                    alert("Invalid Backup File: 'members' list is missing or invalid.");
+                    return;
+                }
+
+                const confirmed = await showConfirm({
+                    title: 'Restore Data from File?',
+                    titleMr: 'फाईलवरून डेटा रिस्टोर करायचा?',
+                    message: `This will OVERWRITE all current data with the backup file containing ${data.members.length} members. This action cannot be undone!`,
+                    messageMr: `हे सध्याचा सर्व डेटा अपलोड केलेल्या फाईलने (${data.members.length} सभासद) बदलून टाकेल. ही क्रिया पूर्ववत करता येणार नाही!`,
+                    icon: '💾',
+                    confirmText: 'Restore / रिस्टोर',
+                    confirmTextMr: 'रिस्टोर करा',
+                    confirmColor: 'red'
+                });
+
+                if (confirmed) {
+                    setIsLoading(true);
+                    if (data.members) localStorage.setItem('members', JSON.stringify(data.members));
+                    if (data.transactions) localStorage.setItem('transactions', JSON.stringify(data.transactions));
+                    if (data.meetings) localStorage.setItem('meetings', JSON.stringify(data.meetings));
+                    if (data.paddyPurchases) localStorage.setItem('paddyPurchases', JSON.stringify(data.paddyPurchases));
+                    if (data.settings) localStorage.setItem('settings', JSON.stringify(data.settings));
+
+                    alert("Data restored successfully! The app will reload.");
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert("Failed to parse backup file: Make sure it is a valid JSON backup file.");
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    };
+
     const handleCloudRestore = async () => {
         const confirmed = await showConfirm({
             title: 'Restore from Cloud?',
@@ -351,10 +396,27 @@ const Settings = () => {
                         </label>
                     </div>
                 </div>
-                <button onClick={handleDownloadBackup} disabled={isLoading} className="w-full p-4 border dark:border-slate-600 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-left transition disabled:opacity-50 flex items-center justify-between">
+                <button onClick={handleDownloadBackup} disabled={isLoading} className="w-full p-4 border dark:border-slate-600 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-left transition disabled:opacity-50 flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3 font-bold text-blue-700 dark:text-blue-300"><Download size={24} /> Download JSON Backup</div>
                     <Download size={20} className="text-blue-400" />
                 </button>
+                <div className="relative w-full">
+                    <input 
+                        type="file" 
+                        accept=".json" 
+                        onChange={handleUploadBackup} 
+                        disabled={isLoading}
+                        className="hidden" 
+                        id="upload-json-backup" 
+                    />
+                    <label 
+                        htmlFor="upload-json-backup"
+                        className="w-full p-4 border dark:border-slate-600 rounded-lg bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-left transition disabled:opacity-50 flex items-center justify-between cursor-pointer font-bold text-amber-700 dark:text-amber-300"
+                    >
+                        <div className="flex items-center gap-3"><Upload size={24} /> Upload & Restore JSON Backup</div>
+                        <Upload size={20} className="text-amber-400" />
+                    </label>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 mb-2 overflow-hidden relative p-6">

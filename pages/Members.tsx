@@ -1021,39 +1021,40 @@ const Members = () => {
             // Use type assertion since we've already checked that existingMember is truthy
             const existing = existingMember as Member;
 
-            // Update only empty fields - preserve existing data
-            const mergeField = (existingVal: any, newVal: any) => {
-              // If existing value is empty/null/0, use new value
-              if (existingVal === '' || existingVal === null || existingVal === undefined || existingVal === 0) {
-                return newVal;
+            const getNewValue = (idx: number, parseFn: (val: any) => any, existingVal: any) => {
+              if (idx !== -1) {
+                const cellVal = values[idx];
+                if (cellVal !== undefined && cellVal !== null && cellVal.trim() !== '') {
+                  return parseFn(cellVal);
+                }
               }
-              return existingVal; // Preserve existing data
+              return existingVal;
             };
 
             const updatedMember: Member = {
               ...existing,
-              name: mergeField(existing.name, name) as string,
-              gender: mergeField(existing.gender, gender) as any,
-              designation: mergeField(existing.designation, idxDesignation !== -1 ? (values[idxDesignation] || 'शेतकरी') : 'शेतकरी') as string,
-              village: mergeField(existing.village, idxVillage !== -1 ? (values[idxVillage] || '') : '') as string,
-              membershipDate: mergeField(existing.membershipDate, membershipDate) as string | undefined,
-              mobile: mergeField(existing.mobile, idxMobile !== -1 ? (values[idxMobile] || '') : '') as string,
-              category: mergeField(existing.category, idxCategory !== -1 ? ((values[idxCategory] || 'OPEN') as any) : 'OPEN') as any,
-              dob: mergeField(existing.dob, dob || '') as string,
-              aadhar: mergeField(existing.aadhar, idxAadhar !== -1 ? (values[idxAadhar] || '') : '') as string,
-              farmerId: mergeField(existing.farmerId, idxFarmerId !== -1 ? (values[idxFarmerId] || '') : '') as string,
-              bankAccountNo: mergeField(existing.bankAccountNo, idxBankAcc !== -1 ? (values[idxBankAcc] || '') : '') as string,
-              landArea: mergeField(existing.landArea, idxLand !== -1 ? (values[idxLand] || '') : '') as string,
-              loanAccountNo: mergeField(existing.loanAccountNo, idxLoanAcc !== -1 ? (values[idxLoanAcc] || '') : '') as string,
-              loanType: mergeField(existing.loanType, parsedLoanType || 'Short Term') as any,
-              loanPrincipal: mergeField(existing.loanPrincipal, lastLoanPrincipal || originalLoanPrincipal) as number,
-              loanInterestDue: mergeField(existing.loanInterestDue, idxLoanInterest !== -1 ? parseNumberSafe(values[idxLoanInterest]) : 0) as number,
-              lastLoanCalculationDate: mergeField(existing.lastLoanCalculationDate, lastPaymentDate || originalLoanDate) as string | undefined,
-              originalLoanDate: mergeField(existing.originalLoanDate, originalLoanDate) as string | undefined,
-              savingsBalance: mergeField(existing.savingsBalance, idxSavings !== -1 ? parseNumberSafe(values[idxSavings]) : 0) as number,
-              shareBalance: mergeField(existing.shareBalance, idxShare !== -1 ? parseNumberSafe(values[idxShare]) : 0) as number,
-              fdBalance: mergeField(existing.fdBalance, idxFD !== -1 ? parseNumberSafe(values[idxFD]) : 0) as number,
-              ledgerPageNo: mergeField(existing.ledgerPageNo, idxLedgerPageNo !== -1 ? values[idxLedgerPageNo] : '') as string | undefined,
+              name: getNewValue(idxName, v => v, existing.name) as string,
+              gender: getNewValue(idxGender, v => (v === 'Female' || v === 'Other') ? v : 'Male', existing.gender) as any,
+              designation: getNewValue(idxDesignation, v => v || 'शेतकरी', existing.designation) as string,
+              village: getNewValue(idxVillage, v => v, existing.village) as string,
+              membershipDate: getNewValue(idxMembershipDate, () => membershipDate, existing.membershipDate) as string | undefined,
+              mobile: getNewValue(idxMobile, v => v, existing.mobile) as string,
+              category: getNewValue(idxCategory, v => v || 'OPEN', existing.category) as any,
+              dob: getNewValue(idxDOB, () => dob, existing.dob) as string,
+              aadhar: getNewValue(idxAadhar, v => v, existing.aadhar) as string,
+              farmerId: getNewValue(idxFarmerId, v => v, existing.farmerId) as string,
+              bankAccountNo: getNewValue(idxBankAcc, v => v, existing.bankAccountNo) as string,
+              landArea: getNewValue(idxLand, v => v, existing.landArea) as string,
+              loanAccountNo: getNewValue(idxLoanAcc, v => v, existing.loanAccountNo) as string,
+              loanType: getNewValue(idxLoanType, () => parsedLoanType || 'Short Term', existing.loanType) as any,
+              loanPrincipal: getNewValue(idxLastLoanPrin !== -1 ? idxLastLoanPrin : idxOriginalLoanPrin, parseNumberSafe, existing.loanPrincipal) as number,
+              loanInterestDue: getNewValue(idxLoanInterest, parseNumberSafe, existing.loanInterestDue) as number,
+              lastLoanCalculationDate: getNewValue(idxLastPaymentDate !== -1 ? idxLastPaymentDate : idxOriginalLoanDate, () => lastPaymentDate || originalLoanDate, existing.lastLoanCalculationDate) as string | undefined,
+              originalLoanDate: getNewValue(idxOriginalLoanDate, () => originalLoanDate, existing.originalLoanDate) as string | undefined,
+              savingsBalance: getNewValue(idxSavings, parseNumberSafe, existing.savingsBalance) as number,
+              shareBalance: getNewValue(idxShare, parseNumberSafe, existing.shareBalance) as number,
+              fdBalance: getNewValue(idxFD, parseNumberSafe, existing.fdBalance) as number,
+              ledgerPageNo: getNewValue(idxLedgerPageNo, v => v, existing.ledgerPageNo) as string | undefined,
             };
             updatedMembers.push(updatedMember);
             stats.updated++;
