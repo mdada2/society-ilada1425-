@@ -125,6 +125,7 @@ const Reports = () => {
         : (settings.financialYearEnd || '2027-03-31'));
 
   const [repaidFilter, setRepaidFilter] = useState<'repaid' | 'outstanding'>('repaid');
+  const [deshmukhFY, setDeshmukhFY] = useState<string>('2025-26');
 
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
@@ -3219,23 +3220,44 @@ const Reports = () => {
   };
 
   const renderSchemes = () => {
-    if (activeSubTab === 'Dr. P. Deshmukh Incentive') {
-      const startDate = new Date('2025-04-01');
-      const endDate = new Date('2026-06-30');
+    const startYear = parseInt(deshmukhFY.split('-')[0]);
+    const endYear = startYear + 1;
+    const startDate = new Date(`${startYear}-04-01`);
+    const endDate = new Date(`${endYear}-06-30`);
+    const deshmukCutoff = new Date(`${endYear}-06-30`);
 
+    const fySelector = (
+      <div className="mb-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border dark:border-slate-700 flex justify-between items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-bold text-slate-700 dark:text-slate-200">आर्थिक वर्ष निवडा (Select FY):</label>
+          <select 
+            value={deshmukhFY} 
+            onChange={(e) => setDeshmukhFY(e.target.value)}
+            className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+          >
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27">2026-27</option>
+          </select>
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold bg-emerald-100/50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-lg text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/30">
+          कालावधी: ०१ एप्रिल {startYear} ते ३० जून {endYear} (कटऑफ तारीख: ३०-०६-{endYear})
+        </span>
+      </div>
+    );
+
+    if (activeSubTab === 'Dr. P. Deshmukh Incentive') {
       const incentiveData = members
         .filter(m => {
           if (!m.currentLoanRequestDate && !m.lastLoanCalculationDate && !m.originalLoanDate) return false;
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
+          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
           const d = new Date(dStr);
           return d >= startDate && d <= endDate;
         })
         .map((m, idx) => {
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
-          // loanPrincipal <= 0 = repaid (negative value = waiver artifact)
+          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
           const isRepaid = m.loanPrincipal <= 0;
 
-          // मूळ कर्ज रक्कम: सर्व DEBIT Loan txn ची बेरीज (50000 hardcoded नाही!)
           const totalDebits = transactions
             .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan')
             .reduce((sum, t) => sum + t.amount, 0);
@@ -3248,10 +3270,6 @@ const Reports = () => {
             ? totalDebits
             : (isRepaid ? totalPrincipalRepaid : Math.max(0, m.loanPrincipal));
 
-          // Dr. P. Deshmukh कालावधी: 30 जून 2026 पर्यंत
-          const deshmukCutoff = new Date('2026-06-30');
-
-          // Actual repayment date: 30 जून पर्यंतचा सर्वात शेवटचा CREDIT Loan txn
           const repaymentTxn = isRepaid
             ? transactions
                 .filter(t =>
@@ -3264,18 +3282,15 @@ const Reports = () => {
             : null;
           const repaymentDateStr = repaymentTxn ? repaymentTxn.date : null;
 
-          // परतफेड 30 जून पूर्वी झाली का?
           const repaidBeforeCutoff = repaymentTxn
             ? new Date(repaymentTxn.date) <= deshmukCutoff
             : false;
 
-          // दिवस: repaid असल्यास loan date → repayment date, अन्यथा आजपर्यंत
           const toDate = repaymentDateStr ? new Date(repaymentDateStr) : new Date();
           const days = differenceInDays(toDate, new Date(loanDate));
 
           const productValue = principal * days;
           const productStr = productValue.toLocaleString();
-          // 3% subsidy फक्त 30 जून पूर्वी परतफेड झाल्यासच
           const incentive = repaidBeforeCutoff ? Math.round(principal * 0.03) : null;
 
           return {
@@ -3293,19 +3308,16 @@ const Reports = () => {
           };
         });
 
-
-
-
       const columns: Column<typeof incentiveData[0]>[] = [
         { header: 'अ. क्र.', accessorKey: 'id', width: '50px' },
-        { header: 'सभासदांचे नाव', accessorKey: 'name', className: 'font-bold text-slate-700' },
+        { header: 'सभासदांचे नाव', accessorKey: 'name', className: 'font-bold text-slate-700 dark:text-slate-300' },
         { header: 'प्रवर्ग', accessorKey: 'category' },
         { header: 'गांव', accessorKey: 'village' },
         { header: 'कर्ज तारीख', accessorKey: 'loanDate', render: (i) => fmtDateDMY(i.loanDate) },
         { header: 'परतफेड दिनांक', accessorKey: 'repaymentDate', render: (i) => fmtDateDMY(i.repaymentDate) },
         { header: 'दिवस', accessorKey: 'days' },
         { header: 'मुद्दल', accessorKey: 'principal', render: (i) => `${i.principal.toLocaleString()}` },
-        { header: 'प्रॉडक्ट', accessorKey: 'product', width: '200px', className: 'text-xs font-mono text-slate-600' },
+        { header: 'प्रॉडक्ट', accessorKey: 'product', width: '200px', className: 'text-xs font-mono text-slate-600 dark:text-slate-400' },
         {
           header: '3% व्याज सवलत रक्कम',
           accessorKey: 'subsidy',
@@ -3315,13 +3327,15 @@ const Reports = () => {
         { header: 'बँक खाते', accessorKey: 'bankAccount', className: 'font-mono text-xs' },
       ];
 
-      return <ReportTable title="Dr. P. Deshmukh Interest Subvention (3%)" columns={columns} data={incentiveData} />;
+      return (
+        <div className="flex flex-col gap-4">
+          {fySelector}
+          <ReportTable title="Dr. P. Deshmukh Interest Subvention (3%)" columns={columns} data={incentiveData} />
+        </div>
+      );
     }
 
     if (activeSubTab === 'Summary') {
-      const startDate = new Date('2025-04-01');
-      const endDate = new Date('2026-06-30');
-
       const getCategoryLabel = (cat: string) => {
         switch (cat) {
           case 'ST': return 'आदिवासी घटक (ST)';
@@ -3337,11 +3351,9 @@ const Reports = () => {
       const summaryData = categories.map((cat, idx) => {
         const filteredMembers = members.filter(m => {
           if (m.category !== cat) return false;
-
-          // Only include members with active loans (current borrowers)
           if ((m.loanPrincipal || 0) <= 0) return false;
 
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
+          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
           const d = new Date(dStr);
           return d >= startDate && d <= endDate;
         });
@@ -3349,7 +3361,7 @@ const Reports = () => {
         let disbursement = 0, repayment = 0, totalProduct = 0, incentive = 0;
 
         filteredMembers.forEach(m => {
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || '2025-04-01';
+          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
           const principal = m.loanPrincipal > 0 ? m.loanPrincipal : 50000;
           const days = differenceInDays(new Date(), new Date(loanDate));
           const isRepaid = m.loanPrincipal === 0;
@@ -3400,7 +3412,12 @@ const Reports = () => {
         { header: 'एकूण व्याज सवलत लाभाची रक्कम', accessorKey: 'totalBenefit', render: (i) => i.totalBenefit.toLocaleString(), className: 'text-green-600 font-bold' },
       ];
 
-      return <ReportTable title="Govt Schemes Summary (एकत्रीकरण)" columns={columns} data={summaryData} />;
+      return (
+        <div className="flex flex-col gap-4">
+          {fySelector}
+          <ReportTable title="Govt Schemes Summary (एकत्रीकरण)" columns={columns} data={summaryData} />
+        </div>
+      );
     }
 
     return <div className="p-8 text-center text-slate-500">Feature '{activeSubTab}' is under development.</div>;
