@@ -8,44 +8,64 @@ import { format } from 'date-fns';
 
 // --- 1. Export Members to Excel ---
 export const exportMembersToExcel = (members: Member[], returnBlob: boolean = false): void | { blob: Blob, fileName: string } => {
-    // Prepare data for Excel
+    // Prepare data for Excel using exact same headers as the Import Template
     const data = members.map(m => ({
-        'Member ID': m.memberNo,
+        'MemberNo': m.memberNo,
         'Name': m.name,
-        'Mobile': m.mobile,
-        'Village': m.village,
-        'Gender': m.gender,
         'Designation': m.designation || 'शेतकरी',
+        'Gender': m.gender,
+        'Village': m.village,
+        'MembershipDate': m.membershipDate || '',
+        'Mobile': m.mobile || '',
         'Category': m.category,
-        'Farmer ID': m.farmerId || '',
-        'Ledger Page No / खाते पान क्र.': m.ledgerPageNo || '',
-        'Savings Balance': m.savingsBalance || 0,
-        'Share Balance': m.shareBalance || 0,
-        'Loan Principal': m.loanPrincipal || 0,
-        'Loan Interest': m.loanInterestDue || 0,
-        'Total Outstanding': (m.loanPrincipal || 0) + (m.loanInterestDue || 0)
+        'DOB': m.dob || '',
+        'Aadhar': m.aadhar || '',
+        'FarmerId': m.farmerId || '',
+        'OriginalLoanPrincipal': m.loanPrincipal || 0,
+        'OriginalLoanDate': m.originalLoanDate || '',
+        'LastLoanPrincipal': m.loanPrincipal || 0,
+        'LastPaymentDate': m.lastLoanCalculationDate || '',
+        'LoanInterestDue': m.loanInterestDue || 0,
+        'LoanAccountNo': m.loanAccountNo || '',
+        'LoanType': m.loanType || '',
+        'BankAccountNo': m.bankAccountNo || '',
+        'LandArea': m.landArea || '',
+        'SavingsBalance': m.savingsBalance || 0,
+        'ShareBalance': m.shareBalance || 0,
+        'FDBalance': m.fdBalance || 0,
+        'खाते पान क्र.': m.ledgerPageNo || ''
     }));
 
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
 
-    // Set column widths
+    // Set column widths for all 24 columns
     ws['!cols'] = [
-        { wch: 10 }, // Member ID
+        { wch: 12 }, // MemberNo
         { wch: 25 }, // Name
-        { wch: 12 }, // Mobile
-        { wch: 20 }, // Village
-        { wch: 10 }, // Gender
         { wch: 15 }, // Designation
+        { wch: 10 }, // Gender
+        { wch: 20 }, // Village
+        { wch: 15 }, // MembershipDate
+        { wch: 12 }, // Mobile
         { wch: 12 }, // Category
-        { wch: 16 }, // Farmer ID
-        { wch: 25 }, // Ledger Page No / खाते पान क्र.
-        { wch: 15 }, // Savings Balance
-        { wch: 15 }, // Share Balance
-        { wch: 15 }, // Loan Principal
-        { wch: 15 }, // Loan Interest
-        { wch: 18 }  // Total Outstanding
+        { wch: 15 }, // DOB
+        { wch: 15 }, // Aadhar
+        { wch: 16 }, // FarmerId
+        { wch: 20 }, // OriginalLoanPrincipal
+        { wch: 15 }, // OriginalLoanDate
+        { wch: 20 }, // LastLoanPrincipal
+        { wch: 15 }, // LastPaymentDate
+        { wch: 15 }, // LoanInterestDue
+        { wch: 15 }, // LoanAccountNo
+        { wch: 15 }, // LoanType
+        { wch: 15 }, // BankAccountNo
+        { wch: 12 }, // LandArea
+        { wch: 15 }, // SavingsBalance
+        { wch: 15 }, // ShareBalance
+        { wch: 15 }, // FDBalance
+        { wch: 15 }  // खाते पान क्र.
     ];
 
     // Add worksheet to workbook
