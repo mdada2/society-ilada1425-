@@ -1047,9 +1047,21 @@ const Members = () => {
               landArea: getNewValue(idxLand, v => v, existing.landArea) as string,
               loanAccountNo: getNewValue(idxLoanAcc, v => v, existing.loanAccountNo) as string,
               loanType: getNewValue(idxLoanType, () => parsedLoanType || 'Short Term', existing.loanType) as any,
-              loanPrincipal: getNewValue(idxLastLoanPrin !== -1 ? idxLastLoanPrin : idxOriginalLoanPrin, parseNumberSafe, existing.loanPrincipal) as number,
+              loanPrincipal: (() => {
+                const valLast = idxLastLoanPrin !== -1 ? values[idxLastLoanPrin] : '';
+                const valOrig = idxOriginalLoanPrin !== -1 ? values[idxOriginalLoanPrin] : '';
+                if (valLast !== undefined && valLast !== null && valLast.trim() !== '') return parseNumberSafe(valLast);
+                if (valOrig !== undefined && valOrig !== null && valOrig.trim() !== '') return parseNumberSafe(valOrig);
+                return existing.loanPrincipal;
+              })() as number,
               loanInterestDue: getNewValue(idxLoanInterest, parseNumberSafe, existing.loanInterestDue) as number,
-              lastLoanCalculationDate: getNewValue(idxLastPaymentDate !== -1 ? idxLastPaymentDate : idxOriginalLoanDate, () => lastPaymentDate || originalLoanDate, existing.lastLoanCalculationDate) as string | undefined,
+              lastLoanCalculationDate: (() => {
+                const valLast = idxLastPaymentDate !== -1 ? values[idxLastPaymentDate] : '';
+                const valOrig = idxOriginalLoanDate !== -1 ? values[idxOriginalLoanDate] : '';
+                if (valLast !== undefined && valLast !== null && valLast.trim() !== '') return lastPaymentDate;
+                if (valOrig !== undefined && valOrig !== null && valOrig.trim() !== '') return originalLoanDate;
+                return existing.lastLoanCalculationDate;
+              })() as string | undefined,
               originalLoanDate: getNewValue(idxOriginalLoanDate, () => originalLoanDate, existing.originalLoanDate) as string | undefined,
               savingsBalance: getNewValue(idxSavings, parseNumberSafe, existing.savingsBalance) as number,
               shareBalance: getNewValue(idxShare, parseNumberSafe, existing.shareBalance) as number,
