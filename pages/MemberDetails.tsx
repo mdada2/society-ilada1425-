@@ -790,6 +790,31 @@ const MemberDetails = () => {
                             <input type="date" value={formData.lastLoanCalculationDate || ''} onChange={e => setFormData({ ...formData, lastLoanCalculationDate: e.target.value })}
                                 className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
                         </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Share Balance (शेअर्स रक्कम) ₹</label>
+                            <input type="number" value={formData.shareBalance ?? 0} onChange={e => setFormData({ ...formData, shareBalance: parseFloat(e.target.value) || 0 })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Savings Balance (बचत रक्कम) ₹</label>
+                            <input type="number" value={formData.savingsBalance ?? 0} onChange={e => setFormData({ ...formData, savingsBalance: parseFloat(e.target.value) || 0 })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">FD Balance (मुदत ठेव) ₹</label>
+                            <input type="number" value={formData.fdBalance ?? 0} onChange={e => setFormData({ ...formData, fdBalance: parseFloat(e.target.value) || 0 })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Loan Principal (कर्ज मुद्दल) ₹</label>
+                            <input type="number" value={formData.loanPrincipal ?? 0} onChange={e => setFormData({ ...formData, loanPrincipal: parseFloat(e.target.value) || 0 })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Loan Interest Due (कर्ज व्याज बाकी) ₹</label>
+                            <input type="number" value={formData.loanInterestDue ?? 0} onChange={e => setFormData({ ...formData, loanInterestDue: parseFloat(e.target.value) || 0 })}
+                                className="bg-white text-slate-900 border-slate-300 w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm border-t dark:border-slate-700 pt-4 text-slate-600 dark:text-slate-300">
