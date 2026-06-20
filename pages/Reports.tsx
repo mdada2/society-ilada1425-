@@ -126,11 +126,13 @@ const Reports = () => {
 
   const [repaidFilter, setRepaidFilter] = useState<'repaid' | 'outstanding'>('repaid');
   const [deshmukhFY, setDeshmukhFY] = useState<string>('2025-26');
+  const [deshmukhCategory, setDeshmukhCategory] = useState<string>('ALL');
 
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
     setSelectedFYRange(null);
     setRepaidFilter('repaid');
+    setDeshmukhCategory('ALL');
   }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string, isNPAMode = false) => {
@@ -3228,17 +3230,36 @@ const Reports = () => {
 
     const fySelector = (
       <div className="mb-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border dark:border-slate-700 flex justify-between items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-bold text-slate-700 dark:text-slate-200">आर्थिक वर्ष निवडा (Select FY):</label>
-          <select 
-            value={deshmukhFY} 
-            onChange={(e) => setDeshmukhFY(e.target.value)}
-            className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-          >
-            <option value="2024-25">2024-25</option>
-            <option value="2025-26">2025-26</option>
-            <option value="2026-27">2026-27</option>
-          </select>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-200">आर्थिक वर्ष निवडा (Select FY):</label>
+            <select 
+              value={deshmukhFY} 
+              onChange={(e) => setDeshmukhFY(e.target.value)}
+              className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+            >
+              <option value="2024-25">2024-25</option>
+              <option value="2025-26">2025-26</option>
+              <option value="2026-27">2026-27</option>
+            </select>
+          </div>
+
+          {activeSubTab === 'Dr. P. Deshmukh Incentive' && (
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-200">प्रवर्ग निवडा (Category):</label>
+              <select 
+                value={deshmukhCategory} 
+                onChange={(e) => setDeshmukhCategory(e.target.value)}
+                className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              >
+                <option value="ALL">सर्व (ALL)</option>
+                <option value="ST">अनुसूचित जमाती (ST)</option>
+                <option value="SC">अनुसूचित जाती (SC)</option>
+                <option value="OBC">इतर मागासवर्गीय (OBC)</option>
+                <option value="OPEN">सर्वसाधारण (OPEN)</option>
+              </select>
+            </div>
+          )}
         </div>
         <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold bg-emerald-100/50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-lg text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/30">
           कालावधी: ०१ एप्रिल {startYear} ते ३० जून {endYear} (कटऑफ तारीख: ३०-०६-{endYear})
@@ -3247,12 +3268,25 @@ const Reports = () => {
     );
 
     if (activeSubTab === 'Dr. P. Deshmukh Incentive') {
+      const getCategoryHeaderLabel = (cat: string) => {
+        switch (cat) {
+          case 'ST': return 'अनुसूचित जमाती (ST)';
+          case 'SC': return 'अनुसूचित जाती (SC)';
+          case 'OBC': return 'इतर मागासवर्गीय (OBC)';
+          case 'OPEN': return 'सर्वसाधारण (OPEN)';
+          default: return 'सर्व';
+        }
+      };
+
       const incentiveData = members
         .filter(m => {
           if (!m.currentLoanRequestDate && !m.lastLoanCalculationDate && !m.originalLoanDate) return false;
           const dStr = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
           const d = new Date(dStr);
-          return d >= startDate && d <= endDate;
+          const dateMatch = d >= startDate && d <= endDate;
+          if (!dateMatch) return false;
+          if (deshmukhCategory !== 'ALL' && m.category !== deshmukhCategory) return false;
+          return true;
         })
         .map((m, idx) => {
           const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
@@ -3304,12 +3338,227 @@ const Reports = () => {
             principal: principal,
             product: productStr,
             subsidy: incentive,
-            bankAccount: m.bankAccountNo || 'N/A'
+            bankAccount: m.bankAccountNo || 'N/A',
+            ledgerPageNo: m.ledgerPageNo || ''
           };
         });
 
+      const handleDeshmukhDetailedExport = () => {
+        const ws: any = {};
+        const merges: any[] = [];
+
+        // Styles
+        const subtitleStyle = { font: { name: 'Calibri', sz: 12, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const metaStyleLeft = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'left', vertical: 'center' } };
+        const metaStyleRight = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'right', vertical: 'center' } };
+        const metaStyleCenter = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        
+        const headerStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'F5EBE6' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const cellCenter = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const cellLeft = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'left', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const cellRight = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const totalStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const totalStyleRight = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        ws['A1'] = { v: "डॉ.पंजाबराव देशमुख व्याज सवलत योजना - व्याज सवलत अनुदान मागणी प्रस्ताव", t: 's', s: subtitleStyle };
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 14 } });
+
+        ws['A2'] = { v: "आदिवासी विविध कार्यकारी सहकारी संस्था मर्या. ईळदा र.नं. १४२५", t: 's', s: subtitleStyle };
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 14 } });
+
+        ws['A3'] = { v: "तालुका:- अर्जुनी/मोरगाव जिल्हा:- गोंदिया", t: 's', s: subtitleStyle };
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 14 } });
+
+        ws['A5'] = { v: "बँक शाखा:- केशोरी", t: 's', s: metaStyleLeft };
+        merges.push({ s: { r: 4, c: 0 }, e: { r: 4, c: 3 } });
+
+        ws['E5'] = { v: "IFS Code:- UTIB0SGDC01", t: 's', s: metaStyleCenter };
+        merges.push({ s: { r: 4, c: 4 }, e: { r: 4, c: 8 } });
+
+        ws['J5'] = { v: "खाते क्र. : - ०२००३०२०००००००२", t: 's', s: metaStyleRight };
+        merges.push({ s: { r: 4, c: 9 }, e: { r: 4, c: 14 } });
+
+        ws['A6'] = { v: `पिक कर्ज वाटप वर्ष/कालावधी :- ०१/०४/${startYear} ते ३०/०६/${endYear}`, t: 's', s: metaStyleLeft };
+        merges.push({ s: { r: 5, c: 0 }, e: { r: 5, c: 9 } });
+
+        ws['K6'] = { v: `प्रवर्ग - ${getCategoryHeaderLabel(deshmukhCategory)}`, t: 's', s: metaStyleRight };
+        merges.push({ s: { r: 5, c: 10 }, e: { r: 5, c: 14 } });
+
+        const row8 = ["अ.क्र.", "खाते पान क्र.", "शेतकऱ्याचे पूर्ण नाव", "जात", "गाव", "पिकाचे नाव", "पीक कर्ज उचल (रु. ३ लाखा पर्यंत)", "", "कर्ज वसुली", "", "", "कर्ज वाटप दिवस उचल तारखेपासून वसूल तारखे पर्यंत", "प्रॉडक्ट", "वार्षिक तीन टक्के दराने व्याज सवलतीची रक्कम", "बचत खात्याचा तपशील (बँक शाखा. IFSC, खाते क्र.)"];
+        row8.forEach((val, colIdx) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 7, c: colIdx });
+          ws[cellRef] = { v: val, t: 's', s: headerStyle };
+        });
+
+        const row9 = ["", "", "", "", "", "", "दिनांक", "रक्कम", "दिनांक", "रक्कम", "व्याज", "", "", "", ""];
+        row9.forEach((val, colIdx) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 8, c: colIdx });
+          ws[cellRef] = { v: val, t: 's', s: headerStyle };
+        });
+
+        for (let colIdx = 0; colIdx < 15; colIdx++) {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 9, c: colIdx });
+          ws[cellRef] = { v: colIdx + 1, t: 'n', s: headerStyle };
+        }
+
+        merges.push({ s: { r: 7, c: 0 }, e: { r: 8, c: 0 } });
+        merges.push({ s: { r: 7, c: 1 }, e: { r: 8, c: 1 } });
+        merges.push({ s: { r: 7, c: 2 }, e: { r: 8, c: 2 } });
+        merges.push({ s: { r: 7, c: 3 }, e: { r: 8, c: 3 } });
+        merges.push({ s: { r: 7, c: 4 }, e: { r: 8, c: 4 } });
+        merges.push({ s: { r: 7, c: 5 }, e: { r: 8, c: 5 } });
+        merges.push({ s: { r: 7, c: 6 }, e: { r: 7, c: 7 } });
+        merges.push({ s: { r: 7, c: 8 }, e: { r: 7, c: 10 } });
+        merges.push({ s: { r: 7, c: 11 }, e: { r: 8, c: 11 } });
+        merges.push({ s: { r: 7, c: 12 }, e: { r: 8, c: 12 } });
+        merges.push({ s: { r: 7, c: 13 }, e: { r: 8, c: 13 } });
+        merges.push({ s: { r: 7, c: 14 }, e: { r: 8, c: 14 } });
+
+        let rowIdx = 10;
+        let totalPrincipal = 0;
+        let totalRecovery = 0;
+        let totalProduct = 0;
+        let totalSubsidy = 0;
+
+        incentiveData.forEach((item, idx) => {
+          const isRepaidVal = item.repaymentDate !== 'Ongoing (सुरु)' && item.repaymentDate !== '-';
+          const recAmt = isRepaidVal ? item.principal : 0;
+          const subAmt = item.subsidy || 0;
+
+          totalPrincipal += item.principal;
+          totalRecovery += recAmt;
+          totalProduct += (item.principal * item.days);
+          totalSubsidy += subAmt;
+
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: idx + 1, t: 'n', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 1 })] = { v: item.ledgerPageNo || '', t: 's', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 2 })] = { v: item.name, t: 's', s: cellLeft };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 3 })] = { v: item.category, t: 's', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 4 })] = { v: item.village, t: 's', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 5 })] = { v: 'भात पिक', t: 's', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 6 })] = { v: fmtDateDMY(item.loanDate), t: 's', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 7 })] = { v: item.principal, t: 'n', s: cellRight };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 8 })] = { v: isRepaidVal ? fmtDateDMY(item.repaymentDate) : '-', t: 's', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 9 })] = { v: recAmt, t: 'n', s: cellRight };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 10 })] = { v: '', t: 's', s: cellRight };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 11 })] = { v: item.days, t: 'n', s: cellCenter };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 12 })] = { v: (item.principal * item.days), t: 'n', s: cellRight };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 13 })] = { v: subAmt > 0 ? subAmt : '', t: 's', s: cellRight };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 14 })] = { v: item.bankAccount || '', t: 's', s: cellCenter };
+
+          rowIdx++;
+        });
+
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: '', t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 1 })] = { v: '', t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 2 })] = { v: 'एकूण', t: 's', s: totalStyle };
+        merges.push({ s: { r: rowIdx, c: 2 }, e: { r: rowIdx, c: 5 } });
+        for (let c = 3; c <= 5; c++) ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: c })] = { v: '', t: 's', s: totalStyle };
+
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 6 })] = { v: '', t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 7 })] = { v: totalPrincipal, t: 'n', s: totalStyleRight };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 8 })] = { v: '', t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 9 })] = { v: totalRecovery, t: 'n', s: totalStyleRight };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 10 })] = { v: '', t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 11 })] = { v: '', t: 's', s: totalStyle };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 12 })] = { v: totalProduct, t: 'n', s: totalStyleRight };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 13 })] = { v: totalSubsidy, t: 'n', s: totalStyleRight };
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 14 })] = { v: '', t: 's', s: totalStyle };
+
+        rowIdx += 2;
+
+        const certStyleTitle = { font: { name: 'Calibri', sz: 12, bold: true, underline: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const certStyleBody = { font: { name: 'Calibri', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true } };
+
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: "प्रमाणपत्र-", t: 's', s: certStyleTitle };
+        merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx, c: 14 } });
+        rowIdx++;
+
+        const totalBeneficiaries = incentiveData.length;
+        const formattedTotalBeneficiaries = totalBeneficiaries < 10 ? `०${totalBeneficiaries}` : String(totalBeneficiaries);
+        const certText = `प्रमाणित करण्यात येते कि , १) उक्त विवरणपत्राप्रमाणे नमुद ०१ ते ${formattedTotalBeneficiaries} लाभार्थी संस्थेचे कर्जदार असुन विवरणपत्रात नमुद कर्जे ही पीक आहेत. २) सदर कर्जाची उचल दिनांक ०१/०४/${startYear} नंतर झाली आहे. ३) उचल केलेल्या पीक कर्जाची विहीत मुदतीत संपुर्ण वसुली झाली आहे व सदर शेतकरी डॉ. पंजाबराव देशमुख व्याज सवलत योजने अंतर्गत लाभास पात्र आहेत.`;
+        
+        ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: certText, t: 's', s: certStyleBody };
+        merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx + 2, c: 14 } });
+
+        ws['!merges'] = merges;
+        ws['!ref'] = `A1:O${rowIdx + 3}`;
+        ws['!cols'] = [
+          { wch: 6 },  { wch: 10 }, { wch: 25 }, { wch: 8 },  { wch: 12 },
+          { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+          { wch: 8 },  { wch: 10 }, { wch: 16 }, { wch: 14 }, { wch: 22 }
+        ];
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Deshmukh Incentive List");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Dr_Panjabrao_Deshmukh_Incentive_List_${deshmukhFY}_${deshmukhCategory}.xlsx`);
+      };
+
       const columns: Column<typeof incentiveData[0]>[] = [
         { header: 'अ. क्र.', accessorKey: 'id', width: '50px' },
+        { header: 'खाते पान क्र.', accessorKey: 'ledgerPageNo', width: '70px', className: 'font-mono text-center' },
         { header: 'सभासदांचे नाव', accessorKey: 'name', className: 'font-bold text-slate-700 dark:text-slate-300' },
         { header: 'प्रवर्ग', accessorKey: 'category' },
         { header: 'गांव', accessorKey: 'village' },
@@ -3328,9 +3577,29 @@ const Reports = () => {
       ];
 
       return (
-        <div className="flex flex-col gap-4">
-          {fySelector}
-          <ReportTable title="Dr. P. Deshmukh Interest Subvention (3%)" columns={columns} data={incentiveData} />
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">डॉ. पंजाबराव देशमुख व्याज सवलत योजना यादी</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">Detailed list for Dr. P. Deshmukh Interest Subvention</p>
+            </div>
+            <button
+              onClick={handleDeshmukhDetailedExport}
+              className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+            >
+              <Download size={16} /> Export Excel (प्रमाणपत्रासह)
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
+            {fySelector}
+            <div className="flex-1 overflow-auto">
+              <ReportTable title="" columns={columns} data={incentiveData} />
+            </div>
+            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl border dark:border-slate-600 text-xs text-slate-600 dark:text-slate-300">
+              <h4 className="font-bold underline mb-1">प्रमाणपत्र-</h4>
+              <p>प्रमाणित करण्यात येते कि , १) उक्त विवरणपत्राप्रमाणे नमुद ०१ ते {incentiveData.length < 10 ? `०${incentiveData.length}` : incentiveData.length} लाभार्थी संस्थेचे कर्जदार असुन विवरणपत्रात नमुद कर्जे ही पीक आहेत. २) सदर कर्जाची उचल दिनांक ०१/०४/{startYear} नंतर झाली आहे. ३) उचल केलेल्या पीक कर्जाची विहीत मुदतीत संपुर्ण वसुली झाली आहे व सदर शेतकरी डॉ. पंजाबराव देशमुख व्याज सवलत योजने अंतर्गत लाभास पात्र आहेत.</p>
+            </div>
+          </div>
         </div>
       );
     }
@@ -3385,20 +3654,159 @@ const Reports = () => {
         };
       }).filter(item => item.memberCount > 0);
 
-      if (summaryData.length > 0) {
-        const totals = summaryData.reduce((acc, curr) => ({
-          id: 0,
-          category: 'एकूण',
-          crop: '',
-          memberCount: acc.memberCount + curr.memberCount,
-          disbursement: acc.disbursement + curr.disbursement,
-          repayment: acc.repayment + curr.repayment,
-          product: acc.product + curr.product,
-          subsidy: acc.subsidy + curr.subsidy,
-          totalBenefit: acc.totalBenefit + curr.totalBenefit
-        }), { memberCount: 0, disbursement: 0, repayment: 0, product: 0, subsidy: 0, totalBenefit: 0 } as any);
-        summaryData.push(totals);
-      }
+      const handleDeshmukhSummaryExport = () => {
+        const ws: any = {};
+        const merges: any[] = [];
+
+        // Styles
+        const titleStyle = { font: { name: 'Calibri', sz: 10, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const subtitleStyle = { font: { name: 'Calibri', sz: 12, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const metaStyleLeft = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'left', vertical: 'center' } };
+        const metaStyleRight = { font: { name: 'Calibri', sz: 9, bold: true }, alignment: { horizontal: 'right', vertical: 'center' } };
+
+        const headerStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'E2E8F0' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const cellCenter = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+
+        const cellLeft = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'left', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+
+        const cellRight = {
+          font: { name: 'Calibri', sz: 9 },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+
+        const totalStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        const totalStyleRight = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+
+        ws['A1'] = { v: "संस्थेचे नाव :- आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५", t: 's', s: subtitleStyle };
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } });
+
+        ws['A2'] = { v: "डॉ. पंजाबराव देशमुख ३% दराने पीक प्रोत्साहन व्याज सवलत योजना अनुदान मागणी प्रस्ताव", t: 's', s: subtitleStyle };
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 8 } });
+
+        ws['A4'] = { v: "बँकेचे व शाखेचे नाव :- केशोरी", t: 's', s: metaStyleLeft };
+        merges.push({ s: { r: 3, c: 0 }, e: { r: 3, c: 3 } });
+
+        ws['G4'] = { v: `हंगाम वर्ष (कर्ज वाटप) :- ${deshmukhFY}`, t: 's', s: metaStyleRight };
+        merges.push({ s: { r: 3, c: 6 }, e: { r: 3, c: 8 } });
+
+        ws['A5'] = { v: `पिक कर्ज वाटप वर्ष/कालावधी :- ०१/०४/${startYear} ते ३०/०६/${endYear}   ( एकत्रीकरण )`, t: 's', s: titleStyle };
+        merges.push({ s: { r: 4, c: 0 }, e: { r: 4, c: 8 } });
+
+        const headers1 = ["अ. क्र.", "प्रकार", "पिकाचे नाव", "सभासद संख्या", "कर्जवाटप रक्कम", "कर्ज परतफेड", "प्रॉडक्ट", "३% व्याज सवलत रुपये", "एकूण व्याज सवलत लाभाची रक्कम"];
+        headers1.forEach((val, colIdx) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 6, c: colIdx });
+          ws[cellRef] = { v: val, t: 's', s: headerStyle };
+        });
+
+        for (let colIdx = 0; colIdx < 9; colIdx++) {
+          const cellRef = XLSXStyle.utils.encode_cell({ r: 7, c: colIdx });
+          ws[cellRef] = { v: colIdx + 1, t: 'n', s: headerStyle };
+        }
+
+        let rowIdx = 8;
+        const allDataRows = [...summaryData];
+        if (allDataRows.length > 0) {
+          const totals = allDataRows.reduce((acc, curr) => ({
+            id: 0,
+            category: 'एकूण',
+            crop: '',
+            memberCount: acc.memberCount + curr.memberCount,
+            disbursement: acc.disbursement + curr.disbursement,
+            repayment: acc.repayment + curr.repayment,
+            product: acc.product + curr.product,
+            subsidy: acc.subsidy + curr.subsidy,
+            totalBenefit: acc.totalBenefit + curr.totalBenefit
+          }), { memberCount: 0, disbursement: 0, repayment: 0, product: 0, subsidy: 0, totalBenefit: 0 } as any);
+          allDataRows.push(totals);
+        }
+
+        allDataRows.forEach((item) => {
+          const isTotal = item.id === 0;
+          const st = isTotal ? totalStyle : cellCenter;
+          const stR = isTotal ? totalStyleRight : cellRight;
+
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 0 })] = { v: isTotal ? '' : item.id, t: isTotal ? 's' : 'n', s: st };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 1 })] = { v: item.category, t: 's', s: isTotal ? totalStyle : cellLeft };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 2 })] = { v: isTotal ? '' : item.crop, t: 's', s: st };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 3 })] = { v: item.memberCount, t: 'n', s: st };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 4 })] = { v: item.disbursement, t: 'n', s: stR };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 5 })] = { v: item.repayment, t: 'n', s: stR };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 6 })] = { v: item.product, t: 'n', s: stR };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 7 })] = { v: item.subsidy, t: 'n', s: stR };
+          ws[XLSXStyle.utils.encode_cell({ r: rowIdx, c: 8 })] = { v: item.totalBenefit, t: 'n', s: stR };
+
+          rowIdx++;
+        });
+
+        ws['!merges'] = merges;
+        ws['!ref'] = `A1:I${rowIdx}`;
+        ws['!cols'] = [
+          { wch: 8 },  { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 },
+          { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }
+        ];
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Deshmukh Summary");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Dr_Panjabrao_Deshmukh_Incentive_Summary_${deshmukhFY}.xlsx`);
+      };
 
       const columns: Column<any>[] = [
         { header: 'अ. क्र.', accessorKey: 'id', render: (i) => i.id === 0 ? '' : i.id },
@@ -3413,9 +3821,25 @@ const Reports = () => {
       ];
 
       return (
-        <div className="flex flex-col gap-4">
-          {fySelector}
-          <ReportTable title="Govt Schemes Summary (एकत्रीकरण)" columns={columns} data={summaryData} />
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-emerald-600 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-center md:text-left">डॉ. पंजाबराव देशमुख व्याज सवलत योजना - एकत्रीकरण गोषवारा</h2>
+              <p className="text-sm text-center md:text-left opacity-80 mt-1">Summary of Dr. P. Deshmukh Interest Subvention</p>
+            </div>
+            <button
+              onClick={handleDeshmukhSummaryExport}
+              className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+            >
+              <Download size={16} /> Export Excel
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
+            {fySelector}
+            <div className="flex-1 overflow-auto">
+              <ReportTable title="" columns={columns} data={summaryData} />
+            </div>
+          </div>
         </div>
       );
     }
