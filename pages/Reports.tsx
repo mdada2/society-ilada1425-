@@ -3593,11 +3593,7 @@ const Reports = () => {
           <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             {fySelector}
             <div className="flex-1 overflow-auto">
-              <ReportTable title="" columns={columns} data={incentiveData} />
-            </div>
-            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl border dark:border-slate-600 text-xs text-slate-600 dark:text-slate-300">
-              <h4 className="font-bold underline mb-1">प्रमाणपत्र-</h4>
-              <p>प्रमाणित करण्यात येते कि , १) उक्त विवरणपत्राप्रमाणे नमुद ०१ ते {incentiveData.length < 10 ? `०${incentiveData.length}` : incentiveData.length} लाभार्थी संस्थेचे कर्जदार असुन विवरणपत्रात नमुद कर्जे ही पीक आहेत. २) सदर कर्जाची उचल दिनांक ०१/०४/{startYear} नंतर झाली आहे. ३) उचल केलेल्या पीक कर्जाची विहीत मुदतीत संपुर्ण वसुली झाली आहे व सदर शेतकरी डॉ. पंजाबराव देशमुख व्याज सवलत योजने अंतर्गत लाभास पात्र आहेत.</p>
+              <ReportTable title="" columns={columns} data={incentiveData} enableDateFilter={false} />
             </div>
           </div>
         </div>
