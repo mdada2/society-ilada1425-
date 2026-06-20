@@ -3593,7 +3593,7 @@ const Reports = () => {
           <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             {fySelector}
             <div className="flex-1 overflow-auto">
-              <ReportTable title="" columns={columns} data={incentiveData} enableDateFilter={false} />
+              <ReportTable title="" columns={columns} data={incentiveData} enableDateFilter={false} enableExport={false} enableShare={false} />
             </div>
           </div>
         </div>
@@ -3833,7 +3833,7 @@ const Reports = () => {
           <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             {fySelector}
             <div className="flex-1 overflow-auto">
-              <ReportTable title="" columns={columns} data={summaryData} />
+              <ReportTable title="" columns={columns} data={summaryData} enableExport={false} enableShare={false} />
             </div>
           </div>
         </div>

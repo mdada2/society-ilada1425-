@@ -21,6 +21,8 @@ interface ReportTableProps<T> {
     onDateRangeChange?: (start: string, end: string) => void;
     onDelete?: (item: T) => void;
     enableSearch?: boolean;
+    enableExport?: boolean;
+    enableShare?: boolean;
 }
 
 function ReportTable<T extends { id?: string | number }>({
@@ -32,6 +34,8 @@ function ReportTable<T extends { id?: string | number }>({
     onDateRangeChange,
     onDelete,
     enableSearch = true,
+    enableExport = true,
+    enableShare = true,
 }: ReportTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
@@ -218,18 +222,22 @@ function ReportTable<T extends { id?: string | number }>({
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">{title}</h2>
                     <div className="flex gap-2">
-                        <button
-                            onClick={handleShare}
-                            className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-sm font-medium"
-                        >
-                            <Share2 size={16} /> Share
-                        </button>
-                        <button
-                            onClick={handleExportCSV}
-                            className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-sm font-medium"
-                        >
-                            <Download size={16} /> CSV
-                        </button>
+                        {enableShare && (
+                            <button
+                                onClick={handleShare}
+                                className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-sm font-medium"
+                            >
+                                <Share2 size={16} /> Share
+                            </button>
+                        )}
+                        {enableExport && (
+                            <button
+                                onClick={handleExportCSV}
+                                className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-sm font-medium"
+                            >
+                                <Download size={16} /> CSV
+                            </button>
+                        )}
                     </div>
                 </div>
 
