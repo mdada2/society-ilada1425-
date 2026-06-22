@@ -3329,6 +3329,7 @@ const Reports = () => {
 
           return {
             id: idx + 1,
+            realId: m.id,
             name: m.name,
             category: m.category,
             village: m.village,
@@ -3593,7 +3594,7 @@ const Reports = () => {
           <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
             {fySelector}
             <div className="flex-1 overflow-auto">
-              <ReportTable title="" columns={columns} data={incentiveData} enableDateFilter={false} enableExport={false} enableShare={false} />
+              <ReportTable title="" columns={columns} data={incentiveData} enableDateFilter={false} enableExport={false} enableShare={false} onRowClick={(item) => handleMemberClick(item.realId)} />
             </div>
           </div>
         </div>
