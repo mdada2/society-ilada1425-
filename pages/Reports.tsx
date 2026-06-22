@@ -3280,7 +3280,7 @@ const Reports = () => {
 
       const incentiveData = members
         .map(m => {
-          // 1. Look for a loan debit in the target FY
+          // 1. Look for a loan debit in the target FY (01-04 to 31-03)
           const fYLoanDebit = transactions.find(t => 
             t.memberId === m.id && 
             t.type === 'Debit' && 
@@ -3289,11 +3289,20 @@ const Reports = () => {
             new Date(t.date) <= endDate
           );
 
-          // 2. Or fallback to current member loan details if they are in the target FY
+          // 2. Or look for a loan credit (repayment) in the target FY (01-04 to 30-06-cutoff)
+          const fYLoanCredit = transactions.find(t => 
+            t.memberId === m.id && 
+            t.type === 'Credit' && 
+            t.accountType === 'Loan' && 
+            new Date(t.date) >= startDate && 
+            new Date(t.date) <= deshmukCutoff
+          );
+
+          // 3. Or fallback to current member loan details if they are in the target FY
           const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
           const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
 
-          if (!fYLoanDebit && !currentLoanInFY) {
+          if (!fYLoanDebit && !fYLoanCredit && !currentLoanInFY) {
             return null;
           }
 
@@ -3303,6 +3312,9 @@ const Reports = () => {
           if (fYLoanDebit) {
             loanDate = fYLoanDebit.date;
             principal = fYLoanDebit.amount;
+          } else if (fYLoanCredit) {
+            loanDate = fYLoanCredit.previousLoanCalculationDate || (currentLoanInFY ? currentLoanDateStr! : `${startYear}-04-01`);
+            principal = fYLoanCredit.principalPaid || (fYLoanCredit.amount - (fYLoanCredit.interestPaid || 0));
           } else if (currentLoanInFY) {
             loanDate = currentLoanDateStr!;
             principal = Math.max(0, m.loanPrincipal);
@@ -3381,6 +3393,11 @@ const Reports = () => {
         })
         .filter((item): item is NonNullable<typeof item> => {
           if (!item) return false;
+          // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
+          const parsedLoanDate = new Date(item.loanDate);
+          if (parsedLoanDate < startDate || parsedLoanDate > endDate) {
+            return false;
+          }
           if (deshmukhCategory !== 'ALL' && item.category !== deshmukhCategory) return false;
           return true;
         })
