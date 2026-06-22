@@ -3225,7 +3225,7 @@ const Reports = () => {
     const startYear = parseInt(deshmukhFY.split('-')[0]);
     const endYear = startYear + 1;
     const startDate = new Date(`${startYear}-04-01`);
-    const endDate = new Date(`${endYear}-06-30`);
+    const endDate = new Date(`${endYear}-03-31`);
     const deshmukCutoff = new Date(`${endYear}-06-30`);
 
     const fySelector = (
