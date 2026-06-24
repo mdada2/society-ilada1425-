@@ -3267,10 +3267,132 @@ const Reports = () => {
       </div>
     );
 
+    const allResolvedIncentiveData = members
+      .map(m => {
+        // 1. Look for a loan debit in the target FY (01-04 to 31-03)
+        const fYLoanDebit = transactions.find(t => 
+          t.memberId === m.id && 
+          t.type === 'Debit' && 
+          t.accountType === 'Loan' && 
+          new Date(t.date) >= startDate && 
+          new Date(t.date) <= endDate
+        );
+
+        // 2. Or look for a loan credit (repayment) in the target FY (01-04 to 30-06-cutoff)
+        const fYLoanCredit = transactions.find(t => 
+          t.memberId === m.id && 
+          t.type === 'Credit' && 
+          t.accountType === 'Loan' && 
+          new Date(t.date) >= startDate && 
+          new Date(t.date) <= deshmukCutoff
+        );
+
+        // 3. Or fallback to current member loan details if they are in the target FY
+        const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
+        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
+
+        if (!fYLoanDebit && !fYLoanCredit && !currentLoanInFY) {
+          return null;
+        }
+
+        let loanDate = `${startYear}-04-01`;
+        let principal = 0;
+
+        if (fYLoanDebit) {
+          loanDate = fYLoanDebit.date;
+          principal = fYLoanDebit.amount;
+        } else if (fYLoanCredit) {
+          loanDate = fYLoanCredit.previousLoanCalculationDate || (currentLoanInFY ? currentLoanDateStr! : `${startYear}-04-01`);
+          principal = fYLoanCredit.principalPaid || (fYLoanCredit.amount - (fYLoanCredit.interestPaid || 0));
+        } else if (currentLoanInFY) {
+          loanDate = currentLoanDateStr!;
+          principal = Math.max(0, m.loanPrincipal);
+        }
+
+        // Let's determine repayments of this loan. Repayments occur after loanDate and up to deshmukCutoff
+        const repaymentTxns = transactions.filter(t => 
+          t.memberId === m.id && 
+          t.type === 'Credit' && 
+          t.accountType === 'Loan' && 
+          t.date >= loanDate && 
+          new Date(t.date) <= deshmukCutoff
+        );
+
+        // Sum repayments
+        const totalRepaid = repaymentTxns.reduce((sum, t) => 
+          sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
+        );
+
+        // If there is a later debit transaction, this loan MUST have been repaid, or we check if totalRepaid clears it.
+        const hasLaterLoan = transactions.some(t =>
+          t.memberId === m.id &&
+          t.type === 'Debit' &&
+          t.accountType === 'Loan' &&
+          new Date(t.date) > new Date(loanDate)
+        );
+
+        // fully repaid?
+        const isRepaid = totalRepaid >= (principal - 5) || hasLaterLoan || (currentLoanInFY && m.loanPrincipal <= 0);
+
+        let repaymentDateStr = '-';
+        if (isRepaid) {
+          if (repaymentTxns.length > 0) {
+            const sortedRepayments = [...repaymentTxns].sort((a, b) => a.date.localeCompare(b.date));
+            repaymentDateStr = sortedRepayments[sortedRepayments.length - 1].date;
+          } else if (hasLaterLoan) {
+            const laterLoans = transactions
+              .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) > new Date(loanDate))
+              .sort((a, b) => a.date.localeCompare(b.date));
+            
+            if (laterLoans.length > 0) {
+              const nextLoanDate = new Date(laterLoans[0].date);
+              const repaidDateObj = new Date(nextLoanDate.getTime() - 24 * 60 * 60 * 1000);
+              repaymentDateStr = format(repaidDateObj, 'yyyy-MM-dd');
+            } else {
+              repaymentDateStr = `${endYear}-03-31`;
+            }
+          }
+        }
+
+        const displayRepaymentDate = isRepaid ? repaymentDateStr : 'Ongoing (सुरु)';
+
+        const toDate = isRepaid ? new Date(repaymentDateStr) : new Date();
+        const days = differenceInDays(toDate, new Date(loanDate));
+
+        const productValue = principal * days;
+
+        const repaidBeforeCutoff = isRepaid && new Date(repaymentDateStr) <= deshmukCutoff;
+        const incentive = repaidBeforeCutoff ? Math.round(principal * 0.03) : null;
+
+        return {
+          realId: m.id,
+          name: m.name,
+          category: m.category,
+          village: m.village,
+          loanDate: loanDate,
+          repaymentDate: displayRepaymentDate,
+          days: days,
+          principal: principal,
+          product: productValue,
+          subsidy: incentive,
+          bankAccount: m.bankAccountNo || 'N/A',
+          ledgerPageNo: m.ledgerPageNo || ''
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => {
+        if (!item) return false;
+        // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
+        const parsedLoanDate = new Date(item.loanDate);
+        if (parsedLoanDate < startDate || parsedLoanDate > endDate) {
+          return false;
+        }
+        return true;
+      });
+
     if (activeSubTab === 'Dr. P. Deshmukh Incentive') {
       const getCategoryHeaderLabel = (cat: string) => {
         switch (cat) {
-          case 'ST': return 'अनुसूचित जमाती (ST)';
+          case 'ST': return ' अनुसूचित जमाती (ST)';
           case 'SC': return 'अनुसूचित जाती (SC)';
           case 'OBC': return 'इतर मागासवर्गीय (OBC)';
           case 'OPEN': return 'सर्वसाधारण (OPEN)';
@@ -3278,131 +3400,14 @@ const Reports = () => {
         }
       };
 
-      const incentiveData = members
-        .map(m => {
-          // 1. Look for a loan debit in the target FY (01-04 to 31-03)
-          const fYLoanDebit = transactions.find(t => 
-            t.memberId === m.id && 
-            t.type === 'Debit' && 
-            t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
-            new Date(t.date) <= endDate
-          );
-
-          // 2. Or look for a loan credit (repayment) in the target FY (01-04 to 30-06-cutoff)
-          const fYLoanCredit = transactions.find(t => 
-            t.memberId === m.id && 
-            t.type === 'Credit' && 
-            t.accountType === 'Loan' && 
-            new Date(t.date) >= startDate && 
-            new Date(t.date) <= deshmukCutoff
-          );
-
-          // 3. Or fallback to current member loan details if they are in the target FY
-          const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
-          const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
-
-          if (!fYLoanDebit && !fYLoanCredit && !currentLoanInFY) {
-            return null;
-          }
-
-          let loanDate = `${startYear}-04-01`;
-          let principal = 0;
-
-          if (fYLoanDebit) {
-            loanDate = fYLoanDebit.date;
-            principal = fYLoanDebit.amount;
-          } else if (fYLoanCredit) {
-            loanDate = fYLoanCredit.previousLoanCalculationDate || (currentLoanInFY ? currentLoanDateStr! : `${startYear}-04-01`);
-            principal = fYLoanCredit.principalPaid || (fYLoanCredit.amount - (fYLoanCredit.interestPaid || 0));
-          } else if (currentLoanInFY) {
-            loanDate = currentLoanDateStr!;
-            principal = Math.max(0, m.loanPrincipal);
-          }
-
-          // Let's determine repayments of this loan. Repayments occur after loanDate and up to deshmukCutoff
-          const repaymentTxns = transactions.filter(t => 
-            t.memberId === m.id && 
-            t.type === 'Credit' && 
-            t.accountType === 'Loan' && 
-            t.date >= loanDate && 
-            new Date(t.date) <= deshmukCutoff
-          );
-
-          // Sum repayments
-          const totalRepaid = repaymentTxns.reduce((sum, t) => 
-            sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
-          );
-
-          // If there is a later debit transaction, this loan MUST have been repaid, or we check if totalRepaid clears it.
-          const hasLaterLoan = transactions.some(t =>
-            t.memberId === m.id &&
-            t.type === 'Debit' &&
-            t.accountType === 'Loan' &&
-            new Date(t.date) > new Date(loanDate)
-          );
-
-          // fully repaid?
-          const isRepaid = totalRepaid >= (principal - 5) || hasLaterLoan || (currentLoanInFY && m.loanPrincipal <= 0);
-
-          let repaymentDateStr = '-';
-          if (isRepaid) {
-            if (repaymentTxns.length > 0) {
-              const sortedRepayments = [...repaymentTxns].sort((a, b) => a.date.localeCompare(b.date));
-              repaymentDateStr = sortedRepayments[sortedRepayments.length - 1].date;
-            } else if (hasLaterLoan) {
-              const laterLoans = transactions
-                .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) > new Date(loanDate))
-                .sort((a, b) => a.date.localeCompare(b.date));
-              
-              if (laterLoans.length > 0) {
-                const nextLoanDate = new Date(laterLoans[0].date);
-                const repaidDateObj = new Date(nextLoanDate.getTime() - 24 * 60 * 60 * 1000);
-                repaymentDateStr = format(repaidDateObj, 'yyyy-MM-dd');
-              } else {
-                repaymentDateStr = `${endYear}-03-31`;
-              }
-            }
-          }
-
-          const displayRepaymentDate = isRepaid ? repaymentDateStr : 'Ongoing (सुरु)';
-
-          const toDate = isRepaid ? new Date(repaymentDateStr) : new Date();
-          const days = differenceInDays(toDate, new Date(loanDate));
-
-          const productValue = principal * days;
-          const productStr = productValue.toLocaleString();
-          
-          const repaidBeforeCutoff = isRepaid && new Date(repaymentDateStr) <= deshmukCutoff;
-          const incentive = repaidBeforeCutoff ? Math.round(principal * 0.03) : null;
-
-          return {
-            realId: m.id,
-            name: m.name,
-            category: m.category,
-            village: m.village,
-            loanDate: loanDate,
-            repaymentDate: displayRepaymentDate,
-            days: days,
-            principal: principal,
-            product: productStr,
-            subsidy: incentive,
-            bankAccount: m.bankAccountNo || 'N/A',
-            ledgerPageNo: m.ledgerPageNo || ''
-          };
-        })
-        .filter((item): item is NonNullable<typeof item> => {
-          if (!item) return false;
-          // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
-          const parsedLoanDate = new Date(item.loanDate);
-          if (parsedLoanDate < startDate || parsedLoanDate > endDate) {
-            return false;
-          }
+      const incentiveData = allResolvedIncentiveData
+        .filter(item => {
           if (deshmukhCategory !== 'ALL' && item.category !== deshmukhCategory) return false;
           return true;
         })
         .map((item, idx) => ({
           ...item,
+          product: item.product.toLocaleString(),
           id: idx + 1
         }));
 
@@ -3677,34 +3682,23 @@ const Reports = () => {
       const categories = ['ST', 'OBC', 'SC', 'OPEN'];
 
       const summaryData = categories.map((cat, idx) => {
-        const filteredMembers = members.filter(m => {
-          if (m.category !== cat) return false;
-          if ((m.loanPrincipal || 0) <= 0) return false;
-
-          const dStr = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
-          const d = new Date(dStr);
-          return d >= startDate && d <= endDate;
-        });
+        const catItems = allResolvedIncentiveData.filter(item => item.category === cat);
 
         let disbursement = 0, repayment = 0, totalProduct = 0, incentive = 0;
 
-        filteredMembers.forEach(m => {
-          const loanDate = m.originalLoanDate || m.lastLoanCalculationDate || `${startYear}-04-01`;
-          const principal = m.loanPrincipal > 0 ? m.loanPrincipal : 50000;
-          const days = differenceInDays(new Date(), new Date(loanDate));
-          const isRepaid = m.loanPrincipal === 0;
-
-          disbursement += principal;
-          if (isRepaid) repayment += principal;
-          totalProduct += principal * days;
-          if (isRepaid) incentive += Math.round(principal * 0.03);
+        catItems.forEach(item => {
+          const isRepaid = item.repaymentDate !== 'Ongoing (सुरु)';
+          disbursement += item.principal;
+          if (isRepaid) repayment += item.principal;
+          totalProduct += item.product;
+          if (isRepaid) incentive += (item.subsidy || 0);
         });
 
         return {
           id: idx + 1,
           category: getCategoryLabel(cat),
           crop: 'भात पिक',
-          memberCount: filteredMembers.length,
+          memberCount: catItems.length,
           disbursement,
           repayment,
           product: totalProduct,
