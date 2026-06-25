@@ -2245,6 +2245,23 @@ const Members = () => {
 
             {/* Table / Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-yellow-50/50 dark:bg-slate-700/30 p-3 rounded-lg border border-yellow-100 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    Disbursement Date / कर्ज वाटप दिनांक:
+                  </span>
+                  <input 
+                    type="date" 
+                    className="p-1.5 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-yellow-500 outline-none font-semibold"
+                    value={bulkDate} 
+                    onChange={(e) => setBulkDate(e.target.value)}
+                  />
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  * This date will apply to all disbursement transactions. / हा दिनांक सर्व कर्ज वाटप व्यवहारांना लागू होईल.
+                </div>
+              </div>
+
               {bulkDisburseList.some(r => r.error) && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded-lg text-sm border border-amber-200 dark:border-amber-900/40 flex items-center gap-2 font-medium">
                   <AlertTriangle size={18} className="shrink-0" />
