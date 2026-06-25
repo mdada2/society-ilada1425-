@@ -289,7 +289,11 @@ const Reports = () => {
           )
           .sort((a, b) => b.date.localeCompare(a.date))[0];
 
-        const calculationStartDate = lastInterestPaymentTxn ? lastInterestPaymentTxn.date : (m.lastLoanCalculationDate || loanDate);
+        const calculationStartDate = lastInterestPaymentTxn 
+          ? lastInterestPaymentTxn.date 
+          : (m.lastLoanCalculationDate && new Date(m.lastLoanCalculationDate) <= cutoffDate 
+              ? m.lastLoanCalculationDate 
+              : loanDate);
 
         const daysUpToCutoff = !isRepaid
           ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(calculationStartDate)))
