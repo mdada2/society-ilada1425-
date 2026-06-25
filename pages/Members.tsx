@@ -81,6 +81,10 @@ const Members = () => {
   const [disbursementData, setDisbursementData] = useState<Record<string, { shareAmount: number, loanAmount: number, date: string, loanType: string }>>({});
   const [disbursedLog, setDisbursedLog] = useState<Set<string>>(new Set());
 
+  // -- Bulk Import Disbursement States --
+  const [bulkDisburseList, setBulkDisburseList] = useState<any[]>([]);
+  const [showBulkDisburseModal, setShowBulkDisburseModal] = useState(false);
+
   // -- Bulk Setup States --
   const [bulkDate, setBulkDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [bulkAmount, setBulkAmount] = useState<number | ''>('');
@@ -889,6 +893,15 @@ const Members = () => {
     XLSX.writeFile(wb, "Import_Template.xlsx");
   };
 
+  const handleDownloadDisbursementTemplate = () => {
+    const headers = ["MemberNo", "LandArea", "SharesAdded", "LoanAmount", "LoanType"];
+    const sampleRow = ["101", "1.5", "1000", "45000", "Short Term"];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+    XLSX.utils.book_append_sheet(wb, ws, "New_Loan_Template");
+    XLSX.writeFile(wb, "New_Loan_Import_Template.xlsx");
+  };
+
   const parseNumberSafe = (val: string) => {
     if (!val) return 0;
     const clean = val.replace(/[,₹\s"]/g, '');
@@ -919,6 +932,197 @@ const Members = () => {
       if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
     }
     return undefined;
+  };
+
+  const handleImportDisbursementExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        if (rows.length === 0) return;
+
+        // Find the first non-empty row containing headers
+        let headerRowIndex = 0;
+        for (let i = 0; i < rows.length; i++) {
+          if (rows[i] && rows[i].some(cell => cell !== undefined && cell !== null && String(cell).trim() !== '')) {
+            headerRowIndex = i;
+            break;
+          }
+        }
+
+        const headers = (rows[headerRowIndex] as string[]).map(h => String(h || '').trim().toLowerCase());
+        const findCol = (possibleNames: string[]) => headers.findIndex(h => {
+          const cleanH = h.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '');
+          if (!cleanH) return false;
+          return possibleNames.some(p => {
+            const cleanP = p.replace(/[^a-zA-Z0-9\u0900-\u097F]/g, '');
+            return cleanH === cleanP || cleanH.includes(cleanP) || cleanP.includes(cleanH);
+          });
+        });
+
+        const idxMemberNo = findCol(['memberno', 'member no', 'no', 'id', 'no.', 'नोंदणी क्र.', 'नोंदणी क्र']);
+        const idxLand = findCol(['landarea', 'land', 'area', 'जमीन']);
+        const idxShares = findCol(['sharebalance', 'share', 'shares', 'shares added', 'sharesadd', 'शेअर्स', 'हिस्से']);
+        const idxLoanAmount = findCol(['loanprincipal', 'loan principal', 'loan amount', 'principal', 'loan', 'loanamou', 'कर्ज रक्कम', 'कर्ज']);
+        const idxLoanType = findCol(['loantype', 'loan type', 'type', 'प्रकार']);
+
+        if (idxMemberNo === -1) {
+          alert("Import Failed: Could not find 'Member No' column.");
+          if (e.target) e.target.value = '';
+          return;
+        }
+
+        const parsedRows: any[] = [];
+        for (let i = headerRowIndex + 1; i < rows.length; i++) {
+          const values = rows[i].map(v => String(v ?? '').trim());
+          if (values.length < 2) continue;
+
+          const memberNo = values[idxMemberNo];
+          if (!memberNo) continue;
+
+          const land = idxLand !== -1 ? values[idxLand] : '0.00';
+          const sharesAdded = idxShares !== -1 ? parseNumberSafe(values[idxShares]) : 0;
+          const loanAmount = idxLoanAmount !== -1 ? parseNumberSafe(values[idxLoanAmount]) : 0;
+          let loanType = idxLoanType !== -1 ? values[idxLoanType] : 'Short Term';
+          if (loanType.toLowerCase().includes('medium') || loanType.toLowerCase().includes('m.t')) {
+            loanType = 'Medium Term';
+          } else {
+            loanType = 'Short Term';
+          }
+
+          // Match member in current list
+          const member = members.find(m => m.memberNo === memberNo);
+          let error = '';
+          let activeLoanAmt = 0;
+          let realId = '';
+          let name = '';
+
+          if (!member) {
+            error = 'Member not found / सभासद सापडला नाही';
+          } else {
+            realId = member.id;
+            name = member.name;
+            if (member.loanPrincipal > 0) {
+              activeLoanAmt = member.loanPrincipal;
+              error = `Active loan ₹${member.loanPrincipal.toLocaleString()} / थकीत कर्ज आहे`;
+            }
+          }
+
+          parsedRows.push({
+            id: `temp-${i}-${Date.now()}`,
+            realId,
+            memberNo,
+            name,
+            landArea: land,
+            shareAmount: sharesAdded,
+            loanAmount,
+            loanType,
+            activeLoanAmt,
+            error
+          });
+        }
+
+        setBulkDisburseList(parsedRows);
+        setShowBulkDisburseModal(true);
+
+      } catch (err) {
+        console.error(err);
+        alert("Failed to parse Excel file.");
+      } finally {
+        if (e.target) e.target.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const revalidateBulkDisbursements = () => {
+    setBulkDisburseList(prev => 
+      prev.map(row => {
+        if (!row.realId) return row;
+        const member = members.find(m => m.id === row.realId);
+        if (!member) {
+          return { ...row, error: 'Member not found / सभासद सापडला नाही', activeLoanAmt: 0 };
+        }
+        if (member.loanPrincipal > 0) {
+          return { 
+            ...row, 
+            activeLoanAmt: member.loanPrincipal, 
+            error: `Active loan ₹${member.loanPrincipal.toLocaleString()} / थकीत कर्ज आहे` 
+          };
+        } else {
+          return { ...row, activeLoanAmt: 0, error: '' };
+        }
+      })
+    );
+  };
+
+  const handleBulkRowChange = (id: string, field: string, value: any) => {
+    setBulkDisburseList(prev => prev.map(row => {
+      if (row.id === id) {
+        const updated = { ...row, [field]: value };
+        if (field === 'memberNo') {
+          const member = members.find(m => m.memberNo === value);
+          if (!member) {
+            updated.realId = '';
+            updated.name = '';
+            updated.activeLoanAmt = 0;
+            updated.error = 'Member not found / सभासद सापडला नाही';
+          } else {
+            updated.realId = member.id;
+            updated.name = member.name;
+            if (member.loanPrincipal > 0) {
+              updated.activeLoanAmt = member.loanPrincipal;
+              updated.error = `Active loan ₹${member.loanPrincipal.toLocaleString()} / थकीत कर्ज आहे`;
+            } else {
+              updated.activeLoanAmt = 0;
+              updated.error = '';
+            }
+          }
+        }
+        return updated;
+      }
+      return row;
+    }));
+  };
+
+  const handleBulkRowDelete = (id: string) => {
+    setBulkDisburseList(prev => prev.filter(row => row.id !== id));
+  };
+
+  const handleBulkDisburseSubmit = () => {
+    const hasErrors = bulkDisburseList.some(r => r.error);
+    if (hasErrors) {
+      alert("Please resolve all warnings/errors or remove flagged members before submitting.");
+      return;
+    }
+
+    let count = 0;
+    bulkDisburseList.forEach(row => {
+      if (!row.realId || row.loanAmount <= 0) return;
+      
+      const customData = {
+        shareAmount: row.shareAmount,
+        loanAmount: row.loanAmount,
+        date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+        loanType: row.loanType,
+        landArea: row.landArea
+      };
+
+      handleSaveDisbursement(row.realId, customData);
+      count++;
+    });
+
+    alert(`Successfully processed loan disbursements for ${count} members!`);
+    setShowBulkDisburseModal(false);
+    setBulkDisburseList([]);
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1394,9 +1598,23 @@ const Members = () => {
         <div className="space-y-6">
           {/* New Loan Selection Section */}
           <div className="bg-yellow-50 dark:bg-yellow-900/10 p-4 rounded-xl border border-yellow-200 dark:border-yellow-800">
-            <h3 className="font-bold text-yellow-800 dark:text-yellow-200 mb-4 flex items-center gap-2">
-              <div className="bg-yellow-100 dark:bg-yellow-800 p-1.5 rounded-lg"><Plus size={18} /></div> Select Members for Loan Disbursement / कर्ज वाटपासाठी सभासद निवडा
-            </h3>
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-4">
+              <h3 className="font-bold text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                <div className="bg-yellow-100 dark:bg-yellow-800 p-1.5 rounded-lg"><Plus size={18} /></div> Select Members for Loan Disbursement / कर्ज वाटपासाठी सभासद निवडा
+              </h3>
+              <div className="flex flex-wrap gap-2 self-start lg:self-auto">
+                <button 
+                  onClick={handleDownloadDisbursementTemplate}
+                  className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 dark:hover:bg-slate-600 transition text-sm font-semibold whitespace-nowrap"
+                >
+                  <FileSpreadsheet size={18} /> <span>Download Template</span>
+                </button>
+                <label className="bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition shadow-sm cursor-pointer text-sm font-semibold whitespace-nowrap">
+                  <Upload size={18} /> <span>Excel Import (नवीन कर्ज)</span>
+                  <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportDisbursementExcel} className="hidden" />
+                </label>
+              </div>
+            </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border dark:border-slate-700 overflow-hidden max-h-[300px] overflow-y-auto overflow-x-auto mobile-scroll">
               <table className="w-full text-left border-collapse min-w-[600px]">
@@ -1999,6 +2217,164 @@ const Members = () => {
               </div>
               <div className="md:col-span-2 flex gap-4 mt-4"><button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-2 border dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={isDuplicateMemberNo} className={`flex-1 py-2 rounded font-medium text-white transition ${isDuplicateMemberNo ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>{isDuplicateMemberNo ? 'Fix Error' : 'Save Member'}</button></div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Bulk Disburse Review Modal */}
+      {showBulkDisburseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[200] backdrop-blur-sm p-4 md:pl-64 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-5xl shadow-2xl border border-slate-100 dark:border-slate-700 flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <FileSpreadsheet className="text-emerald-600" size={24} />
+                  Excel Disbursement Review / कर्ज वाटप तपासणी
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Verify the imported members and loan details. Cells are editable if needed.
+                </p>
+              </div>
+              <button 
+                onClick={() => { setShowBulkDisburseModal(false); setBulkDisburseList([]); }} 
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Table / Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {bulkDisburseList.some(r => r.error) && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded-lg text-sm border border-amber-200 dark:border-amber-900/40 flex items-center gap-2 font-medium">
+                  <AlertTriangle size={18} className="shrink-0" />
+                  <span>
+                    Some members have active loans or are missing in system. Please resolve their warnings or remove them to submit.
+                  </span>
+                </div>
+              )}
+
+              <div className="border dark:border-slate-700 rounded-lg overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 border-b dark:border-slate-700 font-semibold text-sm">
+                      <th className="p-3">Member No</th>
+                      <th className="p-3">Name</th>
+                      <th className="p-3">Land (Ha.R)</th>
+                      <th className="p-3">Shares Added (₹)</th>
+                      <th className="p-3">Loan Amount (₹)</th>
+                      <th className="p-3">Loan Type</th>
+                      <th className="p-3 text-red-600">Active Loan (₹)</th>
+                      <th className="p-3">Status / Errors</th>
+                      <th className="p-3 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {bulkDisburseList.map(row => (
+                      <tr 
+                        key={row.id} 
+                        className={`hover:bg-slate-50/50 dark:hover:bg-slate-700/20 text-slate-800 dark:text-slate-200 text-sm ${row.error ? 'bg-red-50/20 dark:bg-red-950/5' : ''}`}
+                      >
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            className="w-20 p-1 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-center font-bold"
+                            value={row.memberNo} 
+                            onChange={(e) => handleBulkRowChange(row.id, 'memberNo', e.target.value)}
+                          />
+                        </td>
+                        <td className="p-2 font-medium">
+                          {row.name || <span className="text-slate-400 italic">Unknown</span>}
+                        </td>
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            className="w-20 p-1 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-center"
+                            value={row.landArea} 
+                            onChange={(e) => handleBulkRowChange(row.id, 'landArea', e.target.value)}
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input 
+                            type="number" 
+                            className="w-24 p-1 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-right"
+                            value={row.shareAmount} 
+                            onChange={(e) => handleBulkRowChange(row.id, 'shareAmount', Number(e.target.value))}
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input 
+                            type="number" 
+                            className="w-28 p-1 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-right font-semibold"
+                            value={row.loanAmount} 
+                            onChange={(e) => handleBulkRowChange(row.id, 'loanAmount', Number(e.target.value))}
+                          />
+                        </td>
+                        <td className="p-2">
+                          <select 
+                            className="p-1 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                            value={row.loanType}
+                            onChange={(e) => handleBulkRowChange(row.id, 'loanType', e.target.value)}
+                          >
+                            <option value="Short Term">Short Term</option>
+                            <option value="Medium Term">Medium Term</option>
+                          </select>
+                        </td>
+                        <td className="p-2 text-right font-semibold text-red-600">
+                          {row.activeLoanAmt > 0 ? `₹${row.activeLoanAmt.toLocaleString()}` : '-'}
+                        </td>
+                        <td className="p-2">
+                          {row.error ? (
+                            <span className="text-red-500 font-medium text-xs bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded border border-red-100 dark:border-red-900/40 inline-block">
+                              {row.error}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-600 font-medium text-xs bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded border border-emerald-100 dark:border-emerald-900/40 inline-block">
+                              Ready to disburse
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2 text-center">
+                          <button 
+                            onClick={() => handleBulkRowDelete(row.id)} 
+                            className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-b-xl">
+              <button 
+                onClick={revalidateBulkDisbursements} 
+                className="px-4 py-2 border dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition font-semibold text-sm flex items-center gap-1.5"
+              >
+                <RotateCcw size={16} />
+                Re-validate / पुन्हा तपासा
+              </button>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => { setShowBulkDisburseModal(false); setBulkDisburseList([]); }} 
+                  className="px-4 py-2 border dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition text-sm"
+                >
+                  Cancel / रद्द करा
+                </button>
+                <button 
+                  onClick={handleBulkDisburseSubmit} 
+                  disabled={bulkDisburseList.length === 0 || bulkDisburseList.some(r => r.error)} 
+                  className={`px-5 py-2 rounded-lg text-white font-bold transition text-sm ${bulkDisburseList.length === 0 || bulkDisburseList.some(r => r.error) ? 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed text-slate-500' : 'bg-emerald-600 hover:bg-emerald-700 shadow'}`}
+                >
+                  Submit / सबमिट करा
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
