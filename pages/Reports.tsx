@@ -3686,7 +3686,12 @@ const Reports = () => {
       const categories = ['ST', 'OBC', 'SC', 'OPEN'];
 
       const summaryData = categories.map((cat, idx) => {
-        const catItems = allResolvedIncentiveData.filter(item => item.category === cat);
+        const catItems = allResolvedIncentiveData.filter(item => 
+          item.category === cat && 
+          item.repaymentDate !== 'Ongoing (सुरु)' && 
+          item.subsidy !== null && 
+          item.subsidy > 0
+        );
 
         let disbursement = 0, repayment = 0, totalProduct = 0, incentive = 0;
 
