@@ -128,6 +128,9 @@ const Reports = () => {
   const [deshmukhFY, setDeshmukhFY] = useState<string>('2025-26');
   const [deshmukhCategory, setDeshmukhCategory] = useState<string>('ALL');
   const [summaryViewType, setSummaryViewType] = useState<'category' | 'yearwise'>('category');
+  const [sharesMinAmount, setSharesMinAmount] = useState<number | ''>('');
+  const [sharesMaxAmount, setSharesMaxAmount] = useState<number | ''>('');
+  const [sharesQuickFilter, setSharesQuickFilter] = useState<string>('all');
 
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
@@ -135,6 +138,9 @@ const Reports = () => {
     setRepaidFilter('repaid');
     setDeshmukhCategory('ALL');
     setSummaryViewType('category');
+    setSharesMinAmount('');
+    setSharesMaxAmount('');
+    setSharesQuickFilter('all');
   }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string, isNPAMode = false) => {
@@ -2373,9 +2379,32 @@ const Reports = () => {
 
   const renderMembership = () => {
     if (activeSubTab === 'Shares Capital') {
-      // Filter members who have shares > 0 and sort numerically by memberNo
+      // Filter members who have shares > 0 and apply quick/custom filters, and sort numerically by memberNo
       const sharesMembers = members
         .filter(m => (m.shareBalance || 0) > 0)
+        .filter(m => {
+          const balance = m.shareBalance || 0;
+          
+          if (sharesQuickFilter !== 'all') {
+            if (sharesQuickFilter === '10') return balance === 10;
+            if (sharesQuickFilter === '17') return balance === 17;
+            if (sharesQuickFilter === '120') return balance === 120;
+            if (sharesQuickFilter === '199') return balance === 199;
+            if (sharesQuickFilter === '200') return balance === 200;
+            if (sharesQuickFilter === '300') return balance === 300;
+            if (sharesQuickFilter === '500') return balance === 500;
+            if (sharesQuickFilter === '517') return balance === 517;
+            if (sharesQuickFilter === '1000') return balance === 1000;
+            if (sharesQuickFilter === 'above200') return balance > 200;
+            if (sharesQuickFilter === 'above500') return balance > 500;
+            if (sharesQuickFilter === 'above1000') return balance > 1000;
+          }
+          
+          if (sharesMinAmount !== '' && balance < sharesMinAmount) return false;
+          if (sharesMaxAmount !== '' && balance > sharesMaxAmount) return false;
+          
+          return true;
+        })
         .sort((a, b) => {
           const numA = parseInt(a.memberNo.replace(/\D/g, '')) || 0;
           const numB = parseInt(b.memberNo.replace(/\D/g, '')) || 0;
@@ -2504,6 +2533,76 @@ const Reports = () => {
                   className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
                 >
                   <Download size={16} /> Export Excel
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Section */}
+            <div className="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">जलद हिस्से फिल्टर (Quick Filter):</label>
+                  <select 
+                    value={sharesQuickFilter} 
+                    onChange={(e) => {
+                      setSharesQuickFilter(e.target.value);
+                      if (e.target.value !== 'all') {
+                        setSharesMinAmount('');
+                        setSharesMaxAmount('');
+                      }
+                    }}
+                    className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                  >
+                    <option value="all">सर्व (All)</option>
+                    <option value="10">फक्त १० रु.</option>
+                    <option value="17">फक्त १७ रु.</option>
+                    <option value="120">फक्त १२० रु.</option>
+                    <option value="199">फक्त १९९ रु.</option>
+                    <option value="200">फक्त २०० रु.</option>
+                    <option value="300">फक्त ३०० रु.</option>
+                    <option value="500">फक्त ५०० रु.</option>
+                    <option value="517">फक्त ५१७ रु.</option>
+                    <option value="1000">फक्त १००० रु.</option>
+                    <option value="above200">२०० पेक्षा जास्त (&gt; 200)</option>
+                    <option value="above500">५०० पेक्षा जास्त (&gt; 500)</option>
+                    <option value="above1000">१००० पेक्षा जास्त (&gt; 1000)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">किमान हिस्से (Min):</label>
+                    <input 
+                      type="number"
+                      value={sharesMinAmount}
+                      placeholder="उदा. २००"
+                      disabled={sharesQuickFilter !== 'all'}
+                      onChange={(e) => setSharesMinAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="p-2 w-28 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">कमाल हिस्से (Max):</label>
+                    <input 
+                      type="number"
+                      value={sharesMaxAmount}
+                      placeholder="उदा. ५००"
+                      disabled={sharesQuickFilter !== 'all'}
+                      onChange={(e) => setSharesMaxAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="p-2 w-28 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setSharesQuickFilter('all');
+                    setSharesMinAmount('');
+                    setSharesMaxAmount('');
+                  }}
+                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold self-end transition-all"
+                >
+                  फिल्टर रिसेट
                 </button>
               </div>
             </div>
