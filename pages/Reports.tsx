@@ -127,12 +127,14 @@ const Reports = () => {
   const [repaidFilter, setRepaidFilter] = useState<'repaid' | 'outstanding'>('repaid');
   const [deshmukhFY, setDeshmukhFY] = useState<string>('2025-26');
   const [deshmukhCategory, setDeshmukhCategory] = useState<string>('ALL');
+  const [summaryViewType, setSummaryViewType] = useState<'category' | 'yearwise'>('category');
 
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
     setSelectedFYRange(null);
     setRepaidFilter('repaid');
     setDeshmukhCategory('ALL');
+    setSummaryViewType('category');
   }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string, isNPAMode = false) => {
@@ -1398,6 +1400,192 @@ const Reports = () => {
         sumProps(grandTotal, tribalTotal, generalTotal, `${period.key}_madhyam_amount`);
       });
 
+      // --- Yearwise Overdue Summary Calculations ---
+      const getYearwiseRow = (loanType: 'Short Term' | 'Medium Term', label: string, id: number) => {
+        const typeLoans = activeUnpaid.filter(item => {
+          if (loanType === 'Medium Term') {
+            return item.member.loanType === 'Medium Term';
+          } else {
+            return item.member.loanType !== 'Medium Term';
+          }
+        });
+
+        const row: any = {
+          id,
+          loanType: label,
+          total_count: typeLoans.length,
+          total_amount: typeLoans.reduce((sum, item) => sum + item.remainingPrincipal, 0),
+          interest_amount: typeLoans.reduce((sum, item) => sum + (item.interest6 || 0), 0)
+        };
+
+        const buckets = [
+          { key: '1yr', min: -1, max: 365 },
+          { key: '2yr', min: 365, max: 730 },
+          { key: '3yr', min: 730, max: 1095 },
+          { key: '4yr', min: 1095, max: 1460 },
+          { key: '5yr', min: 1460, max: 1825 },
+          { key: 'above5yr', min: 1825, max: Infinity }
+        ];
+
+        buckets.forEach(b => {
+          const loansInBucket = typeLoans.filter(item => {
+            const days = item.daysUpToCutoff;
+            return days > b.min && days <= b.max;
+          });
+          row[`${b.key}_count`] = loansInBucket.length;
+          row[`${b.key}_amount`] = loansInBucket.reduce((sum, item) => sum + item.remainingPrincipal, 0);
+        });
+
+        return row;
+      };
+
+      const alpRow = getYearwiseRow('Short Term', 'अल्प मुदती', 1);
+      const mtRow = getYearwiseRow('Medium Term', 'मध्यम मुदती', 2);
+
+      const totalRow = {
+        id: 0,
+        loanType: 'एकूण',
+        '1yr_count': alpRow['1yr_count'] + mtRow['1yr_count'],
+        '1yr_amount': alpRow['1yr_amount'] + mtRow['1yr_amount'],
+        '2yr_count': alpRow['2yr_count'] + mtRow['2yr_count'],
+        '2yr_amount': alpRow['2yr_amount'] + mtRow['2yr_amount'],
+        '3yr_count': alpRow['3yr_count'] + mtRow['3yr_count'],
+        '3yr_amount': alpRow['3yr_amount'] + mtRow['3yr_amount'],
+        '4yr_count': alpRow['4yr_count'] + mtRow['4yr_count'],
+        '4yr_amount': alpRow['4yr_amount'] + mtRow['4yr_amount'],
+        '5yr_count': alpRow['5yr_count'] + mtRow['5yr_count'],
+        '5yr_amount': alpRow['5yr_amount'] + mtRow['5yr_amount'],
+        'above5yr_count': alpRow['above5yr_count'] + mtRow['above5yr_count'],
+        'above5yr_amount': alpRow['above5yr_amount'] + mtRow['above5yr_amount'],
+        total_count: alpRow.total_count + mtRow.total_count,
+        total_amount: alpRow.total_amount + mtRow.total_amount,
+        interest_amount: alpRow.interest_amount + mtRow.interest_amount
+      };
+
+      const yearwiseData = [alpRow, mtRow, totalRow];
+
+      // Export to CSV Yearwise (Generates styled spreadsheet matching the year-wise columns)
+      const handleNPAYearwiseCSV = async () => {
+        const ws: any = {};
+        const merges: any[] = [];
+
+        const titleStyle = { font: { name: 'Calibri', sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const subtitleStyle = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+        const headerStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'E2E8F0' } },
+          border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+        };
+        const cellStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+        };
+        const amtStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+        };
+        const totalStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          border: { top: { style: 'thin' }, bottom: { style: 'double' }, left: { style: 'thin' }, right: { style: 'thin' } }
+        };
+        const totalAmtStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          border: { top: { style: 'thin' }, bottom: { style: 'double' }, left: { style: 'thin' }, right: { style: 'thin' } }
+        };
+
+        const setCell = (r: number, c: number, val: any, style: any = {}) => {
+          const cellRef = XLSXStyle.utils.encode_cell({ r, c });
+          ws[cellRef] = { v: val, t: typeof val === 'number' ? 'n' : 's', s: style };
+        };
+
+        // Title
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 16 } });
+        setCell(0, 0, "आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं.1425", titleStyle);
+        for (let c = 1; c <= 16; c++) setCell(0, c, "");
+
+        // Subtitle
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 16 } });
+        setCell(1, 0, `दिनांक ${format(activeEnd, 'dd/MM/yyyy')} च्या स्थरावरील थकीत सभासदांची वर्षवार माहिती`, subtitleStyle);
+        for (let c = 1; c <= 16; c++) setCell(1, c, "");
+
+        // Headers
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 3, c: 0 } });
+        setCell(2, 0, "अ. क्र.", headerStyle);
+        setCell(3, 0, "", headerStyle);
+
+        merges.push({ s: { r: 2, c: 1 }, e: { r: 3, c: 1 } });
+        setCell(2, 1, "कर्ज प्रकार", headerStyle);
+        setCell(3, 1, "", headerStyle);
+
+        const yearHeaders = [
+          "1 वर्षा पर्यंत", "2 वर्षा पर्यंत", "3 वर्षा पर्यंत",
+          "4 वर्षा पर्यंत", "5 वर्षा पर्यंत", "5 वर्षा वरील",
+          "एकूण थकीत रक्कम"
+        ];
+
+        let colIdx = 2;
+        yearHeaders.forEach(label => {
+          merges.push({ s: { r: 2, c: colIdx }, e: { r: 2, c: colIdx + 1 } });
+          setCell(2, colIdx, label, headerStyle);
+          setCell(2, colIdx + 1, "", headerStyle);
+          setCell(3, colIdx, "स. संख्या", headerStyle);
+          setCell(3, colIdx + 1, "रक्कम", headerStyle);
+          colIdx += 2;
+        });
+
+        merges.push({ s: { r: 2, c: 16 }, e: { r: 3, c: 16 } });
+        setCell(2, 16, "एकूण थकीत व्याज", headerStyle);
+        setCell(3, 16, "", headerStyle);
+
+        let rowIdx = 4;
+        yearwiseData.forEach((row) => {
+          const isTotal = row.id === 0;
+          const st = isTotal ? totalStyle : cellStyle;
+          const stA = isTotal ? totalAmtStyle : amtStyle;
+
+          setCell(rowIdx, 0, isTotal ? "" : row.id, st);
+          setCell(rowIdx, 1, row.loanType, st);
+          
+          const keys = ['1yr', '2yr', '3yr', '4yr', '5yr', 'above5yr', 'total'];
+          let cIdx = 2;
+          keys.forEach(k => {
+            const countKey = k === 'total' ? 'total_count' : `${k}_count`;
+            const amtKey = k === 'total' ? 'total_amount' : `${k}_amount`;
+            setCell(rowIdx, cIdx, row[countKey] || 0, st);
+            setCell(rowIdx, cIdx + 1, row[amtKey] || 0, stA);
+            cIdx += 2;
+          });
+          setCell(rowIdx, 16, row.interest_amount || 0, stA);
+          rowIdx++;
+        });
+
+        ws['!merges'] = merges;
+        ws['!ref'] = `A1:Q${rowIdx}`;
+        ws['!cols'] = [
+          { wch: 8 }, { wch: 20 },
+          { wch: 10 }, { wch: 15 },
+          { wch: 10 }, { wch: 15 },
+          { wch: 10 }, { wch: 15 },
+          { wch: 10 }, { wch: 15 },
+          { wch: 10 }, { wch: 15 },
+          { wch: 10 }, { wch: 15 },
+          { wch: 12 }, { wch: 18 }, { wch: 20 }
+        ];
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Yearwise Overdue Summary");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Yearwise_Overdue_Summary_${activeEnd}.xlsx`);
+      };
+
       // Export to CSV Function (Generates styled spreadsheet via xlsx-js-style)
       const handleNPASummaryCSV = async () => {
         const ws: any = {};
@@ -1690,7 +1878,6 @@ const Reports = () => {
         setCell(currentExcelRow, 6, grandTotal.overdueInterest_alp_amount || 0, amountStyle, '#,##,##0');
 
         currentExcelRow += 1;
-
         // Row 2: Medium Term
         setCell(currentExcelRow, 0, "२)", countStyle);
         setCell(currentExcelRow, 1, "मध्यम मुदती कर्ज", categoryStyle);
@@ -1765,9 +1952,137 @@ const Reports = () => {
       };
 
       // Render custom table
+      if (summaryViewType === 'yearwise') {
+        return (
+          <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
+            {renderFYSelector()}
+            
+            <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-xl max-w-md self-start">
+              <button 
+                onClick={() => setSummaryViewType('category')} 
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${summaryViewType === 'category' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              >
+                कृषकानुसार (Default)
+              </button>
+              <button 
+                onClick={() => setSummaryViewType('yearwise')} 
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${summaryViewType === 'yearwise' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              >
+                थकीत सभासदांची वर्षवार माहिती
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
+              <div className="bg-blue-900 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-center md:text-left">थकीत सभासदांची वर्षवार माहिती</h2>
+                  <p className="text-sm text-center md:text-left opacity-80 mt-1">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं.1425</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleNPAYearwiseCSV}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
+                  >
+                    <Download size={16} /> Export Excel
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 min-h-[400px]">
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं.1425</h3>
+                  <h4 className="text-md font-semibold text-slate-600 dark:text-slate-300 mt-1">
+                    दिनांक {activeEnd.split('-').reverse().join('/')} च्या स्थरावरील थकीत सभासदांची वर्षवार माहिती
+                  </h4>
+                </div>
+
+                <table className="w-full text-xs border-collapse border dark:border-slate-700">
+                  <thead className="bg-slate-100 dark:bg-slate-900 sticky top-0">
+                    <tr className="text-center font-bold">
+                      <th rowSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">अ. क्र.</th>
+                      <th rowSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">कर्ज प्रकार</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">1 वर्षा पर्यंत</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">2 वर्षा पर्यंत</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">3 वर्षा पर्यंत</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">4 वर्षा पर्यंत</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">5 वर्षा पर्यंत</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2">5 वर्षा वरील</th>
+                      <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2 bg-yellow-50 dark:bg-yellow-950/30">एकूण थकीत रक्कम</th>
+                      <th className="border border-slate-300 dark:border-slate-600 p-2 bg-red-50 dark:bg-red-950/30">एकूण थकीत व्याज</th>
+                    </tr>
+                    <tr className="bg-slate-50 dark:bg-slate-800 text-center font-semibold text-[10px]">
+                      {[...Array(7)].map((_, i) => (
+                        <React.Fragment key={i}>
+                          <th className="border border-slate-300 dark:border-slate-600 p-1">स. संख्या</th>
+                          <th className="border border-slate-300 dark:border-slate-600 p-1">रक्कम</th>
+                        </React.Fragment>
+                      ))}
+                      <th className="border border-slate-300 dark:border-slate-600 p-1">रक्कम</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {yearwiseData.map((row) => {
+                      const isTotal = row.id === 0;
+                      return (
+                        <tr 
+                          key={row.loanType} 
+                          className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 text-center ${isTotal ? 'bg-slate-100 dark:bg-slate-900 font-bold border-t-2 border-slate-400 dark:border-slate-600' : ''}`}
+                        >
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{isTotal ? '' : row.id}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-left font-bold">{row.loanType}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{row['1yr_count'] || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-mono">{(row['1yr_amount'] || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{row['2yr_count'] || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-mono">{(row['2yr_amount'] || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{row['3yr_count'] || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-mono">{(row['3yr_amount'] || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{row['4yr_count'] || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-mono">{(row['4yr_amount'] || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{row['5yr_count'] || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-mono">{(row['5yr_amount'] || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2">{row['above5yr_count'] || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-mono">{(row['above5yr_amount'] || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 bg-yellow-50/50 dark:bg-yellow-950/10">{row.total_count || '0'}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-bold font-mono bg-yellow-50/50 dark:bg-yellow-950/10">{(row.total_amount || 0).toLocaleString()}</td>
+                          
+                          <td className="border border-slate-300 dark:border-slate-600 p-2 text-right font-bold font-mono bg-red-50/50 dark:bg-red-950/10">{(row.interest_amount || 0).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
           {renderFYSelector()}
+          
+          <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-xl max-w-md self-start">
+            <button 
+              onClick={() => setSummaryViewType('category')} 
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${summaryViewType === 'category' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+            >
+              कृषकानुसार (Default)
+            </button>
+            <button 
+              onClick={() => setSummaryViewType('yearwise')} 
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${summaryViewType === 'yearwise' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+            >
+              थकीत सभासदांची वर्षवार माहिती
+            </button>
+          </div>
+
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
           <div className="bg-blue-900 text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
