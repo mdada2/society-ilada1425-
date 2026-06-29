@@ -92,6 +92,7 @@ const Members = () => {
 
   // -- History Filter States --
   const [historyDate, setHistoryDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [historyFilterType, setHistoryFilterType] = useState<'date' | 'current_fy' | 'previous_fy'>('date');
   const [historySearch, setHistorySearch] = useState('');
   const [showHistoryStatement, setShowHistoryStatement] = useState(false);
 
@@ -292,10 +293,31 @@ const Members = () => {
     }
   };
 
-  // Precompute disbursement history on a specific date
+  // Precompute disbursement history on a specific date or date range
   const disbursementsOnHistoryDate = useMemo(() => {
+    const isDateInFilter = (dateStr: string) => {
+      if (historyFilterType === 'date') {
+        return dateStr === historyDate;
+      }
+      
+      const fyYear = new Date(settings.financialYearStart || '2026-04-01').getFullYear();
+      if (historyFilterType === 'current_fy') {
+        const start = `${fyYear}-04-01`;
+        const end = `${fyYear + 1}-03-31`;
+        return dateStr >= start && dateStr <= end;
+      }
+      
+      if (historyFilterType === 'previous_fy') {
+        const start = `${fyYear - 1}-04-01`;
+        const end = `${fyYear}-03-31`;
+        return dateStr >= start && dateStr <= end;
+      }
+      
+      return false;
+    };
+
     const txnDisb = transactions.filter(t => 
-      t.date === historyDate && 
+      isDateInFilter(t.date) && 
       t.type === TransactionType.DEBIT && 
       t.accountType === AccountType.LOAN
     );
@@ -303,12 +325,12 @@ const Members = () => {
     const txnMemberIds = new Set(txnDisb.map(t => t.memberId));
 
     const legacyDisb = members.filter(m => 
-      m.originalLoanDate === historyDate && 
+      m.originalLoanDate && isDateInFilter(m.originalLoanDate) && 
       (m.loanPrincipal || 0) > 0 &&
       !txnMemberIds.has(m.id)
     ).map(m => ({
       id: `legacy-${m.id}`,
-      date: historyDate,
+      date: m.originalLoanDate,
       memberId: m.id,
       memberName: m.name,
       accountType: AccountType.LOAN,
@@ -329,7 +351,7 @@ const Members = () => {
              m?.memberNo.includes(lowerSearch) ||
              m?.village.toLowerCase().includes(lowerSearch);
     });
-  }, [transactions, members, historyDate, historySearch]);
+  }, [transactions, members, historyDate, historyFilterType, historySearch, settings.financialYearStart]);
 
   const historyTotals = useMemo(() => {
     let totalLoan = 0;
@@ -339,7 +361,7 @@ const Members = () => {
       // Find share txn on same date for this member
       const shareTxn = transactions.find(t => 
         t.memberId === item.memberId && 
-        t.date === historyDate && 
+        t.date === item.date && 
         t.accountType === AccountType.SHARES && 
         t.type === TransactionType.CREDIT
       );
@@ -351,7 +373,7 @@ const Members = () => {
       shares: totalShares,
       count: disbursementsOnHistoryDate.length
     };
-  }, [disbursementsOnHistoryDate, transactions, historyDate]);
+  }, [disbursementsOnHistoryDate, transactions]);
 
   const historyStatement = useMemo(() => {
     const initRow = () => ({ count: 0, land: 0, loan: 0, shares: 0, net: 0 });
@@ -501,7 +523,21 @@ const Members = () => {
   const handleExportStatementExcel = () => {
     const societyName = settings.societyName || 'आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५';
     const title = "खरीप पीक कर्ज वाटप स्टेटमेंट (गोषवारा)";
-    const subtitle = `तारीख: ${historyDate} | हंगाम: २०२६-२७`;
+    
+    let subtitleText = '';
+    let fileSuffix = '';
+    if (historyFilterType === 'date') {
+      subtitleText = `तारीख: ${historyDate} | हंगाम: २०२६-२७`;
+      fileSuffix = historyDate;
+    } else if (historyFilterType === 'current_fy') {
+      subtitleText = `कालावधी: चालू आर्थिक वर्ष | हंगाम: २०२६-२७`;
+      fileSuffix = `Current_FY`;
+    } else {
+      subtitleText = `कालावधी: मागील आर्थिक वर्ष | हंगाम: २०२५-२६`;
+      fileSuffix = `Previous_FY`;
+    }
+
+    const subtitle = subtitleText;
 
     const headers = [
       "अ. क्र.",
@@ -555,20 +591,38 @@ const Members = () => {
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, "Gozwara Statement");
-    XLSX.writeFile(wb, `Crop_Loan_Statement_Gozwara_${historyDate}.xlsx`);
+    XLSX.writeFile(wb, `Crop_Loan_Statement_Gozwara_${fileSuffix}.xlsx`);
   };
 
   const handleExportHistoryList = () => {
+    let fileSuffix = '';
+    if (historyFilterType === 'date') fileSuffix = historyDate;
+    else if (historyFilterType === 'current_fy') fileSuffix = `Current_FY`;
+    else fileSuffix = `Previous_FY`;
+
     const data = generateHistoryCSV(disbursementsOnHistoryDate);
-    if (!data) { alert("No disbursements found on this date to export."); return; }
+    if (!data) { alert("No disbursements found to export."); return; }
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
     XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
-    XLSX.writeFile(wb, `Loan_Disbursements_${historyDate}.xlsx`);
+    XLSX.writeFile(wb, `Loan_Disbursements_${fileSuffix}.xlsx`);
   };
 
   const handleShareHistoryList = async () => {
+    let fileSuffix = '';
+    let subtitleText = '';
+    if (historyFilterType === 'date') {
+      fileSuffix = historyDate;
+      subtitleText = historyDate;
+    } else if (historyFilterType === 'current_fy') {
+      fileSuffix = `Current_FY`;
+      subtitleText = `चालू आर्थिक वर्ष`;
+    } else {
+      fileSuffix = `Previous_FY`;
+      subtitleText = `मागील आर्थिक वर्ष`;
+    }
+
     const data = generateHistoryCSV(disbursementsOnHistoryDate);
     if (!data) { alert("No disbursements to share."); return; }
 
@@ -577,14 +631,14 @@ const Members = () => {
     XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const file = new File([blob], `Loan_Disbursements_${historyDate}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const file = new File([blob], `Loan_Disbursements_${fileSuffix}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
-          title: `Loan Disbursements - ${historyDate}`,
-          text: `Here is the loan disbursement history for ${historyDate}.`
+          title: `Loan Disbursements - ${fileSuffix}`,
+          text: `Here is the loan disbursement history for ${subtitleText}.`
         });
       } catch (error) { console.error('Share failed:', error); }
     } else { alert("Sharing not supported on this device."); }
@@ -1852,14 +1906,28 @@ const Members = () => {
           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">तारीख निवडा / Select Date:</span>
-                <input 
-                  type="date" 
-                  value={historyDate} 
-                  onChange={e => setHistoryDate(e.target.value)} 
-                  className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" 
-                />
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">कालावधी प्रकार:</span>
+                <select
+                  value={historyFilterType}
+                  onChange={e => setHistoryFilterType(e.target.value as any)}
+                  className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="date">विशिष्ट तारीख (Single Date)</option>
+                  <option value="current_fy">चालू आर्थिक वर्ष (Current FY)</option>
+                  <option value="previous_fy">मागील आर्थिक वर्ष (Previous FY)</option>
+                </select>
               </div>
+              {historyFilterType === 'date' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">तारीख / Date:</span>
+                  <input 
+                    type="date" 
+                    value={historyDate} 
+                    onChange={e => setHistoryDate(e.target.value)} 
+                    className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+              )}
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 text-slate-400" size={16} />
                 <input 
@@ -1904,8 +1972,10 @@ const Members = () => {
                   <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mt-1">
                     खरीप पीक कर्ज वाटप स्टेटमेंट (गोषवारा)
                   </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                    तारीख: {historyDate} | हंगाम: २०२६-२७
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-bold">
+                    {historyFilterType === 'date' && `तारीख: ${historyDate} | हंगाम: २०२६-२७`}
+                    {historyFilterType === 'current_fy' && `कालावधी: चालू आर्थिक वर्ष | हंगाम: २०२६-२७`}
+                    {historyFilterType === 'previous_fy' && `कालावधी: मागील आर्थिक वर्ष | हंगाम: २०२५-२६`}
                   </p>
                 </div>
                 <div className="flex justify-center sm:justify-end">
