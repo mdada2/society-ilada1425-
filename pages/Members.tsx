@@ -11,6 +11,7 @@ import { scanIDCard } from '../services/ai';
 import { downloadBlob } from '../utils/downloadUtils';
 import { exportMembersToExcel } from '../services/excelExport';
 import * as XLSX from 'xlsx';
+import XLSXStyle from 'xlsx-js-style';
 
 const Members = () => {
   const { members, addMember, deleteMember, settings, importMembers, updateMembers, addTransaction, transactions } = useApp();
@@ -595,18 +596,197 @@ const Members = () => {
   };
 
   const handleExportHistoryList = () => {
+    if (disbursementsOnHistoryDate.length === 0) {
+      alert("No disbursements found to export.");
+      return;
+    }
+
     let fileSuffix = '';
-    if (historyFilterType === 'date') fileSuffix = historyDate;
-    else if (historyFilterType === 'current_fy') fileSuffix = `Current_FY`;
-    else fileSuffix = `Previous_FY`;
+    let selectedDateLabel = '';
+    if (historyFilterType === 'date') {
+      fileSuffix = historyDate;
+      selectedDateLabel = format(new Date(historyDate), 'dd/MM/yyyy');
+    } else if (historyFilterType === 'current_fy') {
+      fileSuffix = `Current_FY`;
+      selectedDateLabel = "चालू आर्थिक वर्ष";
+    } else {
+      fileSuffix = `Previous_FY`;
+      selectedDateLabel = "मागील आर्थिक वर्ष";
+    }
 
-    const data = generateHistoryCSV(disbursementsOnHistoryDate);
-    if (!data) { alert("No disbursements found to export."); return; }
+    const ws: any = {};
+    const merges: any[] = [];
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
-    XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
-    XLSX.writeFile(wb, `Loan_Disbursements_${fileSuffix}.xlsx`);
+    // Styling helpers
+    const titleStyle = { font: { name: 'Calibri', sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const metaStyle = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'left', vertical: 'center' } };
+    const metaStyleRight = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'right', vertical: 'center' } };
+    const headerStyle = { font: { name: 'Calibri', sz: 10, bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, fill: { fgColor: { rgb: 'F1F5F9' } }, border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } } };
+    const sectionHeaderStyle = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, fill: { fgColor: { rgb: 'E2E8F0' } }, border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } } };
+    
+    const cellCenter = { font: { name: 'Calibri', sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+    const cellLeft = { font: { name: 'Calibri', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+    const cellRight = { font: { name: 'Calibri', sz: 10 }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+    
+    const totalStyle = { font: { name: 'Calibri', sz: 10, bold: true }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin' }, bottom: { style: 'double' }, left: { style: 'thin' }, right: { style: 'thin' } } };
+    const totalLabelStyle = { font: { name: 'Calibri', sz: 10, bold: true }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin' }, bottom: { style: 'double' }, left: { style: 'thin' }, right: { style: 'thin' } } };
+
+    const setCell = (r: number, c: number, val: any, style: any = {}, z: string | null = null) => {
+      const cellRef = XLSXStyle.utils.encode_cell({ r, c });
+      ws[cellRef] = { v: val, t: typeof val === 'number' ? 'n' : 's', s: style };
+      if (z) ws[cellRef].z = z;
+    };
+
+    // Row 0: Society Name
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 13 } });
+    setCell(0, 0, settings.societyName || "Adiwasi Vividh Karykari Sahakari Sanstha Ilada R. N. 1425", titleStyle);
+    for(let c=1; c<14; c++) setCell(0, c, "");
+
+    // Row 1: Document Title
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 13 } });
+    setCell(1, 0, "KCC Disbursement Excel Sheet", titleStyle);
+    for(let c=1; c<14; c++) setCell(1, c, "");
+
+    // Row 2: Metadata (PACs Name, Year, Date)
+    merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 2 } });
+    setCell(2, 0, `PACs Name : ${settings.pacsName || 'Ilada'}`, metaStyle);
+    for(let c=1; c<=2; c++) setCell(2, c, "");
+
+    merges.push({ s: { r: 2, c: 3 }, e: { r: 2, c: 6 } });
+    const fyYear = new Date(settings.financialYearStart || '2026-04-01').getFullYear();
+    setCell(2, 3, `Year : ${fyYear}-${String(fyYear + 1).slice(2)}`, metaStyle);
+    for(let c=4; c<=6; c++) setCell(2, c, "");
+
+    merges.push({ s: { r: 2, c: 7 }, e: { r: 2, c: 13 } });
+    setCell(2, 7, `Date :- ${selectedDateLabel}`, metaStyleRight);
+    for(let c=8; c<14; c++) setCell(2, c, "");
+
+    // Row 3: Table Headers
+    const headers = [
+      "Member No", "Name", "Village", "Aadhar Number", "Br. Code No.", "GL Code", 
+      "Loan Account No", "Payable Amount", "CR/DR", "Particular", "Land Area in Acre", 
+      "Shares Amount", "Principal Amount", "Mobile No."
+    ];
+    headers.forEach((h, c) => setCell(3, c, h, headerStyle));
+
+    let currentRow = 4;
+
+    const processGroup = (groupLabel: string, items: any[]) => {
+      if (items.length === 0) return { payable: 0, land: 0, shares: 0, principal: 0 };
+
+      // Section Header (e.g. K.C.C.- Small)
+      merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 13 } });
+      setCell(currentRow, 0, groupLabel, sectionHeaderStyle);
+      for(let c=1; c<14; c++) setCell(currentRow, c, "");
+      currentRow++;
+
+      let gPayable = 0, gLand = 0, gShares = 0, gPrincipal = 0;
+
+      items.forEach(item => {
+        const m = members.find(x => x.id === item.memberId);
+        const name = m?.name || item.memberName || 'N/A';
+        const village = m?.village || 'N/A';
+        const aadhar = m?.aadharCardNo || m?.aadhar || 'N/A';
+        const loanAcc = m?.loanAccountNo || 'N/A';
+        const mobile = m?.mobile || '';
+        
+        const shareTxn = transactions.find(t => 
+          t.memberId === item.memberId && 
+          t.date === item.date && 
+          t.accountType === AccountType.SHARES && 
+          t.type === TransactionType.CREDIT
+        );
+        const sharesAmount = shareTxn ? shareTxn.amount : 0;
+        const principalAmount = item.amount || 0;
+        const payableAmount = principalAmount - sharesAmount;
+        const landAreaVal = parseFloat(m?.landArea || '0') * 2.471;
+
+        gPayable += payableAmount;
+        gLand += landAreaVal;
+        gShares += sharesAmount;
+        gPrincipal += principalAmount;
+
+        setCell(currentRow, 0, m?.memberNo || 'N/A', cellCenter);
+        setCell(currentRow, 1, name, cellLeft);
+        setCell(currentRow, 2, village, cellLeft);
+        setCell(currentRow, 3, aadhar, cellCenter);
+        setCell(currentRow, 4, 20, cellCenter); // Br. Code No.
+        setCell(currentRow, 5, 9001, cellCenter); // GL Code
+        setCell(currentRow, 6, loanAcc, cellCenter);
+        setCell(currentRow, 7, payableAmount, cellRight, '#,##,##0');
+        setCell(currentRow, 8, "CR", cellCenter);
+        setCell(currentRow, 9, item.loanType === 'Medium Term' ? "MT Loan" : "KCC Lone", cellCenter);
+        setCell(currentRow, 10, parseFloat(landAreaVal.toFixed(2)), cellRight, '0.00');
+        setCell(currentRow, 11, sharesAmount, cellRight, '#,##,##0');
+        setCell(currentRow, 12, principalAmount, cellRight, '#,##,##0');
+        setCell(currentRow, 13, mobile, cellCenter);
+
+        currentRow++;
+      });
+
+      // Group Total Row
+      for (let c = 0; c < 14; c++) {
+        if (c === 7) {
+          setCell(currentRow, c, gPayable, totalStyle, '#,##,##0');
+        } else if (c === 10) {
+          setCell(currentRow, c, parseFloat(gLand.toFixed(2)), totalStyle, '0.00');
+        } else if (c === 11) {
+          setCell(currentRow, c, gShares, totalStyle, '#,##,##0');
+        } else if (c === 12) {
+          setCell(currentRow, c, gPrincipal, totalStyle, '#,##,##0');
+        } else {
+          setCell(currentRow, c, "", totalLabelStyle);
+        }
+      }
+      currentRow++;
+
+      return { payable: gPayable, land: gLand, shares: gShares, principal: gPrincipal };
+    };
+
+    // Separate K.C.C.- Small vs K.C.C.- Big
+    const smallItems = disbursementsOnHistoryDate.filter(d => {
+      const m = members.find(x => x.id === d.memberId);
+      return m?.farmerType !== 'Large Farmer';
+    });
+    const bigItems = disbursementsOnHistoryDate.filter(d => {
+      const m = members.find(x => x.id === d.memberId);
+      return m?.farmerType === 'Large Farmer';
+    });
+
+    const smallTotals = processGroup("K.C.C.- Small", smallItems);
+    const bigTotals = processGroup("K.C.C.- Big", bigItems);
+
+    // Grand Total Row
+    for (let c = 0; c < 14; c++) {
+      if (c === 1) {
+        setCell(currentRow, c, "Total", totalLabelStyle);
+      } else if (c === 7) {
+        setCell(currentRow, c, smallTotals.payable + bigTotals.payable, totalStyle, '#,##,##0');
+      } else if (c === 10) {
+        setCell(currentRow, c, parseFloat((smallTotals.land + bigTotals.land).toFixed(2)), totalStyle, '0.00');
+      } else if (c === 11) {
+        setCell(currentRow, c, smallTotals.shares + bigTotals.shares, totalStyle, '#,##,##0');
+      } else if (c === 12) {
+        setCell(currentRow, c, smallTotals.principal + bigTotals.principal, totalStyle, '#,##,##0');
+      } else {
+        setCell(currentRow, c, "", totalLabelStyle);
+      }
+    }
+
+    ws['!merges'] = merges;
+    ws['!ref'] = `A1:N${currentRow + 1}`;
+    ws['!cols'] = [
+      { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 16 }, { wch: 10 }, { wch: 10 }, 
+      { wch: 18 }, { wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 15 }, { wch: 14 }, 
+      { wch: 15 }, { wch: 14 }
+    ];
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, "KCC Disbursement");
+
+    const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    downloadBlob(blob, `KCC_Disbursement_${fileSuffix}.xlsx`);
   };
 
   const handleShareHistoryList = async () => {
