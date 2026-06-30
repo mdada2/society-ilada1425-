@@ -131,6 +131,7 @@ const Reports = () => {
   const [sharesMinAmount, setSharesMinAmount] = useState<number | ''>('');
   const [sharesMaxAmount, setSharesMaxAmount] = useState<number | ''>('');
   const [sharesQuickFilter, setSharesQuickFilter] = useState<string>('all');
+  const [sharesPeriod, setSharesPeriod] = useState<'today' | 'current_fy' | 'previous_fy'>('today');
 
   // Reset selected financial year range when category or sub-tab changes
   useEffect(() => {
@@ -141,6 +142,7 @@ const Reports = () => {
     setSharesMinAmount('');
     setSharesMaxAmount('');
     setSharesQuickFilter('all');
+    setSharesPeriod('today');
   }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string, isNPAMode = false) => {
@@ -2379,11 +2381,40 @@ const Reports = () => {
 
   const renderMembership = () => {
     if (activeSubTab === 'Shares Capital') {
+      const getSharesForMember = (m: any) => {
+        if (sharesPeriod === 'today') {
+          return m.shareBalance || 0;
+        }
+        const fyStart = settings.financialYearStart || '2026-04-01';
+        const fyYear = new Date(fyStart).getFullYear();
+        const cutoffDate = sharesPeriod === 'current_fy' ? `${fyYear + 1}-03-31` : `${fyYear}-03-31`;
+        
+        if (m.membershipDate && m.membershipDate > cutoffDate) {
+          return 0;
+        }
+        
+        let balance = m.shareBalance || 0;
+        const txnsAfter = transactions.filter(t => 
+          t.memberId === m.id && 
+          t.accountType === 'Shares' && 
+          t.date > cutoffDate
+        );
+        txnsAfter.forEach(t => {
+          if (t.type === 'Credit') balance -= t.amount;
+          else if (t.type === 'Debit') balance += t.amount;
+        });
+        return balance;
+      };
+
       // Filter members who have shares > 0 and apply quick/custom filters, and sort numerically by memberNo
       const sharesMembers = members
-        .filter(m => (m.shareBalance || 0) > 0)
+        .map(m => ({
+          ...m,
+          tempShareBalance: getSharesForMember(m)
+        }))
+        .filter(m => m.tempShareBalance > 0)
         .filter(m => {
-          const balance = m.shareBalance || 0;
+          const balance = m.tempShareBalance;
           
           if (sharesQuickFilter !== 'all') {
             if (sharesQuickFilter === '10') return balance === 10;
@@ -2416,8 +2447,8 @@ const Reports = () => {
       const leftHalf = sharesMembers.slice(0, halfLength);
       const rightHalf = sharesMembers.slice(halfLength);
 
-      const leftTotal = leftHalf.reduce((sum, m) => sum + (m.shareBalance || 0), 0);
-      const rightTotal = rightHalf.reduce((sum, m) => sum + (m.shareBalance || 0), 0);
+      const leftTotal = leftHalf.reduce((sum, m) => sum + m.tempShareBalance, 0);
+      const rightTotal = rightHalf.reduce((sum, m) => sum + m.tempShareBalance, 0);
 
       const handleSharesCapitalExport = () => {
         const ws: any = {};
@@ -2447,7 +2478,11 @@ const Reports = () => {
 
         // Subtitles (Row 2)
         merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
-        setCell(1, 0, "हिस्से यादी", subtitleStyleLeft);
+        let periodTitle = "हिस्से यादी";
+        if (sharesPeriod === 'today') periodTitle = "हिस्से यादी (आज अखेर)";
+        else if (sharesPeriod === 'current_fy') periodTitle = "हिस्से यादी (चालू आर्थिक वर्ष)";
+        else periodTitle = "हिस्से यादी (मागील आर्थिक वर्ष)";
+        setCell(1, 0, periodTitle, subtitleStyleLeft);
         for(let c=1; c<=6; c++) setCell(1, c, "");
 
         merges.push({ s: { r: 1, c: 7 }, e: { r: 1, c: 13 } });
@@ -2476,7 +2511,7 @@ const Reports = () => {
             setCell(r, 3, leftItem.gender, cellCenter);
             setCell(r, 4, leftItem.category || 'GEN', cellCenter);
             setCell(r, 5, leftItem.memberNo, cellCenter);
-            setCell(r, 6, leftItem.shareBalance || 0, cellRight, '#,##,##0');
+            setCell(r, 6, leftItem.tempShareBalance || 0, cellRight, '#,##,##0');
           } else {
             for(let c=0; c<7; c++) setCell(r, c, "", cellCenter);
           }
@@ -2489,7 +2524,7 @@ const Reports = () => {
             setCell(r, 10, rightItem.gender, cellCenter);
             setCell(r, 11, rightItem.category || 'GEN', cellCenter);
             setCell(r, 12, rightItem.memberNo, cellCenter);
-            setCell(r, 13, rightItem.shareBalance || 0, cellRight, '#,##,##0');
+            setCell(r, 13, rightItem.tempShareBalance || 0, cellRight, '#,##,##0');
           } else {
             for(let c=7; c<14; c++) setCell(r, c, "", cellCenter);
           }
@@ -2540,6 +2575,19 @@ const Reports = () => {
             {/* Filter Section */}
             <div className="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">कालावधी (Period):</label>
+                  <select 
+                    value={sharesPeriod} 
+                    onChange={(e) => setSharesPeriod(e.target.value as any)}
+                    className="p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                  >
+                    <option value="today">आज अखेर (As of Today)</option>
+                    <option value="current_fy">चालू आर्थिक वर्ष (Current FY)</option>
+                    <option value="previous_fy">मागील आर्थिक वर्ष (Previous FY)</option>
+                  </select>
+                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">जलद हिस्से फिल्टर (Quick Filter):</label>
                   <select 
@@ -2599,6 +2647,7 @@ const Reports = () => {
                     setSharesQuickFilter('all');
                     setSharesMinAmount('');
                     setSharesMaxAmount('');
+                    setSharesPeriod('today');
                   }}
                   className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold self-end transition-all"
                 >
@@ -2643,7 +2692,7 @@ const Reports = () => {
                           <td className="p-2 text-center text-slate-500">{m.gender}</td>
                           <td className="p-2 text-center text-slate-500">{m.category || 'GEN'}</td>
                           <td className="p-2 text-center text-slate-600 dark:text-slate-300 font-mono font-bold">{m.memberNo}</td>
-                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">₹{m.shareBalance.toLocaleString()}</td>
+                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">₹{m.tempShareBalance.toLocaleString()}</td>
                         </tr>
                       ))}
                       <tr className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-800 dark:text-white border-t-2">
@@ -2681,7 +2730,7 @@ const Reports = () => {
                           <td className="p-2 text-center text-slate-500">{m.gender}</td>
                           <td className="p-2 text-center text-slate-500">{m.category || 'GEN'}</td>
                           <td className="p-2 text-center text-slate-600 dark:text-slate-300 font-mono font-bold">{m.memberNo}</td>
-                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">₹{m.shareBalance.toLocaleString()}</td>
+                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">₹{m.tempShareBalance.toLocaleString()}</td>
                         </tr>
                       ))}
                       <tr className="bg-slate-100 dark:bg-slate-700 font-bold text-slate-800 dark:text-white border-t-2">
