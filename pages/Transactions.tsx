@@ -501,9 +501,9 @@ const Transactions = () => {
                                     <button type="button" onClick={() => setShowMemberModal(true)} className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md active:scale-95"><Users size={24} /></button>
                                 </div>
                                 {selectedMember && (
-                                    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-800 dark:text-blue-300 flex justify-between items-center animate-fade-in">
-                                        <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">{selectedMember.name.charAt(0)}</div><span>{selectedMember.name}</span></div>
-                                        <button type="button" onClick={() => { setMemberId(''); setSearch(''); }} className="text-red-500 hover:text-red-700 text-[10px] uppercase font-black">Change</button>
+                                    <div className="mt-2 p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800 text-sm font-bold text-blue-800 dark:text-blue-300 flex justify-between items-center animate-fade-in">
+                                        <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">{selectedMember.name.charAt(0)}</div><span className="text-sm md:text-base font-bold text-slate-800 dark:text-slate-100">{selectedMember.name}</span></div>
+                                        <button type="button" onClick={() => { setMemberId(''); setSearch(''); }} className="text-red-500 hover:text-red-700 text-xs uppercase font-black">Change</button>
                                     </div>
                                 )}
                             </div>
@@ -571,8 +571,24 @@ const Transactions = () => {
                                     </div>
 
                                     <div className="space-y-1 animate-fade-in">
-                                        <div className="flex justify-between text-slate-500 text-[10px]"><span>Principal:</span><span>₹{selectedMember.loanPrincipal.toLocaleString()}</span></div>
-                                        <div className="flex justify-between text-slate-500 text-[10px]"><span>Interest:</span><span>₹{totalInterestDisplay.toLocaleString()}</span></div>
+                                        <div className="flex justify-between text-slate-500 text-[10px]">
+                                            <div className="flex flex-col">
+                                                <span>Principal:</span>
+                                                <span className="text-[8px] text-slate-400">
+                                                    (उचल: {selectedMember.originalLoanDate ? formatDateDisplay(selectedMember.originalLoanDate) : '-'} / शेवटची: {selectedMember.lastLoanCalculationDate ? formatDateDisplay(selectedMember.lastLoanCalculationDate) : '-'})
+                                                </span>
+                                            </div>
+                                            <span className="font-mono font-semibold self-center">₹{selectedMember.loanPrincipal.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-slate-500 text-[10px]">
+                                            <div className="flex flex-col">
+                                                <span>Interest:</span>
+                                                <span className="text-[8px] text-slate-400">
+                                                    (तारीख: {formatDateDisplay(date)})
+                                                </span>
+                                            </div>
+                                            <span className="font-mono font-semibold self-center">₹{totalInterestDisplay.toLocaleString()}</span>
+                                        </div>
 
                                         <div className="flex justify-between font-bold text-sm text-slate-400 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-1 mt-1">
                                             <span>Grand Total:</span>
