@@ -233,6 +233,20 @@ export interface AllowanceSettings {
   meetingFee: number;
 }
 
+export interface NclRecord {
+  id: string;
+  memberId: string;
+  revenueCircle: string; // default e.g. "कनेरी"
+  landArea: number; // Araji in acres
+  wetPaddyAcres: number;
+  dryPaddyAcres: number;
+  summerCropAcres: number;
+  recommendedAcres?: number;
+  recommendedCash?: number;
+  inspectorAcres?: number;
+  inspectorCash?: number;
+}
+
 export interface AppSettings {
   securityPin: string;
   societyName: string;
@@ -257,6 +271,8 @@ export interface AppSettings {
   firstYearInterestRate?: number;      // Interest rate for first financial year (default: 6%)
   subsequentYearInterestRate?: number; // Interest rate for subsequent years (default: 12%)
   interestRatesLocked?: boolean;       // Lock to prevent accidental changes to interest rates
+  nclRatePerAcre?: number;             // Loan rate per acre (default e.g. 32000)
+  nclRevenueCircleDefault?: string;    // Default revenue circle name (e.g. "कनेरी")
 }
 
 export interface LocalSettings {

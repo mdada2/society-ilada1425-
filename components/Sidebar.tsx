@@ -33,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/dispatch', label: 'Dispatch', icon: <Truck size={20} /> },
     { path: '/inventory-entry', label: 'Inventory Entry', icon: <Package size={20} /> },
     { path: '/reports', label: 'Reports', icon: <FileText size={20} /> },
+    { path: '/ncl', label: 'NCL (कर्ज मर्यादा)', icon: <FileText size={20} /> },
     { path: '/loan-calculator', label: 'Loan Calculator', icon: <Calculator size={20} /> },
     { path: '/tools', label: 'Tools', icon: <Wrench size={20} /> },
     { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
