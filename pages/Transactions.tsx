@@ -12,7 +12,7 @@ import { generateNarration } from '../services/ai';
 import { downloadBlob } from '../utils/downloadUtils';
 
 const Transactions = () => {
-    const { members, addTransaction, deleteTransaction, transactions, settings, societyBanks } = useApp();
+    const { members, addTransaction, deleteTransaction, transactions, settings, societyBanks, nclRecords } = useApp();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -44,6 +44,7 @@ const Transactions = () => {
     const [memberId, setMemberId] = useState<string>('');
     const [accountType, setAccountType] = useState<AccountType | 'Expense'>(AccountType.SAVINGS);
     const [amount, setAmount] = useState<number>(0);
+    const [pikPeraAcres, setPikPeraAcres] = useState<number | ''>('');
     const [details, setDetails] = useState('');
     const [search, setSearch] = useState('');
 
@@ -75,6 +76,8 @@ const Transactions = () => {
     const datePickerRef = useRef<HTMLInputElement>(null); // Calendar picker साठी
 
     const selectedMember = members.find(m => m.id === memberId);
+    const ratePerAcre = settings.nclRatePerAcre || 32000;
+    const nclRecord = useMemo(() => nclRecords?.find(r => r.memberId === selectedMember?.id), [nclRecords, selectedMember]);
 
     // Constants for Funds
     const BUILDING_FUND_FIXED = 300;
@@ -630,13 +633,72 @@ const Transactions = () => {
                                 </div>
                             )}
 
-                            {/* FD Balance Display */}
                             {selectedMember && accountType === AccountType.FD && (
                                 <div className="p-3 rounded-lg text-xs border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 text-slate-700 dark:text-slate-300 animate-fade-in">
                                     <div className="flex justify-between items-center">
                                         <span className="font-bold">FD Balance (मुदत ठेव रक्कम):</span>
                                         <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">₹{(selectedMember.fdBalance || 0).toLocaleString()}</span>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* NCL & Pik Pera Info for Loan Debit (Disbursement) */}
+                            {type === TransactionType.DEBIT && accountType === AccountType.LOAN && selectedMember && (
+                                <div className="p-3.5 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/60 space-y-3 animate-fade-in text-xs mb-4">
+                                    <h4 className="font-black text-blue-800 dark:text-blue-400 text-sm flex items-center gap-1.5 border-b dark:border-blue-900 pb-1.5">
+                                        <Calculator size={16} /> ७/१२ पीक पेरा मर्यादा तपासणी (Crop Loan Limit)
+                                    </h4>
+                                    
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">मुख्य मूळ आराजी (कायम)</p>
+                                            <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{selectedMember.landArea || '0'} एकर</p>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">नोंदणीकृत NCL मर्यादा</p>
+                                            <p className="text-sm font-black text-blue-600 mt-0.5">
+                                                ₹{nclRecord 
+                                                    ? ((nclRecord.wetPaddyAcres + nclRecord.dryPaddyAcres + nclRecord.summerCropAcres) * ratePerAcre).toLocaleString() 
+                                                    : (parseFloat(selectedMember.landArea || '0') * ratePerAcre).toLocaleString()
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                            ७/१२ पीक पेरा क्षेत्र (लागवड क्षेत्र) एकर मध्ये
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            placeholder="उदा. १.५" 
+                                            value={pikPeraAcres} 
+                                            onChange={e => setPikPeraAcres(e.target.value !== '' ? parseFloat(e.target.value) : '')}
+                                            className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm"
+                                        />
+                                    </div>
+
+                                    {pikPeraAcres !== '' && (
+                                        <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-900/60 p-2 rounded-lg font-bold">
+                                            <span className="text-slate-500">मंजूर पीक पेरा कर्ज मर्यादा:</span>
+                                            <span className="text-emerald-600 font-mono text-sm">
+                                                ₹{(Number(pikPeraAcres) * ratePerAcre).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {pikPeraAcres !== '' && amount > (Number(pikPeraAcres) * ratePerAcre) && (
+                                        <div className="p-2.5 bg-red-100 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg text-[11px] font-bold text-red-700 dark:text-red-400 flex items-start gap-2 animate-pulse">
+                                            <span className="text-sm">⚠️</span>
+                                            <div>
+                                                <p className="font-black">मर्यादा ओलांडली आहे (Limit Exceeded!):</p>
+                                                <p className="mt-0.5 font-normal leading-relaxed">
+                                                    मंजूर पीक पेरा कर्ज मर्यादेपेक्षा (₹{(Number(pikPeraAcres) * ratePerAcre).toLocaleString()}) जास्त कर्ज वाटप केले जात आहे. बँक/संस्थेची अधिकृत मान्यता किंवा मूळ आराजी बदल आवश्यक आहे.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
