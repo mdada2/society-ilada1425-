@@ -263,66 +263,6 @@ export default function NclManager() {
     downloadBlob(blob, `NCL_Official_Register_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
   };
 
-  // Export NCL list to Excel matching Manage registration view table structure
-  const handleExportExcelManageView = () => {
-    const headers = [
-      'अ. क्र.',
-      'सभासदाचे नाव',
-      'सभा. क्रमांक',
-      'गाव',
-      'महसूल मंडळ',
-      'आराजी (एकर)',
-      'धान ओलीत आराजी',
-      'धान ओलीत नगदी (₹)',
-      'धान कोरडवाहू आराजी',
-      'धान कोरडवाहू नगदी (₹)',
-      'बागा. उन्हाळी आराजी',
-      'बागा. उन्हाळी नगदी (₹)',
-      'एकूण मागणी आराजी',
-      'एकूण मागणी नगदी (₹)'
-    ];
-
-    const rows = sortedNclRecords.map((r, idx) => {
-      const m = members.find(mem => mem.id === r.memberId);
-      const totalAcres = r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres;
-      const totalCash = totalAcres * ratePerAcre;
-
-      return [
-        idx + 1,
-        m?.name || 'N/A',
-        m?.memberNo || 'N/A',
-        m?.village || 'N/A',
-        r.revenueCircle,
-        r.landArea,
-        r.wetPaddyAcres,
-        r.wetPaddyAcres * ratePerAcre,
-        r.dryPaddyAcres,
-        r.dryPaddyAcres * ratePerAcre,
-        r.summerCropAcres,
-        r.summerCropAcres * ratePerAcre,
-        totalAcres,
-        totalCash
-      ];
-    });
-
-    if (rows.length > 0) {
-      const totals = rows.reduce((acc, curr) => {
-        for (let col = 5; col < curr.length; col++) {
-          acc[col] = (acc[col] || 0) + (curr[col] as number);
-        }
-        return acc;
-      }, ['एकूण', '', '', '', ''] as any[]);
-      rows.push(totals);
-    }
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "NCL Manage View");
-    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    downloadBlob(blob, `NCL_Manage_View_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
-  };
-
   // Download Import Template pre-filled with all members not currently in the NCL list
   const handleDownloadTemplate = () => {
     const headers = [
@@ -470,14 +410,6 @@ export default function NclManager() {
             title="Export Official formatted Sheet"
           >
             <Download size={16} /> Official Register Excel
-          </button>
-
-          <button
-            onClick={handleExportExcelManageView}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg shadow flex items-center gap-2 font-semibold text-sm transition"
-            title="Export Registration Manage View Sheet"
-          >
-            <Download size={16} /> Manage View Excel
           </button>
 
           {/* Import Template and Uploader buttons */}
