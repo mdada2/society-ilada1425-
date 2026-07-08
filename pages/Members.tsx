@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 import XLSXStyle from 'xlsx-js-style';
 
 const Members = () => {
-  const { members, addMember, deleteMember, settings, importMembers, updateMembers, addTransaction, transactions } = useApp();
+  const { members, addMember, deleteMember, settings, importMembers, updateMembers, addTransaction, transactions, nclRecords } = useApp();
   const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -2005,6 +2005,9 @@ const Members = () => {
                         date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
                         loanType: bulkType || member.loanType || 'Short Term'
                       };
+                      const ratePerAcre = settings.nclRatePerAcre || 32000;
+                      const landVal = parseFloat(data.landArea ?? member.landArea ?? '0') || 0;
+                      const maxLimit = landVal * ratePerAcre;
                       const isSaved = disbursedLog.has(id);
 
                       return (
@@ -2036,8 +2039,14 @@ const Members = () => {
                               value={data.loanAmount || ''}
                               placeholder="Principal"
                               onChange={e => handleDisbursementChange(id, 'loanAmount', parseFloat(e.target.value))}
-                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 dark:text-white"
+                              className={`w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-bold ${data.loanAmount > maxLimit ? 'border-red-500 focus:ring-red-500 text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-white'}`}
                             />
+                            <div className="text-[9px] mt-1 font-bold text-slate-400 dark:text-slate-500 flex flex-col gap-0.5">
+                              <span>मर्यादा: ₹{maxLimit.toLocaleString()}</span>
+                              {data.loanAmount > maxLimit && (
+                                <span className="text-red-500 animate-pulse">⚠️ मर्यादा ओलांडली</span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 pr-2">
                             <input 
