@@ -368,7 +368,8 @@ export default function NclManager() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto pb-32 animate-fade-in no-print">
+    <>
+      <div className="p-4 md:p-6 max-w-7xl mx-auto pb-32 animate-fade-in no-print">
       {/* Page Title & Actions */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <div>
@@ -927,6 +928,7 @@ export default function NclManager() {
           </form>
         </div>
       )}
+      </div>
 
       {/* Styled Printable NCL Sheet Document */}
       <style>{`
@@ -1114,6 +1116,6 @@ export default function NclManager() {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }
