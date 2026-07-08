@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { FileText, Search, Plus, Trash2, Edit2, Download, Printer, Settings, Check, X, Calculator } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { FileText, Search, Plus, Trash2, Edit2, Download, Printer, Settings, Check, X, Calculator, Upload } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { NclRecord } from '../types';
 import { format } from 'date-fns';
@@ -38,6 +38,7 @@ export default function NclManager() {
   const [activeTab, setActiveTab] = useState<'manage' | 'print'>('manage');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingRecord, setEditingRecord] = useState<NclRecord | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Global NCL Configuration variables
   const ratePerAcre = settings.nclRatePerAcre ?? 32000;
@@ -106,7 +107,6 @@ export default function NclManager() {
     const member = members.find(m => m.id === memberId);
     if (!member) return;
 
-    // Convert landArea string safely
     const landNum = parseFloat(member.landArea) || 0;
 
     const newRecord: NclRecord = {
@@ -114,7 +114,7 @@ export default function NclManager() {
       memberId,
       revenueCircle: defaultRevenueCircle,
       landArea: landNum,
-      wetPaddyAcres: landNum, // defaults wet paddy to total acres
+      wetPaddyAcres: landNum,
       dryPaddyAcres: 0,
       summerCropAcres: 0,
       recommendedAcres: landNum,
@@ -143,30 +143,29 @@ export default function NclManager() {
     };
   }, [nclRecords, ratePerAcre]);
 
-  // Save NCL record edits
+  // Save NCL record edits - Automatically sync recommended/inspector values to total demand
   const handleUpdateRecord = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRecord) return;
 
-    // Calculate total demand acres and cash
     const totalAcres = editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres;
     const totalCash = totalAcres * ratePerAcre;
 
     const updated = {
       ...editingRecord,
-      recommendedAcres: editingRecord.recommendedAcres ?? totalAcres,
-      recommendedCash: editingRecord.recommendedCash ?? totalCash,
-      inspectorAcres: editingRecord.inspectorAcres ?? totalAcres,
-      inspectorCash: editingRecord.inspectorCash ?? totalCash
+      recommendedAcres: totalAcres,
+      recommendedCash: totalCash,
+      inspectorAcres: totalAcres,
+      inspectorCash: totalCash
     };
 
     updateNclRecord(updated);
     setEditingRecord(null);
   };
 
-  // Export NCL list to Excel
-  const handleExportExcel = () => {
-    const headers = [
+  // Export NCL list to Excel matching official Print format with merged double row headers
+  const handleExportExcelOfficial = () => {
+    const headers0 = [
       'अ. क्र.',
       'सभासदाचे नाव',
       'सभा. क्रमांक',
@@ -174,20 +173,24 @@ export default function NclManager() {
       'गाव',
       'महसूल मंडळ',
       'आराजी (एकर)',
-      'धान ओलीत आराजी',
-      'धान ओलीत नगदी',
-      'धान कोरडवाहू आराजी',
-      'धान कोरडवाहू नगदी',
-      'एकूण खरीप आराजी',
-      'एकूण खरीप नगदी',
-      'बागायती आराजी',
-      'बागायती नगदी',
-      'एकूण मागणी आराजी',
-      'एकूण मागणी नगदी',
-      'संस्थेची शिफारस आराजी',
-      'संस्थेची शिफारस नगदी',
-      'निरीक्षक शिफारस आराजी',
-      'निरीक्षक शिफारस नगदी'
+      'धान ओलीत', '',
+      'धान कोरडवाहू', '',
+      'एकूण खरीप', '',
+      'उन्हाळी पिके', '',
+      'एकूण मागणी', '',
+      'संस्था शिफारस', '',
+      'शाखा निरीक्षक शिफारस', ''
+    ];
+
+    const headers1 = [
+      '', '', '', '', '', '', '',
+      'आराजी', 'नगदी',
+      'आराजी', 'नगदी',
+      'आराजी', 'नगदी',
+      'आराजी', 'नगदी',
+      'आराजी', 'नगदी',
+      'आराजी', 'नगदी',
+      'आराजी', 'नगदी'
     ];
 
     const rows = sortedNclRecords.map((r, idx) => {
@@ -215,14 +218,13 @@ export default function NclManager() {
         r.summerCropAcres * ratePerAcre,
         totalDemandAcres,
         totalDemandCash,
-        r.recommendedAcres ?? totalDemandAcres,
-        r.recommendedCash ?? totalDemandCash,
-        r.inspectorAcres ?? totalDemandAcres,
-        r.inspectorCash ?? totalDemandCash
+        totalDemandAcres,
+        totalDemandCash,
+        totalDemandAcres,
+        totalDemandCash
       ];
     });
 
-    // Add Total Row
     if (rows.length > 0) {
       const totals = rows.reduce((acc, curr) => {
         for (let col = 6; col < curr.length; col++) {
@@ -234,18 +236,201 @@ export default function NclManager() {
       rows.push(totals);
     }
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([headers0, headers1, ...rows]);
+
+    // Apply sheet merge metadata for headers
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+      { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+      { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } },
+      { s: { r: 0, c: 5 }, e: { r: 1, c: 5 } },
+      { s: { r: 0, c: 6 }, e: { r: 1, c: 6 } },
+      { s: { r: 0, c: 7 }, e: { r: 0, c: 8 } },
+      { s: { r: 0, c: 9 }, e: { r: 0, c: 10 } },
+      { s: { r: 0, c: 11 }, e: { r: 0, c: 12 } },
+      { s: { r: 0, c: 13 }, e: { r: 0, c: 14 } },
+      { s: { r: 0, c: 15 }, e: { r: 0, c: 16 } },
+      { s: { r: 0, c: 17 }, e: { r: 0, c: 18 } },
+      { s: { r: 0, c: 19 }, e: { r: 0, c: 20 } }
+    ];
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "NCL Report");
+    XLSX.utils.book_append_sheet(wb, ws, "NCL Official Sheet");
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    downloadBlob(blob, `NCL_Report_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+    downloadBlob(blob, `NCL_Official_Register_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+  };
+
+  // Export NCL list to Excel matching Manage registration view table structure
+  const handleExportExcelManageView = () => {
+    const headers = [
+      'अ. क्र.',
+      'सभासदाचे नाव',
+      'सभा. क्रमांक',
+      'गाव',
+      'महसूल मंडळ',
+      'आराजी (एकर)',
+      'धान ओलीत आराजी',
+      'धान ओलीत नगदी (₹)',
+      'धान कोरडवाहू आराजी',
+      'धान कोरडवाहू नगदी (₹)',
+      'बागा. उन्हाळी आराजी',
+      'बागा. उन्हाळी नगदी (₹)',
+      'एकूण मागणी आराजी',
+      'एकूण मागणी नगदी (₹)'
+    ];
+
+    const rows = sortedNclRecords.map((r, idx) => {
+      const m = members.find(mem => mem.id === r.memberId);
+      const totalAcres = r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres;
+      const totalCash = totalAcres * ratePerAcre;
+
+      return [
+        idx + 1,
+        m?.name || 'N/A',
+        m?.memberNo || 'N/A',
+        m?.village || 'N/A',
+        r.revenueCircle,
+        r.landArea,
+        r.wetPaddyAcres,
+        r.wetPaddyAcres * ratePerAcre,
+        r.dryPaddyAcres,
+        r.dryPaddyAcres * ratePerAcre,
+        r.summerCropAcres,
+        r.summerCropAcres * ratePerAcre,
+        totalAcres,
+        totalCash
+      ];
+    });
+
+    if (rows.length > 0) {
+      const totals = rows.reduce((acc, curr) => {
+        for (let col = 5; col < curr.length; col++) {
+          acc[col] = (acc[col] || 0) + (curr[col] as number);
+        }
+        return acc;
+      }, ['एकूण', '', '', '', ''] as any[]);
+      rows.push(totals);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "NCL Manage View");
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    downloadBlob(blob, `NCL_Manage_View_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+  };
+
+  // Download Import Template pre-filled with all members not currently in the NCL list
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'सभा. क्रमांक',
+      'नाव (फक्त माहितीसाठी)',
+      'गाव (फक्त माहितीसाठी)',
+      'मूळ आराजी एकर (फक्त माहितीसाठी)',
+      'धान ओलीत आराजी (एकर)',
+      'धान कोरडवाहू आराजी (एकर)',
+      'बागा. उन्हाळी आराजी (एकर)',
+      'महसूल मंडळ (रिकामे सोडल्यास ' + defaultRevenueCircle + ')'
+    ];
+
+    const rows = availableMembers.map(m => [
+      m.memberNo,
+      m.name,
+      m.village,
+      parseFloat(m.landArea) || 0,
+      '',
+      '',
+      '',
+      ''
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "NCL Import Template");
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    downloadBlob(blob, `NCL_Import_Template.xlsx`);
+  };
+
+  // Handle excel import upload
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonRows: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (jsonRows.length <= 1) {
+          alert('फाइलमध्ये डेटा आढळला नाही.');
+          return;
+        }
+
+        let importedCount = 0;
+        // Skip header row
+        for (let i = 1; i < jsonRows.length; i++) {
+          const row = jsonRows[i];
+          if (!row || row.length === 0) continue;
+
+          const memberNoVal = String(row[0] || '').trim();
+          if (!memberNoVal) continue;
+
+          // Find member by number
+          const member = members.find(m => String(m.memberNo).trim() === memberNoVal);
+          if (!member) continue;
+
+          // Skip if already in NCL list
+          const alreadyExists = nclRecords.some(r => r.memberId === member.id);
+          if (alreadyExists) continue;
+
+          const wetAcres = parseFloat(row[4]) || 0;
+          const dryAcres = parseFloat(row[5]) || 0;
+          const summerAcres = parseFloat(row[6]) || 0;
+          const circle = String(row[7] || '').trim() || defaultRevenueCircle;
+
+          const landNum = parseFloat(member.landArea) || 0;
+          const totalAcres = wetAcres + dryAcres + summerAcres;
+          const totalCash = totalAcres * ratePerAcre;
+
+          const newRecord: NclRecord = {
+            id: `ncl_${member.id}_${Date.now()}_${i}`,
+            memberId: member.id,
+            revenueCircle: circle,
+            landArea: landNum,
+            wetPaddyAcres: wetAcres,
+            dryPaddyAcres: dryAcres,
+            summerCropAcres: summerAcres,
+            recommendedAcres: totalAcres,
+            recommendedCash: totalCash,
+            inspectorAcres: totalAcres,
+            inspectorCash: totalCash
+          };
+
+          addNclRecord(newRecord);
+          importedCount++;
+        }
+
+        alert(`यशस्वीरित्या ${importedCount} सभासदांचा NCL डेटा समाविष्ट केला!`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (err) {
+        alert('एक्सेल फाइल वाचताना त्रुटी आली. कृपया अचूक टेम्पलेट वापरा.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto pb-32 animate-fade-in no-print">
-      {/* Page Title */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      {/* Page Title & Actions */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <FileText className="text-blue-600" /> कमाल कर्ज मर्यादा पत्रके (NCL)
@@ -255,10 +440,11 @@ export default function NclManager() {
           </p>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          {/* Active Tab Toggle */}
           <button
             onClick={() => setActiveTab(activeTab === 'manage' ? 'print' : 'manage')}
-            className={`flex-1 md:flex-initial px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow transition ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow transition ${
               activeTab === 'print'
                 ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900'
                 : 'bg-white dark:bg-slate-800 border dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
@@ -267,6 +453,7 @@ export default function NclManager() {
             {activeTab === 'print' ? <Edit2 size={16} /> : <Printer size={16} />}
             {activeTab === 'print' ? 'नोंदणी व्ह्यू (Manage)' : 'प्रिंट प्रिव्ह्यू (Print View)'}
           </button>
+
           {activeTab === 'print' && (
             <button
               onClick={() => window.print()}
@@ -275,12 +462,43 @@ export default function NclManager() {
               <Printer size={16} /> प्रिंट करा
             </button>
           )}
+
+          {/* Excel Export Dropdown options */}
           <button
-            onClick={handleExportExcel}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow flex items-center gap-2 font-semibold text-sm transition"
+            onClick={handleExportExcelOfficial}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow flex items-center gap-2 font-semibold text-sm transition"
+            title="Export Official formatted Sheet"
           >
-            <Download size={16} /> Excel Export
+            <Download size={16} /> Official Register Excel
           </button>
+
+          <button
+            onClick={handleExportExcelManageView}
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg shadow flex items-center gap-2 font-semibold text-sm transition"
+            title="Export Registration Manage View Sheet"
+          >
+            <Download size={16} /> Manage View Excel
+          </button>
+
+          {/* Import Template and Uploader buttons */}
+          <button
+            onClick={handleDownloadTemplate}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg shadow flex items-center gap-2 font-semibold text-sm transition"
+            title="Download Template Sheet"
+          >
+            <Download size={16} /> Template Download
+          </button>
+
+          <label className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow flex items-center justify-center gap-2 font-semibold text-sm transition cursor-pointer">
+            <Upload size={16} /> Import Excel
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".xlsx, .xls"
+              onChange={handleImportExcel}
+              className="hidden"
+            />
+          </label>
         </div>
       </div>
 
@@ -572,10 +790,10 @@ export default function NclManager() {
                     <td className="border border-slate-300 dark:border-slate-600 p-1 text-right">{r.summerCropAcres > 0 ? (r.summerCropAcres * ratePerAcre).toLocaleString() : '-'}</td>
                     <td className="border border-slate-300 dark:border-slate-600 p-1 font-bold text-blue-600">{totalDemandAcres.toFixed(2)}</td>
                     <td className="border border-slate-300 dark:border-slate-600 p-1 text-right font-bold text-blue-600">{totalDemandCash.toLocaleString()}</td>
-                    <td className="border border-slate-300 dark:border-slate-600 p-1 font-bold text-emerald-600">{(r.recommendedAcres ?? totalDemandAcres).toFixed(2)}</td>
-                    <td className="border border-slate-300 dark:border-slate-600 p-1 text-right font-bold text-emerald-600">{(r.recommendedCash ?? totalDemandCash).toLocaleString()}</td>
-                    <td className="border border-slate-300 dark:border-slate-600 p-1 font-bold">{(r.inspectorAcres ?? totalDemandAcres).toFixed(2)}</td>
-                    <td className="border border-slate-300 dark:border-slate-600 p-1 text-right font-bold">{(r.inspectorCash ?? totalDemandCash).toLocaleString()}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-1 font-bold text-emerald-600">{totalDemandAcres.toFixed(2)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-1 text-right font-bold text-emerald-600">{totalDemandCash.toLocaleString()}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-1 font-bold">{totalDemandAcres.toFixed(2)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-1 text-right font-bold">{totalDemandCash.toLocaleString()}</td>
                   </tr>
                 );
               })}
@@ -622,16 +840,16 @@ export default function NclManager() {
                     {sortedNclRecords.reduce((sum, r) => sum + ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre), 0).toLocaleString()}
                   </td>
                   <td className="border border-slate-300 dark:border-slate-600 p-1">
-                    {sortedNclRecords.reduce((sum, r) => sum + (r.recommendedAcres ?? (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres)), 0).toFixed(2)}
+                    {sortedNclRecords.reduce((sum, r) => sum + (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres), 0).toFixed(2)}
                   </td>
                   <td className="border border-slate-300 dark:border-slate-600 p-1 text-right">
-                    {sortedNclRecords.reduce((sum, r) => sum + (r.recommendedCash ?? ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre)), 0).toLocaleString()}
+                    {sortedNclRecords.reduce((sum, r) => sum + ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre), 0).toLocaleString()}
                   </td>
                   <td className="border border-slate-300 dark:border-slate-600 p-1">
-                    {sortedNclRecords.reduce((sum, r) => sum + (r.inspectorAcres ?? (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres)), 0).toFixed(2)}
+                    {sortedNclRecords.reduce((sum, r) => sum + (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres), 0).toFixed(2)}
                   </td>
                   <td className="border border-slate-300 dark:border-slate-600 p-1 text-right">
-                    {sortedNclRecords.reduce((sum, r) => sum + (r.inspectorCash ?? ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre)), 0).toLocaleString()}
+                    {sortedNclRecords.reduce((sum, r) => sum + ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre), 0).toLocaleString()}
                   </td>
                 </tr>
               )}
@@ -727,52 +945,35 @@ export default function NclManager() {
                 </div>
               </div>
 
-              <div className="border-t dark:border-slate-700 pt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">संस्थेची शिफारस (आराजी एकर)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="रिकामे सोडल्यास एकूण मागणीएवढे"
-                    value={editingRecord.recommendedAcres || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, recommendedAcres: e.target.value ? parseFloat(e.target.value) : undefined })}
-                    className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
-                  />
+              {/* Read-only / auto calculated recommendation section to match user request */}
+              <div className="border-t dark:border-slate-700 pt-4 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="font-semibold text-slate-500">संस्थेची शिफारस (आराजी):</span>
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                    {(editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres).toFixed(2)} एकर
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">संस्थेची शिफारस नगदी (₹)</label>
-                  <input
-                    type="number"
-                    placeholder="रिकामे सोडल्यास एकूण मागणीएवढे"
-                    value={editingRecord.recommendedCash || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, recommendedCash: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
-                  />
+                <div className="flex justify-between text-xs">
+                  <span className="font-semibold text-slate-500">संस्थेची शिफारस नगदी:</span>
+                  <span className="font-mono font-bold text-blue-600">
+                    ₹{((editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres) * ratePerAcre).toLocaleString()}
+                  </span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">निरीक्षक शिफारस (आराजी एकर)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="रिकामे सोडल्यास एकूण मागणीएवढे"
-                    value={editingRecord.inspectorAcres || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, inspectorAcres: e.target.value ? parseFloat(e.target.value) : undefined })}
-                    className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
-                  />
+                <div className="flex justify-between text-xs border-t dark:border-slate-700 pt-2">
+                  <span className="font-semibold text-slate-500">शाखा निरीक्षक शिफारस (आराजी):</span>
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                    {(editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres).toFixed(2)} एकर
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold mb-1 text-slate-600 dark:text-slate-400">निरीक्षक शिफारस नगदी (₹)</label>
-                  <input
-                    type="number"
-                    placeholder="रिकामे सोडल्यास एकूण मागणीएवढे"
-                    value={editingRecord.inspectorCash || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, inspectorCash: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
-                  />
+                <div className="flex justify-between text-xs">
+                  <span className="font-semibold text-slate-500">शाखा निरीक्षक शिफारस नगदी:</span>
+                  <span className="font-mono font-bold text-blue-600">
+                    ₹{((editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres) * ratePerAcre).toLocaleString()}
+                  </span>
                 </div>
+                <p className="text-[10px] text-slate-400 text-center font-bold mt-1">
+                  (धान ओलीत + धान कोरडवाहू + बागायती/उन्हाळी बेरीज नुसार ऑटो-कॅल्क्युलेटेड)
+                </p>
               </div>
             </div>
 
@@ -915,10 +1116,10 @@ export default function NclManager() {
                   <td className="border border-black p-1 text-right">{r.summerCropAcres > 0 ? (r.summerCropAcres * ratePerAcre).toLocaleString() : '-'}</td>
                   <td className="border border-black p-1 font-bold">{totalDemandAcres.toFixed(2)}</td>
                   <td className="border border-black p-1 text-right font-bold">{totalDemandCash.toLocaleString()}</td>
-                  <td className="border border-black p-1 font-bold">{(r.recommendedAcres ?? totalDemandAcres).toFixed(2)}</td>
-                  <td className="border border-black p-1 text-right font-bold">{(r.recommendedCash ?? totalDemandCash).toLocaleString()}</td>
-                  <td className="border border-black p-1 font-bold">{(r.inspectorAcres ?? totalDemandAcres).toFixed(2)}</td>
-                  <td className="border border-black p-1 text-right font-bold">{(r.inspectorCash ?? totalDemandCash).toLocaleString()}</td>
+                  <td className="border border-black p-1 font-bold">{totalDemandAcres.toFixed(2)}</td>
+                  <td className="border border-black p-1 text-right font-bold">{totalDemandCash.toLocaleString()}</td>
+                  <td className="border border-black p-1 font-bold">{totalDemandAcres.toFixed(2)}</td>
+                  <td className="border border-black p-1 text-right font-bold">{totalDemandCash.toLocaleString()}</td>
                 </tr>
               );
             })}
@@ -965,16 +1166,16 @@ export default function NclManager() {
                   {sortedNclRecords.reduce((sum, r) => sum + ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre), 0).toLocaleString()}
                 </td>
                 <td className="border border-black p-1">
-                  {sortedNclRecords.reduce((sum, r) => sum + (r.recommendedAcres ?? (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres)), 0).toFixed(2)}
+                  {sortedNclRecords.reduce((sum, r) => sum + (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres), 0).toFixed(2)}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {sortedNclRecords.reduce((sum, r) => sum + (r.recommendedCash ?? ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre)), 0).toLocaleString()}
+                  {sortedNclRecords.reduce((sum, r) => sum + ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre), 0).toLocaleString()}
                 </td>
                 <td className="border border-black p-1">
-                  {sortedNclRecords.reduce((sum, r) => sum + (r.inspectorAcres ?? (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres)), 0).toFixed(2)}
+                  {sortedNclRecords.reduce((sum, r) => sum + (r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres), 0).toFixed(2)}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {sortedNclRecords.reduce((sum, r) => sum + (r.inspectorCash ?? ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre)), 0).toLocaleString()}
+                  {sortedNclRecords.reduce((sum, r) => sum + ((r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres) * ratePerAcre), 0).toLocaleString()}
                 </td>
               </tr>
             )}
