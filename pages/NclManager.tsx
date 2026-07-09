@@ -479,13 +479,13 @@ export default function NclManager() {
 
                 {!showConfig ? (
                   <div className="space-y-2 mt-4">
-                    <div className="flex justify-between text-xs">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <span className="text-slate-400">प्रति एकर कर्ज मर्यादा दर:</span>
-                      <span className="font-mono font-bold text-blue-600">₹{ratePerAcre.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-blue-600 text-right">₹{ratePerAcre.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <span className="text-slate-400">डिफॉल्ट महसूल मंडळ:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">{defaultRevenueCircle}</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300 text-right">{defaultRevenueCircle}</span>
                     </div>
                   </div>
                 ) : (
