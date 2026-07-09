@@ -42,8 +42,8 @@ export default function NclManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Global NCL Configuration variables
-  const ratePerAcre = settings.nclRatePerAcre ?? 32000;
-  const defaultRevenueCircle = settings.nclRevenueCircleDefault ?? 'कनेरी';
+  const ratePerAcre = settings.nclRatePerAcre || 32000;
+  const defaultRevenueCircle = settings.nclRevenueCircleDefault || 'कनेरी';
 
   // Config State
   const [rateInput, setRateInput] = useState(ratePerAcre);
