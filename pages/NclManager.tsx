@@ -476,16 +476,15 @@ export default function NclManager() {
                     {showConfig ? 'रद्द' : 'बदला'}
                   </button>
                 </div>
-
                 {!showConfig ? (
-                  <div className="space-y-2 mt-4">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <span className="text-slate-400">प्रति एकर कर्ज मर्यादा दर:</span>
-                      <span className="font-mono font-bold text-blue-600 text-right">₹{ratePerAcre.toLocaleString()}</span>
+                  <div className="space-y-2 mt-4 text-xs">
+                    <div className="border-b dark:border-slate-700/50 pb-2">
+                      <span className="text-slate-500 dark:text-slate-400 font-bold">प्रति एकर कर्ज मर्यादा दर:</span>
+                      <strong className="text-blue-600 dark:text-blue-400 font-mono text-sm ml-2">₹{Number(ratePerAcre).toLocaleString()}</strong>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <span className="text-slate-400">डिफॉल्ट महसूल मंडळ:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300 text-right">{defaultRevenueCircle}</span>
+                    <div className="pt-1">
+                      <span className="text-slate-500 dark:text-slate-400 font-bold">डिफॉल्ट महसूल मंडळ:</span>
+                      <strong className="text-slate-700 dark:text-slate-200 ml-2">{defaultRevenueCircle}</strong>
                     </div>
                   </div>
                 ) : (
