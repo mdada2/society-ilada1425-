@@ -38,6 +38,7 @@ export default function NclManager() {
   const [activeTab, setActiveTab] = useState<'manage' | 'print'>('manage');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingRecord, setEditingRecord] = useState<NclRecord | null>(null);
+  const [nclSearchQuery, setNclSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Global NCL Configuration variables
@@ -84,6 +85,22 @@ export default function NclManager() {
       return memberA.memberNo.localeCompare(memberB.memberNo);
     });
   }, [nclRecords, members]);
+
+  // Filter NCL records based on search query
+  const filteredNclRecords = useMemo(() => {
+    if (!nclSearchQuery.trim()) return sortedNclRecords;
+    const q = nclSearchQuery.toLowerCase();
+    return sortedNclRecords.filter(r => {
+      const m = members.find(mem => mem.id === r.memberId);
+      if (!m) return false;
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.memberNo.includes(q) ||
+        m.village.toLowerCase().includes(q) ||
+        r.revenueCircle.toLowerCase().includes(q)
+      );
+    });
+  }, [sortedNclRecords, nclSearchQuery, members]);
 
   // List of members who are NOT already in the NCL list
   const availableMembers = useMemo(() => {
@@ -381,11 +398,11 @@ export default function NclManager() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
           {/* Active Tab Toggle */}
           <button
             onClick={() => setActiveTab(activeTab === 'manage' ? 'print' : 'manage')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow transition ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow transition w-full sm:w-auto ${
               activeTab === 'print'
                 ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900'
                 : 'bg-white dark:bg-slate-800 border dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
@@ -398,7 +415,7 @@ export default function NclManager() {
           {activeTab === 'print' && (
             <button
               onClick={() => window.print()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow flex items-center gap-2 font-semibold text-sm transition"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow flex items-center justify-center gap-2 font-semibold text-sm transition w-full sm:w-auto"
             >
               <Printer size={16} /> प्रिंट करा
             </button>
@@ -407,7 +424,7 @@ export default function NclManager() {
           {/* Excel Export Dropdown options */}
           <button
             onClick={handleExportExcelOfficial}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow flex items-center gap-2 font-semibold text-sm transition"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow flex items-center justify-center gap-2 font-semibold text-sm transition w-full sm:w-auto"
             title="Export Official formatted Sheet"
           >
             <Download size={16} /> Official Register Excel
@@ -416,13 +433,13 @@ export default function NclManager() {
           {/* Import Template and Uploader buttons */}
           <button
             onClick={handleDownloadTemplate}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg shadow flex items-center gap-2 font-semibold text-sm transition"
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg shadow flex items-center justify-center gap-2 font-semibold text-sm transition w-full sm:w-auto"
             title="Download Template Sheet"
           >
             <Download size={16} /> Template Download
           </button>
 
-          <label className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow flex items-center justify-center gap-2 font-semibold text-sm transition cursor-pointer">
+          <label className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow flex items-center justify-center gap-2 font-semibold text-sm transition cursor-pointer w-full sm:w-auto text-center">
             <Upload size={16} /> Import Excel
             <input
               type="file"
@@ -569,8 +586,20 @@ export default function NclManager() {
 
           {/* Records Table */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border dark:border-slate-700 overflow-hidden">
-            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 text-sm">
-              NCL सभासद यादी (गावानुसार सॉर्ट केलेली)
+            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                NCL सभासद यादी (गावानुसार सॉर्ट केलेली)
+              </div>
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="यादीतून नाव/क्रमांक शोधा..."
+                  value={nclSearchQuery}
+                  onChange={e => setNclSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border dark:border-slate-700 rounded bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-white"
+                />
+                <Search className="absolute left-2.5 top-2 text-slate-400" size={12} />
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -589,8 +618,8 @@ export default function NclManager() {
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-slate-700 text-slate-700 dark:text-slate-300">
-                  {sortedNclRecords.length > 0 ? (
-                    sortedNclRecords.map((r, idx) => {
+                  {filteredNclRecords.length > 0 ? (
+                    filteredNclRecords.map((r, idx) => {
                       const m = members.find(mem => mem.id === r.memberId);
                       const totalAcres = r.wetPaddyAcres + r.dryPaddyAcres + r.summerCropAcres;
                       const totalCash = totalAcres * ratePerAcre;
