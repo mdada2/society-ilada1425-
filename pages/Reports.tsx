@@ -127,6 +127,7 @@ const Reports = () => {
   const [repaidFilter, setRepaidFilter] = useState<'repaid' | 'outstanding'>('repaid');
   const [deshmukhFY, setDeshmukhFY] = useState<string>('2025-26');
   const [deshmukhCategory, setDeshmukhCategory] = useState<string>('ALL');
+  const [npaCategoryFilter, setNpaCategoryFilter] = useState<string>('ALL');
   const [summaryViewType, setSummaryViewType] = useState<'category' | 'yearwise'>('category');
   const [sharesMinAmount, setSharesMinAmount] = useState<number | ''>('');
   const [sharesMaxAmount, setSharesMaxAmount] = useState<number | ''>('');
@@ -138,6 +139,7 @@ const Reports = () => {
     setSelectedFYRange(null);
     setRepaidFilter('repaid');
     setDeshmukhCategory('ALL');
+    setNpaCategoryFilter('ALL');
     setSummaryViewType('category');
     setSharesMinAmount('');
     setSharesMaxAmount('');
@@ -1115,9 +1117,30 @@ const Reports = () => {
     if (activeSubTab === 'NPA List') {
       const unpaidLoans = getFYLoans(activeStart, activeEnd, true).filter(item => !item.isRepaid);
 
+      let filteredUnpaidLoans = unpaidLoans;
+      if (npaCategoryFilter !== 'ALL') {
+        filteredUnpaidLoans = unpaidLoans.filter(item => {
+          const m = item.member;
+          const isTribal = m.category === 'ST';
+          if (npaCategoryFilter === 'LARGE_TRIBAL') {
+            return m.farmerType === 'Large Farmer' && isTribal;
+          }
+          if (npaCategoryFilter === 'LARGE_NON_TRIBAL') {
+            return m.farmerType === 'Large Farmer' && !isTribal;
+          }
+          if (npaCategoryFilter === 'SMALL_TRIBAL') {
+            return m.farmerType === 'Small Farmer' && isTribal;
+          }
+          if (npaCategoryFilter === 'SMALL_NON_TRIBAL') {
+            return m.farmerType === 'Small Farmer' && !isTribal;
+          }
+          return true;
+        });
+      }
+
       // Group unpaid loans by member name + village to merge ST and MT loans for the same person
       const groupedMap = new Map<string, any[]>();
-      unpaidLoans.forEach(item => {
+      filteredUnpaidLoans.forEach(item => {
         const key = `${item.member.name.trim()}_${item.member.village.trim()}`;
         if (!groupedMap.has(key)) {
           groupedMap.set(key, []);
@@ -1235,7 +1258,23 @@ const Reports = () => {
 
       return (
         <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
-          {renderFYSelector()}
+          <div className="flex items-center gap-4 flex-wrap">
+            {renderFYSelector()}
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-auto self-start print:hidden mb-2">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-400">प्रवर्ग निवडा (Category):</span>
+              <select
+                value={npaCategoryFilter}
+                onChange={(e) => setNpaCategoryFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs font-bold border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="ALL">सर्व (ALL)</option>
+                <option value="LARGE_TRIBAL">मोठे कृषक आदिवासी</option>
+                <option value="LARGE_NON_TRIBAL">मोठे कृषक गैर आदिवासी</option>
+                <option value="SMALL_TRIBAL">लघु कृषक आदिवासी</option>
+                <option value="SMALL_NON_TRIBAL">लघु कृषक गैर आदिवासी</option>
+              </select>
+            </div>
+          </div>
           <ReportTable
             title={`दिनांक ${activeEnd.split('-').reverse().join('.')} ची थकीत कर्जदार व चालू कर्ज बाकी यादी`}
             columns={npaColumns}
