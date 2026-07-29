@@ -2435,37 +2435,65 @@ const Reports = () => {
       const analysisData = monthsConfig.map((mConfig, index) => {
         const year = mConfig.monthIndex >= 3 ? startYear : startYear + 1;
         
-        // Filter transactions for this specific month & year
-        const monthTxns = transactions.filter(t => {
+        // Month boundary dates
+        const monthStart = new Date(year, mConfig.monthIndex, 1);
+        const monthEnd = new Date(year, mConfig.monthIndex + 1, 0); // Last day of month
+
+        // Find all Debit transactions of type Loan (Disbursements) during this specific month & year
+        const monthDisbTxns = transactions.filter(t => {
+          if (t.type !== 'Debit' || t.accountType !== 'Loan') return false;
           const d = new Date(t.date);
-          return d.getMonth() === mConfig.monthIndex && d.getFullYear() === year;
+          return d >= monthStart && d <= monthEnd;
         });
 
-        // Disbursements (Debits on Loan account)
-        const disbTxns = monthTxns.filter(t => t.type === 'Debit' && t.accountType === 'Loan');
-        const disbAmount = disbTxns.reduce((sum, t) => sum + t.amount, 0);
-        
-        // Unique members who got loans
-        const uniqueMembers = new Set(disbTxns.map(t => t.memberId).filter(Boolean));
+        const disbAmount = monthDisbTxns.reduce((sum, t) => sum + t.amount, 0);
+        const uniqueMembers = new Set(monthDisbTxns.map(t => t.memberId).filter(Boolean));
         const memberCount = uniqueMembers.size;
 
-        // Recoveries (Credits on Loan account)
-        const recTxns = monthTxns.filter(t => t.type === 'Credit' && t.accountType === 'Loan');
-        const repayment = recTxns.reduce((sum, t) => 
-          sum + (t.principalPaid !== undefined ? t.principalPaid : Math.max(0, t.amount - (t.interestPaid || 0))), 0
-        );
-        const interest = recTxns.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
+        let totalRepayment = 0;
+        let totalInterest = 0;
 
-        const balance = Math.max(0, disbAmount - repayment);
-        const recoveryPercentage = disbAmount > 0 ? (repayment / disbAmount) * 100 : 0;
+        monthDisbTxns.forEach(disb => {
+          if (!disb.memberId) return;
+
+          // Find subsequent loan disbursement date for this member (if any) to prevent matching future loan repayments
+          const subsequentDisb = transactions.filter(t => 
+            t.memberId === disb.memberId &&
+            t.type === 'Debit' &&
+            t.accountType === 'Loan' &&
+            t.date > disb.date
+          ).sort((a, b) => a.date.localeCompare(b.date))[0];
+
+          const limitDate = subsequentDisb ? new Date(subsequentDisb.date) : new Date('9999-12-31');
+
+          // Find all repayments (Credits) made on or after this disbursement date and before subsequent loan disbursement
+          const repayments = transactions.filter(t => 
+            t.memberId === disb.memberId &&
+            t.type === 'Credit' &&
+            t.accountType === 'Loan' &&
+            t.date >= disb.date &&
+            new Date(t.date) < limitDate
+          );
+
+          const prinPaid = repayments.reduce((sum, t) =>
+            sum + (t.principalPaid !== undefined ? t.principalPaid : Math.max(0, t.amount - (t.interestPaid || 0))), 0
+          );
+          const intPaid = repayments.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
+
+          totalRepayment += prinPaid;
+          totalInterest += intPaid;
+        });
+
+        const balance = Math.max(0, disbAmount - totalRepayment);
+        const recoveryPercentage = disbAmount > 0 ? (totalRepayment / disbAmount) * 100 : 0;
 
         return {
           id: index + 1,
           monthName: mConfig.name,
           memberCount,
           disbAmount,
-          repayment,
-          interest,
+          repayment: totalRepayment,
+          interest: totalInterest,
           balance,
           recoveryPercentage
         };
