@@ -72,7 +72,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Loan Reports',
     icon: <Wallet size={24} />,
     color: 'bg-amber-500',
-    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary']
+    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary', 'Loan Recovery Analysis']
   },
   {
     id: 'membership',
@@ -2409,6 +2409,89 @@ const Reports = () => {
           </div>
         </div>
       </div>
+    if (activeSubTab === 'Loan Recovery Analysis') {
+      const fyStart = new Date(activeStart);
+      const fyEnd = new Date(activeEnd);
+
+      // Find all Debit transactions of type Loan during this FY
+      const disbursementTxns = transactions.filter(t =>
+        t.type === 'Debit' &&
+        t.accountType === 'Loan' &&
+        new Date(t.date) >= fyStart &&
+        new Date(t.date) <= fyEnd
+      );
+
+      const membersDisbursedInFY = members.filter(m => {
+        const hasTxn = disbursementTxns.some(t => t.memberId === m.id);
+        const hasDateInFY = m.originalLoanDate && new Date(m.originalLoanDate) >= fyStart && new Date(m.originalLoanDate) <= fyEnd;
+        return hasTxn || hasDateInFY;
+      });
+
+      const analysisData = membersDisbursedInFY.map(m => {
+        const memberDebits = disbursementTxns.filter(t => t.memberId === m.id);
+        const disbursedAmount = memberDebits.reduce((sum, t) => sum + t.amount, 0) || m.loanPrincipal || 0;
+        const disbDate = memberDebits.length > 0
+          ? memberDebits.sort((a,b) => a.date.localeCompare(b.date))[0].date
+          : (m.originalLoanDate || '-');
+
+        // Find all repayments (Credits)
+        const memberCredits = transactions.filter(t =>
+          t.memberId === m.id &&
+          t.type === 'Credit' &&
+          t.accountType === 'Loan' &&
+          new Date(t.date) >= fyStart &&
+          new Date(t.date) <= fyEnd
+        );
+
+        const principalPaid = memberCredits.reduce((sum, t) =>
+          sum + (t.principalPaid !== undefined ? t.principalPaid : Math.max(0, t.amount - (t.interestPaid || 0))), 0
+        );
+
+        const interestPaid = memberCredits.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
+
+        const remainingPrincipal = Math.max(0, disbursedAmount - principalPaid);
+        const recoveryPercentage = disbursedAmount > 0 ? (principalPaid / disbursedAmount) * 100 : 0;
+
+        return {
+          id: m.id,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          disbDate,
+          disbAmount: disbursedAmount,
+          repayment: principalPaid,
+          interest: interestPaid,
+          balance: remainingPrincipal,
+          recoveryPercentage
+        };
+      });
+
+      const analysisColumns: Column<any>[] = [
+        { header: 'अ. क्र.', accessorKey: 'memberNo', width: '50px' },
+        {
+          header: 'कर्जदार सभासदाचे नाव', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
+          render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
+        },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'वाटप तारीख', accessorKey: 'disbDate', render: (i) => i.disbDate !== '-' ? fmtDateDMY(i.disbDate) : '-' },
+        { header: 'वाटप रक्कम (₹)', accessorKey: 'disbAmount', render: (i) => i.disbAmount > 0 ? i.disbAmount.toLocaleString() : '-' },
+        { header: 'मुद्दल वसुली (₹)', accessorKey: 'repayment', render: (i) => i.repayment > 0 ? i.repayment.toLocaleString() : '-' },
+        { header: 'व्याज वसुली (₹)', accessorKey: 'interest', render: (i) => i.interest > 0 ? i.interest.toLocaleString() : '-' },
+        { header: 'शिल्लक मुद्दल (₹)', accessorKey: 'balance', render: (i) => i.balance > 0 ? i.balance.toLocaleString() : '-' },
+        { header: 'वसुली %', accessorKey: 'recoveryPercentage', render: (i) => `${i.recoveryPercentage.toFixed(2)}%` }
+      ];
+
+      return (
+        <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
+          {renderFYSelector()}
+          <ReportTable
+            title={`दिनांक ${activeEnd.split('-').reverse().join('.')} ची कर्ज वाटप व वसुली विश्लेषण यादी`}
+            columns={analysisColumns}
+            data={analysisData}
+            onRowClick={(item) => handleMemberClick(item.id)}
+            enableDateFilter={false}
+          />
+        </div>
       );
     }
 
