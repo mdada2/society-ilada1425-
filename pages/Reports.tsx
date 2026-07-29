@@ -2415,72 +2415,70 @@ const Reports = () => {
     if (activeSubTab === 'Loan Recovery Analysis') {
       const fyStart = new Date(activeStart);
       const fyEnd = new Date(activeEnd);
+      const startYear = fyStart.getFullYear();
 
-      // Find all Debit transactions of type Loan during this FY
-      const disbursementTxns = transactions.filter(t =>
-        t.type === 'Debit' &&
-        t.accountType === 'Loan' &&
-        new Date(t.date) >= fyStart &&
-        new Date(t.date) <= fyEnd
-      );
+      const monthsConfig = [
+        { name: 'एप्रिल (April)', monthIndex: 3 }, // April is 3 (0-indexed)
+        { name: 'मे (May)', monthIndex: 4 },
+        { name: 'जून (June)', monthIndex: 5 },
+        { name: 'जुलै (July)', monthIndex: 6 },
+        { name: 'ऑगस्ट (August)', monthIndex: 7 },
+        { name: 'सप्टेंबर (September)', monthIndex: 8 },
+        { name: 'ऑक्टोबर (October)', monthIndex: 9 },
+        { name: 'नोव्हेंबर (November)', monthIndex: 10 },
+        { name: 'डिसेंबर (December)', monthIndex: 11 },
+        { name: 'जानेवारी (January)', monthIndex: 0 },
+        { name: 'फेब्रुवारी (February)', monthIndex: 1 },
+        { name: 'मार्च (March)', monthIndex: 2 }
+      ];
 
-      const membersDisbursedInFY = members.filter(m => {
-        const hasTxn = disbursementTxns.some(t => t.memberId === m.id);
-        const hasDateInFY = m.originalLoanDate && new Date(m.originalLoanDate) >= fyStart && new Date(m.originalLoanDate) <= fyEnd;
-        return hasTxn || hasDateInFY;
-      });
+      const analysisData = monthsConfig.map((mConfig, index) => {
+        const year = mConfig.monthIndex >= 3 ? startYear : startYear + 1;
+        
+        // Filter transactions for this specific month & year
+        const monthTxns = transactions.filter(t => {
+          const d = new Date(t.date);
+          return d.getMonth() === mConfig.monthIndex && d.getFullYear() === year;
+        });
 
-      const analysisData = membersDisbursedInFY.map(m => {
-        const memberDebits = disbursementTxns.filter(t => t.memberId === m.id);
-        const disbursedAmount = memberDebits.reduce((sum, t) => sum + t.amount, 0) || m.loanPrincipal || 0;
-        const disbDate = memberDebits.length > 0
-          ? memberDebits.sort((a,b) => a.date.localeCompare(b.date))[0].date
-          : (m.originalLoanDate || '-');
+        // Disbursements (Debits on Loan account)
+        const disbTxns = monthTxns.filter(t => t.type === 'Debit' && t.accountType === 'Loan');
+        const disbAmount = disbTxns.reduce((sum, t) => sum + t.amount, 0);
+        
+        // Unique members who got loans
+        const uniqueMembers = new Set(disbTxns.map(t => t.memberId).filter(Boolean));
+        const memberCount = uniqueMembers.size;
 
-        // Find all repayments (Credits)
-        const memberCredits = transactions.filter(t =>
-          t.memberId === m.id &&
-          t.type === 'Credit' &&
-          t.accountType === 'Loan' &&
-          new Date(t.date) >= fyStart &&
-          new Date(t.date) <= fyEnd
-        );
-
-        const principalPaid = memberCredits.reduce((sum, t) =>
+        // Recoveries (Credits on Loan account)
+        const recTxns = monthTxns.filter(t => t.type === 'Credit' && t.accountType === 'Loan');
+        const repayment = recTxns.reduce((sum, t) => 
           sum + (t.principalPaid !== undefined ? t.principalPaid : Math.max(0, t.amount - (t.interestPaid || 0))), 0
         );
+        const interest = recTxns.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
 
-        const interestPaid = memberCredits.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
-
-        const remainingPrincipal = Math.max(0, disbursedAmount - principalPaid);
-        const recoveryPercentage = disbursedAmount > 0 ? (principalPaid / disbursedAmount) * 100 : 0;
+        const balance = Math.max(0, disbAmount - repayment);
+        const recoveryPercentage = disbAmount > 0 ? (repayment / disbAmount) * 100 : 0;
 
         return {
-          id: m.id,
-          memberNo: m.memberNo,
-          name: m.name,
-          village: m.village,
-          disbDate,
-          disbAmount: disbursedAmount,
-          repayment: principalPaid,
-          interest: interestPaid,
-          balance: remainingPrincipal,
+          id: index + 1,
+          monthName: mConfig.name,
+          memberCount,
+          disbAmount,
+          repayment,
+          interest,
+          balance,
           recoveryPercentage
         };
       });
 
       const analysisColumns: Column<any>[] = [
-        { header: 'अ. क्र.', accessorKey: 'memberNo', width: '50px' },
-        {
-          header: 'कर्जदार सभासदाचे नाव', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
-          render: (item) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
-        },
-        { header: 'गाव', accessorKey: 'village' },
-        { header: 'वाटप तारीख', accessorKey: 'disbDate', render: (i) => i.disbDate !== '-' ? fmtDateDMY(i.disbDate) : '-' },
-        { header: 'वाटप रक्कम (₹)', accessorKey: 'disbAmount', render: (i) => i.disbAmount > 0 ? i.disbAmount.toLocaleString() : '-' },
+        { header: 'अ. क्र.', accessorKey: 'id', width: '50px' },
+        { header: 'महिना (Month)', accessorKey: 'monthName', className: 'font-bold' },
+        { header: 'सभासद संख्या', accessorKey: 'memberCount', className: 'text-center', render: (i) => i.memberCount || '-' },
+        { header: 'कर्ज वाटप (₹)', accessorKey: 'disbAmount', render: (i) => i.disbAmount > 0 ? i.disbAmount.toLocaleString() : '-' },
         { header: 'मुद्दल वसुली (₹)', accessorKey: 'repayment', render: (i) => i.repayment > 0 ? i.repayment.toLocaleString() : '-' },
         { header: 'व्याज वसुली (₹)', accessorKey: 'interest', render: (i) => i.interest > 0 ? i.interest.toLocaleString() : '-' },
-        { header: 'शिल्लक मुद्दल (₹)', accessorKey: 'balance', render: (i) => i.balance > 0 ? i.balance.toLocaleString() : '-' },
+        { header: 'आजअखेर शिल्लक (₹)', accessorKey: 'balance', render: (i) => i.balance > 0 ? i.balance.toLocaleString() : '-' },
         { header: 'वसुली %', accessorKey: 'recoveryPercentage', render: (i) => `${i.recoveryPercentage.toFixed(2)}%` }
       ];
 
@@ -2488,11 +2486,11 @@ const Reports = () => {
         <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
           {renderFYSelector()}
           <ReportTable
-            title={`दिनांक ${activeEnd.split('-').reverse().join('.')} ची कर्ज वाटप व वसुली विश्लेषण यादी`}
+            title={`मासिक कर्ज वाटप व वसुली विश्लेषण अहवाल (FY)`}
             columns={analysisColumns}
             data={analysisData}
-            onRowClick={(item) => handleMemberClick(item.id)}
             enableDateFilter={false}
+            enableSearch={false}
           />
         </div>
       );
