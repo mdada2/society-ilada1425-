@@ -2408,7 +2408,9 @@ const Reports = () => {
             </div>
           </div>
         </div>
-      </div>
+      );
+    }
+
     if (activeSubTab === 'Loan Recovery Analysis') {
       const fyStart = new Date(activeStart);
       const fyEnd = new Date(activeEnd);
