@@ -165,6 +165,14 @@ function ReportTable<T extends { id?: string | number }>({
                     return data.length;
                 } else if (col.accessorKey === 'name') {
                     return 'एकूण (Total)';
+                } else if (col.accessorKey === 'recoveryPercentage') {
+                    const totalDisb = getColumnTotal('disbAmount');
+                    const totalRepay = getColumnTotal('repayment');
+                    if (totalDisb && totalDisb > 0) {
+                        const totalRepayVal = totalRepay || 0;
+                        return `${((totalRepayVal / totalDisb) * 100).toFixed(2)}%`;
+                    }
+                    return '0.00%';
                 } else if (totalVal !== null) {
                     return totalVal;
                 }
@@ -363,6 +371,15 @@ function ReportTable<T extends { id?: string | number }>({
                                         content = `${sortedData.length}`;
                                     } else if (col.accessorKey === 'name') {
                                         content = 'एकूण (Total)';
+                                    } else if (col.accessorKey === 'recoveryPercentage') {
+                                        const totalDisb = getColumnTotal('disbAmount');
+                                        const totalRepay = getColumnTotal('repayment');
+                                        if (totalDisb && totalDisb > 0) {
+                                            const totalRepayVal = totalRepay || 0;
+                                            content = `${((totalRepayVal / totalDisb) * 100).toFixed(2)}%`;
+                                        } else {
+                                            content = '0.00%';
+                                        }
                                     } else if (totalVal !== null) {
                                         content = totalVal.toLocaleString();
                                     }
