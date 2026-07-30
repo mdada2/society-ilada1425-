@@ -72,6 +72,13 @@ const Transactions = () => {
     // कर्ज माफी (Loan Waiver)
     const [applyWaiver, setApplyWaiver] = useState(false);
     const WAIVER_THRESHOLD = 500; // ₹500 पर्यंतची बाकी रक्कम माफ करता येईल
+    
+    // शासकीय कर्जमाफी (Govt Loan Waiver)
+    const [isGovtWaiver, setIsGovtWaiver] = useState(false);
+    const [waivedPrincipal, setWaivedPrincipal] = useState<number>(0);
+    const [waivedInterest, setWaivedInterest] = useState<number>(0);
+    const [schemeName, setSchemeName] = useState('महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
+    
     const receiptRef = useRef<HTMLDivElement>(null);
     const datePickerRef = useRef<HTMLInputElement>(null); // Calendar picker साठी
 
@@ -202,6 +209,12 @@ const Transactions = () => {
         prevFundsRef.current = { building: includeBuildingFund, joint: includeJointFund };
     }, [includeBuildingFund, includeJointFund]);
 
+    useEffect(() => {
+        if (isGovtWaiver) {
+            setAmount((waivedPrincipal || 0) + (waivedInterest || 0));
+        }
+    }, [isGovtWaiver, waivedPrincipal, waivedInterest]);
+
     const handleInputChange = (setter: React.Dispatch<React.SetStateAction<any>>, value: any) => {
         setter(value);
         if (lastSavedTransaction) setLastSavedTransaction(null);
@@ -221,11 +234,11 @@ const Transactions = () => {
 
         try {
             const isLoanCredit = accountType === AccountType.LOAN && type === TransactionType.CREDIT;
-            const bFundAmt = (isLoanCredit && includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
-            const jFundAmt = (isLoanCredit && includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
+            const bFundAmt = (!isGovtWaiver && isLoanCredit && includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
+            const jFundAmt = (!isGovtWaiver && isLoanCredit && includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
             const totalFunds = bFundAmt + jFundAmt;
 
-            if (amount < totalFunds) {
+            if (!isGovtWaiver && amount < totalFunds) {
                 setStatusMsg({ type: 'error', text: "एकूण रक्कम ही निधींच्या रक्कमेपेक्षा (₹" + totalFunds + ") कमी असू शकत नाही." });
                 return;
             }
@@ -258,34 +271,43 @@ const Transactions = () => {
                     transaction.details = `${details} (Loan Disbursed)`.trim();
                 }
                 else if (type === TransactionType.CREDIT && accountType === AccountType.LOAN) {
-                    const totalInterestDue = selectedMember.loanInterestDue + newPeriodInterest;
-                    let intPaid = 0;
-                    let prinPaid = 0;
-
-                    if (netPaymentForLoan <= totalInterestDue) {
-                        intPaid = netPaymentForLoan;
-                        prinPaid = 0;
+                    if (isGovtWaiver) {
+                        transaction.interestAccrued = 0;
+                        transaction.interestPaid = waivedInterest;
+                        transaction.principalPaid = waivedPrincipal;
+                        transaction.waivedAmount = amount;
+                        transaction.isGovtWaiver = true;
+                        transaction.details = `शासकीय कर्जमाफी - ${schemeName} (माफ मुद्दल: ₹${waivedPrincipal}, व्याज: ₹${waivedInterest})`.trim();
                     } else {
-                        intPaid = totalInterestDue;
-                        prinPaid = netPaymentForLoan - totalInterestDue;
-                    }
+                        const totalInterestDue = selectedMember.loanInterestDue + newPeriodInterest;
+                        let intPaid = 0;
+                        let prinPaid = 0;
 
-                    transaction.interestAccrued = newPeriodInterest;
-                    transaction.interestPaid = intPaid;
-                    transaction.principalPaid = prinPaid;
+                        if (netPaymentForLoan <= totalInterestDue) {
+                            intPaid = netPaymentForLoan;
+                            prinPaid = 0;
+                        } else {
+                            intPaid = totalInterestDue;
+                            prinPaid = netPaymentForLoan - totalInterestDue;
+                        }
 
-                    let fundDetails = "";
-                    if (bFundAmt > 0) fundDetails += `ईमारत नीधी: ₹${bFundAmt} `;
-                    if (jFundAmt > 0) fundDetails += `जाईन्ट फंड: ₹${jFundAmt} `;
+                        transaction.interestAccrued = newPeriodInterest;
+                        transaction.interestPaid = intPaid;
+                        transaction.principalPaid = prinPaid;
 
-                    transaction.details = `${details} ${fundDetails ? `(${fundDetails})` : ''} (Paid Int: ₹${intPaid}, Prin: ₹${prinPaid})`.trim();
+                        let fundDetails = "";
+                        if (bFundAmt > 0) fundDetails += `ईमारत नीधी: ₹${bFundAmt} `;
+                        if (jFundAmt > 0) fundDetails += `जाईन्ट फंड: ₹${jFundAmt} `;
 
-                    // कर्ज माफी: उर्वरित रक्कम माफ करायची असल्यास loanPrincipal आणि loanInterestDue शून्य करा
-                    if (applyWaiver && canWaive) {
-                        memberUpdates.loanPrincipal = 0;
-                        memberUpdates.loanInterestDue = 0;
-                        transaction.waivedAmount = remainingAfterPayment; // Bank Incentive साठी मूळ कर्ज रक्कम मिळवण्यासाठी
-                        transaction.details = `${transaction.details} (कर्ज माफी: ₹${remainingAfterPayment})`.trim();
+                        transaction.details = `${details} ${fundDetails ? `(${fundDetails})` : ''} (Paid Int: ₹${intPaid}, Prin: ₹${prinPaid})`.trim();
+
+                        // कर्ज माफी: उर्वरित रक्कम माफ करायची असल्यास loanPrincipal आणि loanInterestDue शून्य करा
+                        if (applyWaiver && canWaive) {
+                            memberUpdates.loanPrincipal = 0;
+                            memberUpdates.loanInterestDue = 0;
+                            transaction.waivedAmount = remainingAfterPayment; // Bank Incentive साठी मूळ कर्ज रक्कम मिळवण्यासाठी
+                            transaction.details = `${transaction.details} (कर्ज माफी: ₹${remainingAfterPayment})`.trim();
+                        }
                     }
 
                     if (bFundAmt > 0) {
@@ -323,6 +345,10 @@ const Transactions = () => {
             setIncludeBuildingFund(false);
             setIncludeJointFund(false);
             setApplyWaiver(false);
+            setIsGovtWaiver(false);
+            setWaivedPrincipal(0);
+            setWaivedInterest(0);
+            setSchemeName('महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
 
             // Auto hide success msg after 3s
             setTimeout(() => setStatusMsg(null), 3000);
@@ -522,8 +548,28 @@ const Transactions = () => {
                                 </select>
                             </div>
 
-                            {/* Funds Section for Loan Credit */}
+                            {/* Payment Mode Selector */}
                             {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && (
+                                <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded-lg flex gap-1 mb-2 border dark:border-slate-700">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsGovtWaiver(false)}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded text-center transition-all ${!isGovtWaiver ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                                    >
+                                        नियमित भरणा (Regular)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsGovtWaiver(true)}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded text-center transition-all ${isGovtWaiver ? 'bg-amber-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                                    >
+                                        शासकीय कर्जमाफी (Govt Waiver)
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Funds Section for Loan Credit */}
+                            {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && !isGovtWaiver && (
                                 <div className="p-2 md:p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 space-y-2 animate-fade-in">
                                     <h4 className="font-bold text-indigo-800 dark:text-indigo-400 text-[11px] md:text-sm flex items-center gap-2 mb-1">
                                         <FundIcon size={14} /> वार्षिक निधी कपात (FY Fund Collection)
@@ -702,13 +748,61 @@ const Transactions = () => {
                                 </div>
                             )}
 
+                            {isGovtWaiver && selectedMember && (
+                                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg space-y-3 animate-fade-in text-xs mb-3">
+                                    <h4 className="font-black text-amber-800 dark:text-amber-400 text-[12px] flex items-center gap-1">
+                                        🛡️ शासकीय कर्जमाफी माहिती (Govt Loan Waiver Details)
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 mb-1">माफ मुद्दल (Waived Principal) ₹</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={waivedPrincipal || ''}
+                                                onChange={e => handleInputChange(setWaivedPrincipal, parseFloat(e.target.value) || 0)}
+                                                className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 mb-1">माफ व्याज (Waived Interest) ₹</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={waivedInterest || ''}
+                                                onChange={e => handleInputChange(setWaivedInterest, parseFloat(e.target.value) || 0)}
+                                                className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">कर्जमाफी योजनेचे नाव (Scheme Name)</label>
+                                        <input
+                                            type="text"
+                                            value={schemeName}
+                                            onChange={e => handleInputChange(setSchemeName, e.target.value)}
+                                            placeholder="उदा. महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना"
+                                            className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Amount (एकूण रक्कम) ₹</label>
-                                <input type="number" required min="1" value={amount || ''} onChange={e => handleInputChange(setAmount, parseFloat(e.target.value))} className="w-full p-2 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none shadow-inner" />
+                                <input 
+                                    type="number" 
+                                    required 
+                                    min="1" 
+                                    disabled={isGovtWaiver}
+                                    value={amount || ''} 
+                                    onChange={e => handleInputChange(setAmount, parseFloat(e.target.value))} 
+                                    className={`w-full p-2 border dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none shadow-inner ${isGovtWaiver ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-amber-600' : 'bg-white dark:bg-slate-700'}`} 
+                                />
                             </div>
 
                             {/* कर्ज माफी (Loan Waiver) Option */}
-                            {canWaive && selectedMember && accountType === AccountType.LOAN && type === TransactionType.CREDIT && (
+                            {!isGovtWaiver && canWaive && selectedMember && accountType === AccountType.LOAN && type === TransactionType.CREDIT && (
                                 <div className={`p-2 rounded-lg border transition-all animate-fade-in ${applyWaiver ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700'}`}>
                                     <button
                                         type="button"

@@ -54,6 +54,7 @@ export interface Transaction {
   expenseCategory?: string;
   bankId?: string; // Link to society bank if it's a bank transaction
   receiptUrl?: string; // Image of the bill
+  isGovtWaiver?: boolean;
 }
 
 export interface StaffSalary {

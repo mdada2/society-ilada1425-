@@ -85,7 +85,7 @@ function ReportTable<T extends { id?: string | number }>({
             'disbAmount', 'total', 'subsidy', 'disbursement', 'repayment', 'product',
             'stTotal', 'mtTotal', 'st1', 'mt1', 'st2', 'mt2', 'st3', 'mt3', 'st4', 'mt4',
             'st5', 'mt5', 'stAbove5', 'mtAbove5', 'stOverdueAmt', 'mtOverdueAmt', 'stOverdueInt', 'mtOverdueInt',
-            'memberCount'
+            'memberCount', 'waiver'
         ];
         
         if (!sumKeys.some(k => k.toLowerCase() === colKey.toLowerCase())) {
@@ -168,9 +168,11 @@ function ReportTable<T extends { id?: string | number }>({
                 } else if (col.accessorKey === 'recoveryPercentage') {
                     const totalDisb = getColumnTotal('disbAmount');
                     const totalRepay = getColumnTotal('repayment');
+                    const totalWaiver = getColumnTotal('waiver');
                     if (totalDisb && totalDisb > 0) {
                         const totalRepayVal = totalRepay || 0;
-                        return `${((totalRepayVal / totalDisb) * 100).toFixed(2)}%`;
+                        const totalWaiverVal = totalWaiver || 0;
+                        return `${(((totalRepayVal + totalWaiverVal) / totalDisb) * 100).toFixed(2)}%`;
                     }
                     return '0.00%';
                 } else if (totalVal !== null) {
@@ -374,9 +376,11 @@ function ReportTable<T extends { id?: string | number }>({
                                     } else if (col.accessorKey === 'recoveryPercentage') {
                                         const totalDisb = getColumnTotal('disbAmount');
                                         const totalRepay = getColumnTotal('repayment');
+                                        const totalWaiver = getColumnTotal('waiver');
                                         if (totalDisb && totalDisb > 0) {
                                             const totalRepayVal = totalRepay || 0;
-                                            content = `${((totalRepayVal / totalDisb) * 100).toFixed(2)}%`;
+                                            const totalWaiverVal = totalWaiver || 0;
+                                            content = `${(((totalRepayVal + totalWaiverVal) / totalDisb) * 100).toFixed(2)}%`;
                                         } else {
                                             content = '0.00%';
                                         }

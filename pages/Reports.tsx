@@ -2468,6 +2468,7 @@ const Reports = () => {
 
         let totalRepayment = 0;
         let totalInterest = 0;
+        let totalWaiver = 0;
 
         monthDisbTxns.forEach(disb => {
           if (!disb.memberId) return;
@@ -2491,17 +2492,23 @@ const Reports = () => {
             new Date(t.date) < limitDate
           );
 
-          const prinPaid = repayments.reduce((sum, t) =>
+          // Separate regular payments from government waivers
+          const regularRepayments = repayments.filter(t => !t.isGovtWaiver);
+          const waiverRepayments = repayments.filter(t => t.isGovtWaiver);
+
+          const prinPaid = regularRepayments.reduce((sum, t) =>
             sum + (t.principalPaid !== undefined ? t.principalPaid : Math.max(0, t.amount - (t.interestPaid || 0))), 0
           );
-          const intPaid = repayments.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
+          const intPaid = regularRepayments.reduce((sum, t) => sum + (t.interestPaid || 0), 0);
+          const waivedAmt = waiverRepayments.reduce((sum, t) => sum + (t.waivedAmount || t.amount), 0);
 
           totalRepayment += prinPaid;
           totalInterest += intPaid;
+          totalWaiver += waivedAmt;
         });
 
-        const balance = Math.max(0, disbAmount - totalRepayment);
-        const recoveryPercentage = disbAmount > 0 ? (totalRepayment / disbAmount) * 100 : 0;
+        const balance = Math.max(0, disbAmount - totalRepayment - totalWaiver);
+        const recoveryPercentage = disbAmount > 0 ? ((totalRepayment + totalWaiver) / disbAmount) * 100 : 0;
 
         return {
           id: index + 1,
@@ -2510,6 +2517,7 @@ const Reports = () => {
           disbAmount,
           repayment: totalRepayment,
           interest: totalInterest,
+          waiver: totalWaiver,
           balance,
           recoveryPercentage
         };
@@ -2522,6 +2530,7 @@ const Reports = () => {
         { header: 'कर्ज वाटप (₹)', accessorKey: 'disbAmount', render: (i) => i.disbAmount > 0 ? i.disbAmount.toLocaleString() : '-' },
         { header: 'मुद्दल वसुली (₹)', accessorKey: 'repayment', render: (i) => i.repayment > 0 ? i.repayment.toLocaleString() : '-' },
         { header: 'व्याज वसुली (₹)', accessorKey: 'interest', render: (i) => i.interest > 0 ? i.interest.toLocaleString() : '-' },
+        { header: 'शासकीय कर्जमाफी (₹)', accessorKey: 'waiver', render: (i) => i.waiver > 0 ? i.waiver.toLocaleString() : '-' },
         { header: 'आजअखेर शिल्लक (₹)', accessorKey: 'balance', render: (i) => i.balance > 0 ? i.balance.toLocaleString() : '-' },
         { header: 'वसुली %', accessorKey: 'recoveryPercentage', render: (i) => `${i.recoveryPercentage.toFixed(2)}%` }
       ];
