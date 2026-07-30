@@ -43,14 +43,37 @@ const Dashboard = () => {
         const today = format(new Date(), 'yyyy-MM-dd');
         const todaysTrans = transactions.filter(t => t.date === today);
         const todayCollection = todaysTrans
-            .filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver && !t.bankId)
+            .filter(t => {
+                if (t.isGovtWaiver) return false;
+                if (t.accountType === 'BankTransfer') {
+                    return t.type === TransactionType.DEBIT; // Withdrawal increases cash
+                }
+                return t.type === TransactionType.CREDIT && !t.bankId;
+            })
             .reduce((sum, t) => sum + t.amount, 0);
         const todayExpense = todaysTrans
-            .filter(t => t.type === TransactionType.DEBIT && !t.bankId)
+            .filter(t => {
+                if (t.accountType === 'BankTransfer') {
+                    return t.type === TransactionType.CREDIT; // Deposit reduces cash
+                }
+                return t.type === TransactionType.DEBIT && !t.bankId;
+            })
             .reduce((sum, t) => sum + t.amount, 0);
 
-        const totalCredit = transactions.filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver && !t.bankId).reduce((sum, t) => sum + t.amount, 0);
-        const totalDebit = transactions.filter(t => t.type === TransactionType.DEBIT && !t.bankId).reduce((sum, t) => sum + t.amount, 0);
+        const totalCredit = transactions.filter(t => {
+            if (t.isGovtWaiver) return false;
+            if (t.accountType === 'BankTransfer') {
+                return t.type === TransactionType.DEBIT;
+            }
+            return t.type === TransactionType.CREDIT && !t.bankId;
+        }).reduce((sum, t) => sum + t.amount, 0);
+
+        const totalDebit = transactions.filter(t => {
+            if (t.accountType === 'BankTransfer') {
+                return t.type === TransactionType.CREDIT;
+            }
+            return t.type === TransactionType.DEBIT && !t.bankId;
+        }).reduce((sum, t) => sum + t.amount, 0);
         const cashInHand = totalCredit - totalDebit;
 
         // Bank Stats

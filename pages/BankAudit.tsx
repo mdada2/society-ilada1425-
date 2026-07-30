@@ -51,8 +51,20 @@ const BankAudit = () => {
         const deposits = members.reduce((s, m) => s + m.fdBalance, 0);
         const loans = members.reduce((s, m) => s + m.loanPrincipal, 0);
         const bankBalances = societyBanks.reduce((s, b) => s + b.balance, 0);
-        const totalCredit = transactions.filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver && !t.bankId).reduce((s, t) => s + t.amount, 0);
-        const totalDebit = transactions.filter(t => t.type === TransactionType.DEBIT && !t.bankId).reduce((s, t) => s + t.amount, 0);
+        const totalCredit = transactions.filter(t => {
+            if (t.isGovtWaiver) return false;
+            if (t.accountType === 'BankTransfer') {
+                return t.type === TransactionType.DEBIT;
+            }
+            return t.type === TransactionType.CREDIT && !t.bankId;
+        }).reduce((s, t) => s + t.amount, 0);
+
+        const totalDebit = transactions.filter(t => {
+            if (t.accountType === 'BankTransfer') {
+                return t.type === TransactionType.CREDIT;
+            }
+            return t.type === TransactionType.DEBIT && !t.bankId;
+        }).reduce((s, t) => s + t.amount, 0);
         const cashInHand = totalCredit - totalDebit;
 
         return {
