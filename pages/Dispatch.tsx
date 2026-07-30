@@ -2,10 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
 import { format } from 'date-fns';
-import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck, Calendar, Filter, Plus } from 'lucide-react';
+import { Truck, Save, Trash2, Edit, X, Archive, AlertCircle, MapPin, ClipboardList, Package, Share2, Download, Send, ShieldCheck, Calendar, Filter, Plus, FileSpreadsheet } from 'lucide-react';
 import { DispatchRecord, PaddyDO } from '../types';
 import { downloadBlob } from '../utils/downloadUtils';
 import { exportDispatchesToExcel, exportPaddyDOsToExcel } from '../services/excelExport';
+import * as XLSX from 'xlsx';
 
 const Dispatch = () => {
     const { dispatches, addDispatch, updateDispatch, deleteDispatch, paddyDOs, addPaddyDO, updatePaddyDO, deletePaddyDO, paddySeasons, getActiveSeason, settings } = useApp();
@@ -199,6 +200,176 @@ const Dispatch = () => {
         setDoApprovedWeight(0);
         setDoDate(format(new Date(), 'yyyy-MM-dd'));
         alert("D.O. Record Saved successfully!");
+    };
+
+    const parseExcelDate = (val: any): string => {
+        if (!val) return format(new Date(), 'yyyy-MM-dd');
+        if (typeof val === 'number') {
+            const date = new Date((val - 25569) * 86400 * 1000);
+            return format(date, 'yyyy-MM-dd');
+        }
+        const str = String(val).trim();
+        if (str.includes('/')) {
+            const parts = str.split('/');
+            if (parts.length === 3) {
+                const p0 = parts[0].padStart(2, '0');
+                const p1 = parts[1].padStart(2, '0');
+                const p2 = parts[2];
+                if (p2.length === 4) return `${p2}-${p1}-${p0}`;
+            }
+        }
+        if (str.includes('-')) {
+            const parts = str.split('-');
+            if (parts.length === 3) {
+                const p0 = parts[0];
+                const p1 = parts[1].padStart(2, '0');
+                const p2 = parts[2].padStart(2, '0');
+                if (p0.length === 4) return `${p0}-${p1}-${p2}`;
+                if (p2.length === 4) return `${p2}-${p1}-${p0}`;
+            }
+        }
+        return format(new Date(), 'yyyy-MM-dd');
+    };
+
+    const handleDownloadDOTemplate = () => {
+        const headers = [["Date (YYYY-MM-DD)", "DO Number", "Mill Name", "Approved Bags", "Approved Weight (Qtl)"]];
+        const ws = XLSX.utils.aoa_to_sheet(headers);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "DO Template");
+        XLSX.writeFile(wb, "Paddy_DO_Import_Template.xlsx");
+    };
+
+    const handleImportDOExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!currentSeasonCode) {
+            alert("कृपया प्रथम धान खरेदीचा चालू हंगाम सुरू करा / सेटिंग्स मध्ये सेट करा.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const rawData: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                
+                const rows = rawData.slice(1);
+                let importedCount = 0;
+                rows.forEach((row: any) => {
+                    if (row.length === 0) return;
+                    const dateStr = parseExcelDate(row[0]);
+                    const doNumber = String(row[1] || '').trim();
+                    const millName = String(row[2] || '').trim();
+                    const approvedBags = parseInt(row[3]) || 0;
+                    const approvedWeight = parseFloat(row[4]) || 0;
+                    
+                    if (doNumber && millName && approvedBags > 0) {
+                        const record: PaddyDO = {
+                            id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 7),
+                            season: currentSeasonCode,
+                            doNumber,
+                            millName,
+                            approvedBags,
+                            approvedWeight,
+                            date: dateStr,
+                            timestamp: Date.now()
+                        };
+                        addPaddyDO(record);
+                        importedCount++;
+                    }
+                });
+                alert(`यशस्वीरीत्या ${importedCount} डी.ओ. नोंदी आयात (Import) झाल्या!`);
+            } catch (err) {
+                console.error("Import error:", err);
+                alert("फाइल वाचताना काहीतरी त्रुटी आली. कृपया योग्य टेम्प्लेट वापरा.");
+            }
+            e.target.value = '';
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const handleDownloadDispatchTemplate = () => {
+        const headers = [[
+            "Date (YYYY-MM-DD)", "Mill Name", "DO Number", "TP Number", "Truck Number", 
+            "Driver Name", "Storage Source (Godown/Shed/Open)", "Bags", "Weight (Qtl)", 
+            "New Bags Used", "Old Bags Used", "Used Once Bags Used"
+        ]];
+        const ws = XLSX.utils.aoa_to_sheet(headers);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Dispatch Template");
+        XLSX.writeFile(wb, "Truck_Dispatch_Import_Template.xlsx");
+    };
+
+    const handleImportDispatchExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!currentSeasonCode) {
+            alert("कृपया प्रथम धान खरेदीचा चालू हंगाम सुरू करा / सेटिंग्स मध्ये सेट करा.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const rawData: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                
+                const rows = rawData.slice(1);
+                let importedCount = 0;
+                rows.forEach((row: any) => {
+                    if (row.length === 0) return;
+                    const dateStr = parseExcelDate(row[0]);
+                    const millName = String(row[1] || '').trim();
+                    const doNumber = String(row[2] || '').trim();
+                    const tpNumber = String(row[3] || '').trim();
+                    const truckNumber = String(row[4] || '').trim();
+                    const driverName = String(row[5] || '').trim();
+                    
+                    let storageSource: 'Godown' | 'Shed' | 'Open' = 'Godown';
+                    const rawSrc = String(row[6] || '').trim().toLowerCase();
+                    if (rawSrc.includes('shed')) storageSource = 'Shed';
+                    else if (rawSrc.includes('open')) storageSource = 'Open';
+                    
+                    const bags = parseInt(row[7]) || 0;
+                    const weight = parseFloat(row[8]) || 0;
+                    const newBagsUsed = parseInt(row[9]) || 0;
+                    const oldBagsUsed = parseInt(row[10]) || 0;
+                    const usedOnceBagsUsed = parseInt(row[11]) || 0;
+
+                    if (millName && truckNumber && bags > 0) {
+                        const record: DispatchRecord = {
+                            id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 7),
+                            date: dateStr,
+                            season: currentSeasonCode,
+                            millName,
+                            doNumber: doNumber || undefined,
+                            tpNumber: tpNumber || undefined,
+                            truckNumber,
+                            driverName: driverName || undefined,
+                            storageSource,
+                            bags,
+                            weight,
+                            newBagsUsed,
+                            oldBagsUsed,
+                            usedOnceBagsUsed,
+                            timestamp: Date.now()
+                        };
+                        addDispatch(record);
+                        importedCount++;
+                    }
+                });
+                alert(`यशस्वीरीत्या ${importedCount} ट्रक जावक नोंदी आयात (Import) झाल्या!`);
+            } catch (err) {
+                console.error("Import error:", err);
+                alert("फाइल वाचताना काहीतरी त्रुटी आली. कृपया योग्य टेम्प्लेट वापरा.");
+            }
+            e.target.value = '';
+        };
+        reader.readAsBinaryString(file);
     };
 
     const handleEdit = (record: DispatchRecord) => {
@@ -567,6 +738,18 @@ const Dispatch = () => {
                                         </select>
                                     </div>
                                 )}
+                                <button onClick={handleDownloadDispatchTemplate} className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition font-bold shadow-sm" title="Download Excel template for dispatches">
+                                    <FileSpreadsheet size={14} /> Template
+                                </button>
+                                <label className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition font-bold shadow-sm cursor-pointer" title="Import dispatches from Excel file">
+                                    <Download size={14} className="rotate-185" /> Import Excel
+                                    <input 
+                                        type="file" 
+                                        accept=".xlsx, .xls" 
+                                        onChange={handleImportDispatchExcel} 
+                                        className="hidden" 
+                                    />
+                                </label>
                                 {filteredDispatches.length > 0 && (
                                     <button onClick={handleExportExcel} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white transition font-bold shadow-sm">
                                         <Download size={16} /> Export Excel
@@ -671,6 +854,18 @@ const Dispatch = () => {
                                 <ClipboardList className="text-blue-600" /> डी.ओ. गोषवारा व शिल्लक साठा पत्रक (D.O. Summary & Balance Report)
                             </h3>
                             <div className="flex items-center gap-3">
+                                <button onClick={handleDownloadDOTemplate} className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition font-bold shadow-sm" title="Download Excel template for D.O. registers">
+                                    <FileSpreadsheet size={14} /> Template
+                                </button>
+                                <label className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition font-bold shadow-sm cursor-pointer" title="Import D.O. records from Excel file">
+                                    <Download size={14} className="rotate-185" /> Import Excel
+                                    <input 
+                                        type="file" 
+                                        accept=".xlsx, .xls" 
+                                        onChange={handleImportDOExcel} 
+                                        className="hidden" 
+                                    />
+                                </label>
                                 {filteredDOs.length > 0 && (
                                     <button onClick={handleExportDOs} className="flex items-center gap-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white transition font-bold shadow-sm">
                                         <Download size={16} /> Export Excel
