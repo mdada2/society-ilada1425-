@@ -35,6 +35,8 @@ interface AppContextType {
   clearPhoneAuth: () => void;
   addMember: (member: Member) => void;
   deleteMember: (id: string) => void;
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+  setSocietyBanks: React.Dispatch<React.SetStateAction<SocietyBank[]>>;
   addTransaction: (transaction: Transaction, memberUpdates?: Partial<Member>) => void;
   deleteTransaction: (transactionId: string) => boolean;
   addMeeting: (meeting: Meeting) => void;
@@ -591,6 +593,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider value={{
       members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+      setTransactions, setSocietyBanks,
       login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,
       addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase,

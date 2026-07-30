@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
 import {
   Wrench,
@@ -56,6 +57,61 @@ const fmtNum = (n: number) =>
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Tools: React.FC = () => {
+  const { transactions, setTransactions, societyBanks, setSocietyBanks } = useApp();
+  const [selectedTargetBankId, setSelectedTargetBankId] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
+
+  const handleLinkLoansToBank = () => {
+    if (!selectedTargetBankId) {
+      alert("कृपया बँक खाते निवडा!");
+      return;
+    }
+    const bank = societyBanks.find(b => b.id === selectedTargetBankId);
+    if (!bank) return;
+
+    if (!window.confirm(`तुम्हाला खात्री आहे का की तुम्ही सर्व बँक खात्याशी न जोडलेले कर्ज वाटप व्यवहार (Loan Disbursements) "${bank.bankName} - A/c ${bank.accountNo}" या बँक खात्याशी जोडू इच्छिता? यामुळे रोख शिल्लक (Cash In Hand) पूर्ववत होईल.`)) {
+      return;
+    }
+
+    setIsLinking(true);
+
+    setTimeout(() => {
+      let count = 0;
+      let totalAmount = 0;
+
+      const updatedTransactions = transactions.map(t => {
+        if (t.accountType === 'Loan' && t.type === 'Debit' && !t.bankId) {
+          count++;
+          totalAmount += t.amount;
+          return {
+            ...t,
+            bankId: selectedTargetBankId,
+            details: `${t.details} (ऑटो-लिंक: ${bank.bankName} A/c ${bank.accountNo})`.trim()
+          };
+        }
+        return t;
+      });
+
+      if (count === 0) {
+        alert("कोणतेही बँक खात्याशी न जोडलेले कर्ज वाटप व्यवहार आढळले नाहीत.");
+        setIsLinking(false);
+        return;
+      }
+
+      setTransactions(updatedTransactions);
+
+      setSocietyBanks(prev => prev.map(b => {
+        if (b.id === selectedTargetBankId) {
+          return { ...b, balance: b.balance - totalAmount };
+        }
+        return b;
+      }));
+
+      alert(`यशस्वीरित्या ${count} कर्ज वाटप व्यवहार (एकूण ₹${totalAmount.toLocaleString()}) बँक खात्याशी जोडले गेले आहेत. डॅशबोर्ड तपासा!`);
+      setIsLinking(false);
+    }, 1000);
+  };
+
   const [file, setFile] = useState<File | null>(null);
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [rawRows, setRawRows] = useState<RawRow[]>([]);
@@ -912,6 +968,71 @@ const Tools: React.FC = () => {
           </div>
         </div>
       )}
+      {/* ── KCC/Bank Loan Linker Utility Card ── */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden mt-6">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 md:px-6 md:py-4 flex items-center gap-3">
+          <Wrench size={20} className="text-white/90 shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-white font-bold text-base md:text-lg">कर्ज वाटप बँक खात्याशी लिंक करा (Link Loans to Bank Account)</h2>
+            <p className="text-emerald-100 text-xs mt-0.5 leading-relaxed">
+              सर्व जुन्या कर्ज वाटपाच्या नोंदी (Loan Disbursements) रोख ऐवजी KCC/बँक खात्याशी जोडून रोख शिल्लक (Cash In Hand) अचूक करा.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 md:p-6 space-y-4">
+          <div className="flex gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-3 md:p-4 text-xs md:text-sm text-emerald-800 dark:text-emerald-300">
+            <Info size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">हे युटिलिटी काय करते?</p>
+              <p className="mt-1 opacity-90">
+                चालू आर्थिक वर्षातील जेवढे पिकाचे कर्ज वाटप (Debit) झाले आहेत जे सध्या **रोख (Cash)** दाखवत आहेत, त्यांना हे टूल तुम्ही निवडलेल्या बँक/KCC खात्याशी लिंक करेल. यामुळे:
+              </p>
+              <ul className="list-disc list-inside space-y-1 mt-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                <li>तिजोरीतील रोख रक्कम (Cash in Hand) वजाबाकीतून बाहेर येऊन मूळ शिलकीवर येईल.</li>
+                <li>निवडलेल्या KCC कर्ज खात्यामध्ये तेवढा बोजा (Minus Balance) पडेल जे बँकेनुसार अचूक असेल.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-1 w-full">
+              <label className="block text-xs font-bold text-slate-500 mb-1">बँक खाते निवडा (Select Target Bank/KCC Account)</label>
+              <select
+                value={selectedTargetBankId}
+                onChange={e => setSelectedTargetBankId(e.target.value)}
+                className="w-full p-2.5 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm"
+              >
+                <option value="">-- बँक खाते निवडा --</option>
+                {societyBanks.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.bankName} - {b.accountType} ({b.accountNo}) - शिल्लक: ₹{b.balance.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLinkLoansToBank}
+              disabled={isLinking || !selectedTargetBankId}
+              className={`w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm ${
+                isLinking || !selectedTargetBankId
+                  ? 'bg-slate-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95'
+              }`}
+            >
+              {isLinking ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> प्रक्रिया सुरू आहे...
+                </>
+              ) : (
+                'बँक खात्याशी लिंक करा'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
