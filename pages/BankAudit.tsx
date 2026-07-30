@@ -50,7 +50,9 @@ const BankAudit = () => {
         const savings = members.reduce((s, m) => s + m.savingsBalance, 0);
         const deposits = members.reduce((s, m) => s + m.fdBalance, 0);
         const loans = members.reduce((s, m) => s + m.loanPrincipal, 0);
-        const bankBalances = societyBanks.reduce((s, b) => s + b.balance, 0);
+        const bankAssets = societyBanks.filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
+        const bankLiabilities = societyBanks.filter(b => b.balance < 0).reduce((s, b) => s + Math.abs(b.balance), 0);
+        
         const totalCredit = transactions.filter(t => {
             if (t.isGovtWaiver) return false;
             if (t.accountType === 'BankTransfer') {
@@ -67,19 +69,26 @@ const BankAudit = () => {
         }).reduce((s, t) => s + t.amount, 0);
         const cashInHand = totalCredit - totalDebit;
 
+        const liabilitiesList = [
+            { name: 'Share Capital (भाग भांडवल)', amount: shares },
+            { name: 'Member Savings (सभासद बचत)', amount: savings },
+            { name: 'Member Deposits (ठेवी)', amount: deposits },
+        ];
+        if (bankLiabilities > 0) {
+            liabilitiesList.push({ name: 'Bank Loans & CC (बँक कर्ज व पत मर्यादा)', amount: bankLiabilities });
+        }
+
+        const assetsList = [
+            { name: 'Outstanding Loans (कर्ज बाकी)', amount: loans },
+            { name: 'Cash in Hand (हातातील रोकड)', amount: cashInHand },
+            { name: 'Bank Balances (बँक शिल्लक)', amount: bankAssets },
+        ];
+
         return {
-            liabilities: [
-                { name: 'Share Capital (भाग भांडवल)', amount: shares },
-                { name: 'Member Savings (सभासद बचत)', amount: savings },
-                { name: 'Member Deposits (ठेवी)', amount: deposits },
-            ],
-            assets: [
-                { name: 'Outstanding Loans (कर्ज बाकी)', amount: loans },
-                { name: 'Cash in Hand (हातातील रोकड)', amount: cashInHand },
-                { name: 'Bank Balances (बँक शिल्लक)', amount: bankBalances },
-            ],
-            totalLiab: shares + savings + deposits,
-            totalAssets: loans + cashInHand + bankBalances
+            liabilities: liabilitiesList,
+            assets: assetsList,
+            totalLiab: shares + savings + deposits + bankLiabilities,
+            totalAssets: loans + cashInHand + bankAssets
         };
     }, [members, societyBanks, transactions]);
 
