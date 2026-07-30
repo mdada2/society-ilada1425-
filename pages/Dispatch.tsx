@@ -232,7 +232,7 @@ const Dispatch = () => {
     };
 
     const handleDownloadDOTemplate = () => {
-        const headers = [["Date (YYYY-MM-DD)", "DO Number", "Mill Name", "Approved Bags", "Approved Weight (Qtl)"]];
+        const headers = [["Date (YYYY-MM-DD)", "Season (हंगाम)", "DO Number", "Mill Name", "Approved Bags", "Approved Weight (Qtl)"]];
         const ws = XLSX.utils.aoa_to_sheet(headers);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "DO Template");
@@ -260,15 +260,16 @@ const Dispatch = () => {
                 rows.forEach((row: any) => {
                     if (row.length === 0) return;
                     const dateStr = parseExcelDate(row[0]);
-                    const doNumber = String(row[1] || '').trim();
-                    const millName = String(row[2] || '').trim();
-                    const approvedBags = parseInt(row[3]) || 0;
-                    const approvedWeight = parseFloat(row[4]) || 0;
+                    const seasonVal = String(row[1] || '').trim() || currentSeasonCode;
+                    const doNumber = String(row[2] || '').trim();
+                    const millName = String(row[3] || '').trim();
+                    const approvedBags = parseInt(row[4]) || 0;
+                    const approvedWeight = parseFloat(row[5]) || 0;
                     
                     if (doNumber && millName && approvedBags > 0) {
                         const record: PaddyDO = {
                             id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 7),
-                            season: currentSeasonCode,
+                            season: seasonVal,
                             doNumber,
                             millName,
                             approvedBags,
@@ -292,7 +293,7 @@ const Dispatch = () => {
 
     const handleDownloadDispatchTemplate = () => {
         const headers = [[
-            "Date (YYYY-MM-DD)", "Mill Name", "DO Number", "TP Number", "Truck Number", 
+            "Date (YYYY-MM-DD)", "Season (हंगाम)", "Mill Name", "DO Number", "TP Number", "Truck Number", 
             "Driver Name", "Storage Source (Godown/Shed/Open)", "Bags", "Weight (Qtl)", 
             "New Bags Used", "Old Bags Used", "Used Once Bags Used"
         ]];
@@ -323,28 +324,29 @@ const Dispatch = () => {
                 rows.forEach((row: any) => {
                     if (row.length === 0) return;
                     const dateStr = parseExcelDate(row[0]);
-                    const millName = String(row[1] || '').trim();
-                    const doNumber = String(row[2] || '').trim();
-                    const tpNumber = String(row[3] || '').trim();
-                    const truckNumber = String(row[4] || '').trim();
-                    const driverName = String(row[5] || '').trim();
+                    const seasonVal = String(row[1] || '').trim() || currentSeasonCode;
+                    const millName = String(row[2] || '').trim();
+                    const doNumber = String(row[3] || '').trim();
+                    const tpNumber = String(row[4] || '').trim();
+                    const truckNumber = String(row[5] || '').trim();
+                    const driverName = String(row[6] || '').trim();
                     
                     let storageSource: 'Godown' | 'Shed' | 'Open' = 'Godown';
-                    const rawSrc = String(row[6] || '').trim().toLowerCase();
+                    const rawSrc = String(row[7] || '').trim().toLowerCase();
                     if (rawSrc.includes('shed')) storageSource = 'Shed';
                     else if (rawSrc.includes('open')) storageSource = 'Open';
                     
-                    const bags = parseInt(row[7]) || 0;
-                    const weight = parseFloat(row[8]) || 0;
-                    const newBagsUsed = parseInt(row[9]) || 0;
-                    const oldBagsUsed = parseInt(row[10]) || 0;
-                    const usedOnceBagsUsed = parseInt(row[11]) || 0;
+                    const bags = parseInt(row[8]) || 0;
+                    const weight = parseFloat(row[9]) || 0;
+                    const newBagsUsed = parseInt(row[10]) || 0;
+                    const oldBagsUsed = parseInt(row[11]) || 0;
+                    const usedOnceBagsUsed = parseInt(row[12]) || 0;
 
                     if (millName && truckNumber && bags > 0) {
                         const record: DispatchRecord = {
                             id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 7),
                             date: dateStr,
-                            season: currentSeasonCode,
+                            season: seasonVal,
                             millName,
                             doNumber: doNumber || undefined,
                             tpNumber: tpNumber || undefined,
