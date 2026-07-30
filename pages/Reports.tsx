@@ -2440,11 +2440,27 @@ const Reports = () => {
         const monthEnd = new Date(year, mConfig.monthIndex + 1, 0); // Last day of month
 
         // Find all Debit transactions of type Loan (Disbursements) during this specific month & year
-        const monthDisbTxns = transactions.filter(t => {
+        const monthTxnDisb = transactions.filter(t => {
           if (t.type !== 'Debit' || t.accountType !== 'Loan') return false;
           const d = new Date(t.date);
           return d >= monthStart && d <= monthEnd;
         });
+
+        const monthTxnMemberIds = new Set(monthTxnDisb.map(t => t.memberId).filter(Boolean));
+
+        // Find all legacy/imported disbursements during this specific month & year
+        const monthLegacyDisb = members.filter(m => {
+          if (!m.originalLoanDate) return false;
+          const d = new Date(m.originalLoanDate);
+          const isDateInMonth = d >= monthStart && d <= monthEnd;
+          return isDateInMonth && (m.loanPrincipal || 0) > 0 && !monthTxnMemberIds.has(m.id);
+        }).map(m => ({
+          memberId: m.id,
+          amount: m.loanPrincipal,
+          date: m.originalLoanDate
+        }));
+
+        const monthDisbTxns = [...monthTxnDisb, ...monthLegacyDisb];
 
         const disbAmount = monthDisbTxns.reduce((sum, t) => sum + t.amount, 0);
         const uniqueMembers = new Set(monthDisbTxns.map(t => t.memberId).filter(Boolean));
