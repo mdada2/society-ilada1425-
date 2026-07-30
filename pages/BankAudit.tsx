@@ -31,7 +31,7 @@ const BankAudit = () => {
     const [editingBankId, setEditingBankId] = useState<string | null>(null);
     const [bankName, setBankName] = useState('');
     const [accNo, setAccNo] = useState('');
-    const [accType, setAccType] = useState<'Current' | 'Savings'>('Savings');
+    const [accType, setAccType] = useState<'Current' | 'Savings' | 'KCC'>('Savings');
     const [initialBalance, setInitialBalance] = useState<number | ''>('');
 
     // Form States (Audit)
@@ -51,8 +51,8 @@ const BankAudit = () => {
         const deposits = members.reduce((s, m) => s + m.fdBalance, 0);
         const loans = members.reduce((s, m) => s + m.loanPrincipal, 0);
         const bankBalances = societyBanks.reduce((s, b) => s + b.balance, 0);
-        const totalCredit = transactions.filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver).reduce((s, t) => s + t.amount, 0);
-        const totalDebit = transactions.filter(t => t.type === TransactionType.DEBIT).reduce((s, t) => s + t.amount, 0);
+        const totalCredit = transactions.filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver && !t.bankId).reduce((s, t) => s + t.amount, 0);
+        const totalDebit = transactions.filter(t => t.type === TransactionType.DEBIT && !t.bankId).reduce((s, t) => s + t.amount, 0);
         const cashInHand = totalCredit - totalDebit;
 
         return {
@@ -245,7 +245,7 @@ const BankAudit = () => {
                             >
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><LandmarkIcon size={80} /></div>
                                 <div className="flex justify-between items-start mb-4">
-                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${bank.accountType === 'Current' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>{bank.accountType} Account</span>
+                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${bank.accountType === 'Current' ? 'bg-purple-100 text-purple-700' : bank.accountType === 'KCC' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>{bank.accountType} Account</span>
                                     <div className="flex gap-2 relative z-10">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleOpenEditBank(bank); }}
@@ -382,7 +382,7 @@ const BankAudit = () => {
                         <form onSubmit={handleAddBank} className="space-y-4">
                             <div><label className="text-sm font-bold block mb-1">Bank Name</label><input required value={bankName} onChange={e => setBankName(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. ADCC Bank, SBI" /></div>
                             <div><label className="text-sm font-bold block mb-1">Account No</label><input required value={accNo} onChange={e => setAccNo(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" /></div>
-                            <div><label className="text-sm font-bold block mb-1">Account Type</label><select value={accType} onChange={e => setAccType(e.target.value as any)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600"><option value="Savings">Savings (बचत)</option><option value="Current">Current (चालू)</option></select></div>
+                            <div><label className="text-sm font-bold block mb-1">Account Type</label><select value={accType} onChange={e => setAccType(e.target.value as any)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600"><option value="Savings">Savings (बचत)</option><option value="Current">Current (चालू)</option><option value="KCC">KCC (कर्ज खाते / पत मर्यादा)</option></select></div>
                             <div>
                                 <label className="text-sm font-bold block mb-1">Initial Balance (₹)</label>
                                 <input

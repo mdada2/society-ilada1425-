@@ -43,14 +43,14 @@ const Dashboard = () => {
         const today = format(new Date(), 'yyyy-MM-dd');
         const todaysTrans = transactions.filter(t => t.date === today);
         const todayCollection = todaysTrans
-            .filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver)
+            .filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver && !t.bankId)
             .reduce((sum, t) => sum + t.amount, 0);
         const todayExpense = todaysTrans
-            .filter(t => t.type === TransactionType.DEBIT)
+            .filter(t => t.type === TransactionType.DEBIT && !t.bankId)
             .reduce((sum, t) => sum + t.amount, 0);
 
-        const totalCredit = transactions.filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver).reduce((sum, t) => sum + t.amount, 0);
-        const totalDebit = transactions.filter(t => t.type === TransactionType.DEBIT).reduce((sum, t) => sum + t.amount, 0);
+        const totalCredit = transactions.filter(t => t.type === TransactionType.CREDIT && !t.isGovtWaiver && !t.bankId).reduce((sum, t) => sum + t.amount, 0);
+        const totalDebit = transactions.filter(t => t.type === TransactionType.DEBIT && !t.bankId).reduce((sum, t) => sum + t.amount, 0);
         const cashInHand = totalCredit - totalDebit;
 
         // Bank Stats

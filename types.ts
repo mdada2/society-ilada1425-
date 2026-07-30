@@ -24,7 +24,7 @@ export interface SocietyBank {
   id: string;
   bankName: string;
   accountNo: string;
-  accountType: 'Current' | 'Savings';
+  accountType: 'Current' | 'Savings' | 'KCC';
   balance: number;
 }
 

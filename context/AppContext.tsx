@@ -402,8 +402,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    // Bank specific logic for society bank accounts
-    if (transaction.accountType === 'BankTransfer' && transaction.bankId) {
+    // Bank specific logic for society bank accounts (any transaction linked to a bank)
+    if (transaction.bankId) {
       setSocietyBanks(prev => prev.map(b => {
         if (b.id === transaction.bankId) {
           return { ...b, balance: transaction.type === TransactionType.CREDIT ? b.balance + transaction.amount : b.balance - transaction.amount };
@@ -448,7 +448,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    if (transaction.accountType === 'BankTransfer' && transaction.bankId) {
+    // Revert bank balance adjustment for any transaction linked to a bank
+    if (transaction.bankId) {
       setSocietyBanks(prev => prev.map(b => {
         if (b.id === transaction.bankId) {
           // Revert balance

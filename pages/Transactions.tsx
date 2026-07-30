@@ -69,6 +69,10 @@ const Transactions = () => {
     const [lastSavedTransaction, setLastSavedTransaction] = useState<any>(null);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    // व्यवहार माध्यम (Payment/Disbursement Mode)
+    const [paymentMode, setPaymentMode] = useState<'Cash' | 'Bank'>('Cash');
+    const [selectedBankId, setSelectedBankId] = useState('');
+
     // कर्ज माफी (Loan Waiver)
     const [applyWaiver, setApplyWaiver] = useState(false);
     const WAIVER_THRESHOLD = 500; // ₹500 पर्यंतची बाकी रक्कम माफ करता येईल
@@ -233,6 +237,11 @@ const Transactions = () => {
         setStatusMsg(null);
 
         try {
+            if (paymentMode === 'Bank' && !selectedBankId) {
+                setStatusMsg({ type: 'error', text: 'कृपया बँक खाते निवडा!' });
+                return;
+            }
+
             const isLoanCredit = accountType === AccountType.LOAN && type === TransactionType.CREDIT;
             const bFundAmt = (!isGovtWaiver && isLoanCredit && includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
             const jFundAmt = (!isGovtWaiver && isLoanCredit && includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
@@ -258,8 +267,16 @@ const Transactions = () => {
                 details: details,
                 timestamp: Date.now(),
                 memberId: selectedMember?.id || null,
-                memberName: selectedMember?.name || search || 'General Entry'
+                memberName: selectedMember?.name || search || 'General Entry',
+                bankId: paymentMode === 'Bank' ? selectedBankId : undefined
             };
+
+            if (paymentMode === 'Bank' && selectedBankId) {
+                const bank = societyBanks.find(b => b.id === selectedBankId);
+                if (bank) {
+                    transaction.details = `${transaction.details || ''} (बँक: ${bank.bankName} A/c ${bank.accountNo})`.trim();
+                }
+            }
 
             if (selectedMember) {
                 const memberUpdates: any = {};
@@ -345,10 +362,11 @@ const Transactions = () => {
             setIncludeBuildingFund(false);
             setIncludeJointFund(false);
             setApplyWaiver(false);
-            setIsGovtWaiver(false);
             setWaivedPrincipal(0);
             setWaivedInterest(0);
             setSchemeName('महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
+            setPaymentMode('Cash');
+            setSelectedBankId('');
 
             // Auto hide success msg after 3s
             setTimeout(() => setStatusMsg(null), 3000);
@@ -569,7 +587,7 @@ const Transactions = () => {
                             )}
 
                             {/* Funds Section for Loan Credit */}
-                            {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && !isGovtWaiver && (
+                            {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && !isGovtWaiver && paymentMode === 'Cash' && (
                                 <div className="p-2 md:p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 space-y-2 animate-fade-in">
                                     <h4 className="font-bold text-indigo-800 dark:text-indigo-400 text-[11px] md:text-sm flex items-center gap-2 mb-1">
                                         <FundIcon size={14} /> वार्षिक निधी कपात (FY Fund Collection)
@@ -785,6 +803,65 @@ const Transactions = () => {
                                             className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
                                         />
                                     </div>
+                                </div>
+                            )}
+
+                            {!isGovtWaiver && (
+                                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border dark:border-slate-700 space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">व्यवहार माध्यम (Transaction Mode)</label>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMode"
+                                                    value="Cash"
+                                                    checked={paymentMode === 'Cash'}
+                                                    onChange={() => {
+                                                        setPaymentMode('Cash');
+                                                        setSelectedBankId('');
+                                                    }}
+                                                    className="accent-blue-600"
+                                                />
+                                                रोख (Cash)
+                                            </label>
+                                            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMode"
+                                                    value="Bank"
+                                                    checked={paymentMode === 'Bank'}
+                                                    onChange={() => {
+                                                        setPaymentMode('Bank');
+                                                        if (societyBanks.length > 0) {
+                                                            setSelectedBankId(societyBanks[0].id);
+                                                        }
+                                                    }}
+                                                    className="accent-blue-600"
+                                                />
+                                                बँक व्यवहार (Bank)
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {paymentMode === 'Bank' && (
+                                        <div className="animate-fade-in">
+                                            <label className="block text-[10px] font-bold text-slate-500 mb-1">बँक खाते निवडा (Select Bank Account)</label>
+                                            <select
+                                                value={selectedBankId}
+                                                onChange={e => setSelectedBankId(e.target.value)}
+                                                required={paymentMode === 'Bank'}
+                                                className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs"
+                                            >
+                                                <option value="">-- बँक खाते निवडा --</option>
+                                                {societyBanks.map(b => (
+                                                    <option key={b.id} value={b.id}>
+                                                        {b.bankName} - {b.accountType} ({b.accountNo}) - शिल्लक: ₹{b.balance.toLocaleString()}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
