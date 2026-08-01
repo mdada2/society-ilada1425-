@@ -884,7 +884,7 @@ const Members = () => {
   const searchIndex = useMemo(() =>
     members.map(m => ({
       id: m.id,
-      searchText: `${m.name} ${m.memberNo} ${m.mobile}`.toLowerCase()
+      searchText: `${m.name} ${m.nameEn || ''} ${m.memberNo} ${m.mobile}`.toLowerCase()
     })), [members]
   );
 

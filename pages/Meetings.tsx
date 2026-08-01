@@ -812,7 +812,7 @@ const Meetings = () => {
                 </div>
               </div>
               <div className="overflow-y-auto flex-1 p-2 space-y-1">
-                {members.filter(m => !boardMemberIds.has(m.id) && (m.name.toLowerCase().includes(boardSearch.toLowerCase()) || m.memberNo.includes(boardSearch))).slice(0, 50).map(m => (
+                {members.filter(m => !boardMemberIds.has(m.id) && (m.name.toLowerCase().includes(boardSearch.toLowerCase()) || (m.nameEn && m.nameEn.toLowerCase().includes(boardSearch.toLowerCase())) || m.memberNo.includes(boardSearch))).slice(0, 50).map(m => (
                   <div key={m.id} className="flex justify-between items-center p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded transition border border-transparent hover:border-slate-200">
                     <div><p className="text-sm font-bold text-slate-700 dark:text-slate-200">{m.name}</p><p className="text-xs text-slate-500">#{m.memberNo} | {m.village}</p></div>
                     <button onClick={() => toggleDirectorStatus(m.id)} className="p-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 transition"><UserPlus size={18} /></button>
