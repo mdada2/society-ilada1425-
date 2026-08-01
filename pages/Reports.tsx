@@ -989,15 +989,17 @@ const Reports = () => {
       });
 
       return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-4 h-full min-h-0">
           {renderFYSelector()}
           {renderTabInfo('Regular (FY)')}
-          <ReportTable
-            title={`Regular Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
-            columns={columns}
-            data={displayData}
-            onRowClick={(item) => handleMemberClick(item.id)}
-          />
+          <div className="flex-1 min-h-0">
+            <ReportTable
+              title={`Regular Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
+              columns={columns}
+              data={displayData}
+              onRowClick={(item) => handleMemberClick(item.id)}
+            />
+          </div>
         </div>
       );
     }
@@ -1047,7 +1049,7 @@ const Reports = () => {
           ];
 
       return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-4 h-full min-h-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             {renderFYSelector()}
             <div className="flex gap-2">
@@ -1074,15 +1076,17 @@ const Reports = () => {
             </div>
           </div>
           {renderTabInfo('Repaid (FY)')}
-          <ReportTable
-            title={repaidFilter === 'repaid'
-              ? `Repaid Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
-              : `Outstanding Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
-            }
-            columns={columnsToUse}
-            data={displayLoans}
-            onRowClick={(item) => handleMemberClick(item.id)}
-          />
+          <div className="flex-1 min-h-0">
+            <ReportTable
+              title={repaidFilter === 'repaid'
+                ? `Repaid Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
+                : `Outstanding Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
+              }
+              columns={columnsToUse}
+              data={displayLoans}
+              onRowClick={(item) => handleMemberClick(item.id)}
+            />
+          </div>
         </div>
       );
     }
@@ -1145,15 +1149,17 @@ const Reports = () => {
       ];
 
       return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-4 h-full min-h-0">
           {renderFYSelector()}
           {renderTabInfo('Overdue Recoveries')}
-          <ReportTable
-            title={`Overdue Recoveries (थकीत वसुली) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
-            columns={recoveryColumns}
-            data={memberRecoveries}
-            onRowClick={(item) => handleMemberClick(item.id)}
-          />
+          <div className="flex-1 min-h-0">
+            <ReportTable
+              title={`Overdue Recoveries (थकीत वसुली) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
+              columns={recoveryColumns}
+              data={memberRecoveries}
+              onRowClick={(item) => handleMemberClick(item.id)}
+            />
+          </div>
         </div>
       );
     }
@@ -2583,13 +2589,15 @@ const Reports = () => {
         <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
           {renderFYSelector()}
           {renderTabInfo('Loan Recovery Analysis')}
-          <ReportTable
-            title={`मासिक कर्ज वाटप व वसुली विश्लेषण अहवाल (FY)`}
-            columns={analysisColumns}
-            data={analysisData}
-            enableDateFilter={false}
-            enableSearch={false}
-          />
+          <div className="flex-1 min-h-0">
+            <ReportTable
+              title={`मासिक कर्ज वाटप व वसुली विश्लेषण अहवाल (FY)`}
+              columns={analysisColumns}
+              data={analysisData}
+              enableDateFilter={false}
+              enableSearch={false}
+            />
+          </div>
         </div>
       );
     }
@@ -2598,9 +2606,11 @@ const Reports = () => {
 
 
     return (
-      <div className="flex flex-col gap-4 h-full">
+      <div className="flex flex-col gap-4 h-full min-h-0">
         {renderTabInfo(activeSubTab === 'Recovery Report' ? 'Recovery Report' : activeSubTab)}
-        <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />
+        <div className="flex-1 min-h-0">
+          <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />
+        </div>
       </div>
     );
   };

@@ -163,7 +163,7 @@ function ReportTable<T extends { id?: string | number }>({
                 const totalVal = getColumnTotal(col.accessorKey as string);
                 if (idx === 0 || col.accessorKey === 'memberNo' || col.accessorKey === 'id' || col.header.toLowerCase() === 'no.') {
                     return data.length;
-                } else if (col.accessorKey === 'name') {
+                } else if (col.accessorKey === 'name' || col.accessorKey === 'monthName' || idx === 1) {
                     return 'एकूण (Total)';
                 } else if (col.accessorKey === 'recoveryPercentage') {
                     const totalDisb = getColumnTotal('disbAmount');
@@ -371,7 +371,7 @@ function ReportTable<T extends { id?: string | number }>({
 
                                     if (idx === 0 || col.accessorKey === 'memberNo' || col.accessorKey === 'id' || col.header.toLowerCase() === 'no.') {
                                         content = `${sortedData.length}`;
-                                    } else if (col.accessorKey === 'name') {
+                                    } else if (col.accessorKey === 'name' || col.accessorKey === 'monthName' || idx === 1) {
                                         content = 'एकूण (Total)';
                                     } else if (col.accessorKey === 'recoveryPercentage') {
                                         const totalDisb = getColumnTotal('disbAmount');
