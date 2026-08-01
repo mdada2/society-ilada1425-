@@ -514,9 +514,23 @@ const Settings = () => {
 
             <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700 mb-2">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><CalendarRange size={20} /> Current Financial Year</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <input type="date" value={settings.financialYearStart} onChange={(e) => handleFYUpdate('start', e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
                     <input type="date" value={settings.financialYearEnd} onChange={(e) => handleFYUpdate('end', e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                </div>
+                
+                <div className="border-t dark:border-slate-700 pt-4">
+                    <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                        सभासदांच्या नावांची भाषा (Member Names Language)
+                    </label>
+                    <select
+                        value={settings.memberNameLanguage || 'mr'}
+                        onChange={(e) => updateSettings({ memberNameLanguage: e.target.value as 'mr' | 'en' })}
+                        className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    >
+                        <option value="mr">मराठी (Default)</option>
+                        <option value="en">English (इंग्रजी)</option>
+                    </select>
                 </div>
             </div>
 

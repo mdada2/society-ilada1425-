@@ -381,13 +381,22 @@ const MemberDetails = () => {
 
                             <div className="flex-1 min-w-0">
                                 {isEditing ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-2 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-2 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600">
                                         <div className="md:col-span-1">
-                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Name</label>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Name (मराठी)</label>
                                             <input
                                                 type="text"
                                                 value={formData.name}
                                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                                className="w-full p-2 border bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:border-slate-500 dark:text-white rounded"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Name (English)</label>
+                                            <input
+                                                type="text"
+                                                value={formData.nameEn || ''}
+                                                onChange={e => setFormData({ ...formData, nameEn: e.target.value })}
                                                 className="w-full p-2 border bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:border-slate-500 dark:text-white rounded"
                                             />
                                         </div>

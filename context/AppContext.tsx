@@ -588,11 +588,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isRestoring.current = false;
     window.location.reload();
   };
-  const getMember = (id: string) => members.find(m => m.id === id);
+  const displayedMembers = useMemo(() => {
+    const lang = settings.memberNameLanguage || 'mr';
+    if (lang === 'en') {
+      return members.map(m => ({
+        ...m,
+        name: m.nameEn ? m.nameEn : m.name
+      }));
+    }
+    return members;
+  }, [members, settings.memberNameLanguage]);
 
-  return (
-    <AppContext.Provider value={{
-      members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+  const getMember = (id: string) => members.find(m => m.id === id);
+ 
+   return (
+     <AppContext.Provider value={{
+       members: displayedMembers, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
       setTransactions, setSocietyBanks,
       login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,

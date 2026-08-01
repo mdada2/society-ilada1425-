@@ -174,6 +174,7 @@ export interface InventoryAdjustment {
 export interface Member {
   id: string;
   name: string;
+  nameEn?: string;
   village: string;
   gender: 'Male' | 'Female' | 'Other';
   designation?: string;
@@ -253,6 +254,7 @@ export interface AppSettings {
   societyName: string;
   financialYearStart: string;
   financialYearEnd: string;
+  memberNameLanguage?: 'mr' | 'en';
   reportHeaders: ReportHeaders;
   boardMembers: string[];
   chairmanId?: string;
