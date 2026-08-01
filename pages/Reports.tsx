@@ -4802,7 +4802,7 @@ const Reports = () => {
   const currentCategory = REPORT_CATEGORIES.find(c => c.id === selectedCategory);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-96px)] md:h-screen overflow-hidden">
       {/* Top Navigation Bar */}
       <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 shadow-sm z-10">
         <div className="flex flex-col gap-4">
