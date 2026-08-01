@@ -894,6 +894,45 @@ const Reports = () => {
     );
   };
 
+  const renderTabInfo = (subTab: string) => {
+    let text = '';
+    let title = '';
+    switch (subTab) {
+      case 'Regular (FY)':
+        title = 'चालू वर्षातील कर्जदार (Regular Loans)';
+        text = 'चालू आर्थिक वर्षात वाटप केलेले आणि सध्या कर्ज बाकी (Outstanding) असलेले सभासद यामध्ये दिसतात.';
+        break;
+      case 'Repaid (FY)':
+        title = 'चालू वर्षात नील झालेली कर्जे (Repaid Loans)';
+        text = 'चालू आर्थिक वर्षात कर्ज वाटप केलेल्यांपैकी ज्यांनी आपले कर्ज पूर्णपणे फेडून खाते नील (Repaid) केले आहे, त्यांची यादी येथे दिसते.';
+        break;
+      case 'Overdue Recoveries':
+        title = 'जुनी थकीत कर्ज वसुली (Overdue Recoveries)';
+        text = 'मागील वर्षातील थकीत (Overdue) कर्जदारांकडून चालू वर्षात जमा झालेली रक्कम आणि त्यांची शिल्लक कर्जबाकी येथे दिसते.';
+        break;
+      case 'Recovery Report':
+        title = 'थकीत कर्जदार यादी (Outstanding Defaulters)';
+        text = 'मागील आर्थिक वर्षातील सर्व थकीत कर्जदार सभासदांची संपूर्ण यादी, ज्यांच्याकडून चालू वर्षात कर्ज वसूल करायचे आहे.';
+        break;
+      case 'Loan Recovery Analysis':
+        title = 'कर्ज वसुली विश्लेषण (Recovery Analysis)';
+        text = 'महिन्यानुसार एकूण कर्ज वाटप, झालेले मुद्दल-व्याज वसुली, शासकीय कर्जमाफी आणि एकूण वसुलीची टक्केवारीचा मासिक गोषवारा येथे दिसतो.';
+        break;
+      default:
+        return null;
+    }
+
+    return (
+      <div className="flex gap-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-3 text-xs md:text-sm text-blue-800 dark:text-blue-300 animate-fade-in mb-1">
+        <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold">{title}</p>
+          <p className="mt-0.5 opacity-90">{text}</p>
+        </div>
+      </div>
+    );
+  };
+
   const renderLoan = () => {
     const columns: Column<typeof loanData[0]>[] = [
       { header: 'No.', accessorKey: 'memberNo', width: '60px' },
@@ -951,6 +990,7 @@ const Reports = () => {
       return (
         <div className="flex flex-col gap-4 h-full">
           {renderFYSelector()}
+          {renderTabInfo('Regular (FY)')}
           <ReportTable
             title={`Regular Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
             columns={columns}
@@ -1032,6 +1072,7 @@ const Reports = () => {
               </button>
             </div>
           </div>
+          {renderTabInfo('Repaid (FY)')}
           <ReportTable
             title={repaidFilter === 'repaid'
               ? `Repaid Loans (FY) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`
@@ -1105,6 +1146,7 @@ const Reports = () => {
       return (
         <div className="flex flex-col gap-4 h-full">
           {renderFYSelector()}
+          {renderTabInfo('Overdue Recoveries')}
           <ReportTable
             title={`Overdue Recoveries (थकीत वसुली) - ${activeStart.split('-').reverse().join('-')} to ${activeEnd.split('-').reverse().join('-')}`}
             columns={recoveryColumns}
@@ -2539,6 +2581,7 @@ const Reports = () => {
       return (
         <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
           {renderFYSelector()}
+          {renderTabInfo('Loan Recovery Analysis')}
           <ReportTable
             title={`मासिक कर्ज वाटप व वसुली विश्लेषण अहवाल (FY)`}
             columns={analysisColumns}
@@ -2553,7 +2596,12 @@ const Reports = () => {
 
 
 
-    return <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />;
+    return (
+      <div className="flex flex-col gap-4 h-full">
+        {renderTabInfo(activeSubTab === 'Recovery Report' ? 'Recovery Report' : activeSubTab)}
+        <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />
+      </div>
+    );
   };
 
   const renderMembership = () => {
