@@ -943,6 +943,7 @@ const Reports = () => {
 
       displayData = loanData.filter(item => {
         if (item.loanDate === 'N/A') return false;
+        if (item.total <= 0) return false; // Exclude fully repaid loans
         const d = new Date(item.loanDate);
         return d >= fyStart && d <= fyEnd;
       });
