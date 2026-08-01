@@ -12,7 +12,8 @@ import {
   FileText,
   BadgeIndianRupee,
   Share2,
-  Download
+  Download,
+  Info
 } from 'lucide-react';
 import ReportTable, { Column } from '../components/ReportTable';
 import { useApp } from '../context/AppContext';
