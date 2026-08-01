@@ -1118,8 +1118,8 @@ const Members = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["MemberNo", "Name", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance", "खाते पान क्र."];
-    const sampleRow = ["101", "Sample Name", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0", "45"];
+    const headers = ["MemberNo", "Name", "NameEn", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance", "खाते पान क्र."];
+    const sampleRow = ["101", "Sample Name (मराठीत)", "Sample Name (English)", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0", "45"];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -1380,6 +1380,7 @@ const Members = () => {
 
         const idxMemberNo = findCol(['memberno', 'member no', 'no', 'id', 'no.']);
         const idxName = findCol(['name', 'membername', 'full name', 'fullname', 'member name']);
+        const idxNameEn = findCol(['nameen', 'name en', 'english name', 'englishname', 'member name english', 'name in english']);
         if (idxMemberNo === -1) {
           alert(`Import Failed: Could not find 'MemberNo' column.`);
           if (e.target) e.target.value = ''; return;
@@ -1472,6 +1473,7 @@ const Members = () => {
             const updatedMember: Member = {
               ...existing,
               name: getNewValue(idxName, v => v, existing.name) as string,
+              nameEn: getNewValue(idxNameEn, v => v, existing.nameEn) as string | undefined,
               gender: getNewValue(idxGender, v => (v === 'Female' || v === 'Other') ? v : 'Male', existing.gender) as any,
               designation: getNewValue(idxDesignation, v => v || 'शेतकरी', existing.designation) as string,
               village: getNewValue(idxVillage, v => v, existing.village) as string,
@@ -1512,7 +1514,9 @@ const Members = () => {
             // Add new member
             const newM: Member = {
               id: Date.now().toString() + i + Math.random().toString(36).substr(2, 5),
-              memberNo: memberNo, name: name, gender: gender as any,
+              memberNo: memberNo, name: name,
+              nameEn: idxNameEn !== -1 ? (values[idxNameEn] || '') : '',
+              gender: gender as any,
               designation: idxDesignation !== -1 ? (values[idxDesignation] || 'शेतकरी') : 'शेतकरी',
               village: idxVillage !== -1 ? (values[idxVillage] || '') : '',
               membershipDate: membershipDate, mobile: idxMobile !== -1 ? (values[idxMobile] || '') : '',
