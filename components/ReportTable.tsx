@@ -230,9 +230,23 @@ function ReportTable<T extends { id?: string | number }>({
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col h-full">
             {/* Header Controls */}
             <div className="p-4 border-b dark:border-slate-700 flex flex-col gap-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">{title}</h2>
-                    <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white shrink-0">{title}</h2>
+                    
+                    {!enableDateFilter && enableSearch && (
+                        <div className="relative flex-1 max-w-xs sm:max-w-md w-full mx-0 sm:mx-4">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search records..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
                         {enableShare && (
                             <button
                                 onClick={handleShare}
@@ -252,9 +266,9 @@ function ReportTable<T extends { id?: string | number }>({
                     </div>
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-3">
-                    {/* Date Filter */}
-                    {enableDateFilter && (
+                {enableDateFilter && (
+                    <div className="flex flex-col lg:flex-row gap-3">
+                        {/* Date Filter */}
                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-lg border dark:border-slate-700 w-full lg:w-auto">
                             <Calendar size={18} className="text-slate-400 ml-2" />
                             <input
@@ -277,22 +291,22 @@ function ReportTable<T extends { id?: string | number }>({
                                 className="bg-transparent text-sm outline-none text-slate-700 dark:text-slate-300 w-full lg:w-32"
                             />
                         </div>
-                    )}
 
-                    {/* Search */}
-                    {enableSearch && (
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search records..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
-                            />
-                        </div>
-                    )}
-                </div>
+                        {/* Search */}
+                        {enableSearch && (
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Search records..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Table Content */}

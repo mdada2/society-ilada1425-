@@ -998,6 +998,7 @@ const Reports = () => {
               columns={columns}
               data={displayData}
               onRowClick={(item) => handleMemberClick(item.id)}
+              enableDateFilter={false}
             />
           </div>
         </div>
@@ -1085,6 +1086,7 @@ const Reports = () => {
               columns={columnsToUse}
               data={displayLoans}
               onRowClick={(item) => handleMemberClick(item.id)}
+              enableDateFilter={false}
             />
           </div>
         </div>
@@ -1158,6 +1160,7 @@ const Reports = () => {
               columns={recoveryColumns}
               data={memberRecoveries}
               onRowClick={(item) => handleMemberClick(item.id)}
+              enableDateFilter={false}
             />
           </div>
         </div>
@@ -2609,7 +2612,7 @@ const Reports = () => {
       <div className="flex flex-col gap-4 h-full min-h-0">
         {renderTabInfo(activeSubTab === 'Recovery Report' ? 'Recovery Report' : activeSubTab)}
         <div className="flex-1 min-h-0">
-          <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} />
+          <ReportTable title={`${activeSubTab} Report`} columns={columns} data={displayData} onRowClick={(item) => handleMemberClick(item.id)} enableDateFilter={false} />
         </div>
       </div>
     );
