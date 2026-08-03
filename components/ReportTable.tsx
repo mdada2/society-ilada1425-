@@ -105,7 +105,7 @@ function ReportTable<T extends { id?: string | number }>({
             'disbAmount', 'total', 'subsidy', 'disbursement', 'repayment', 'product',
             'stTotal', 'mtTotal', 'st1', 'mt1', 'st2', 'mt2', 'st3', 'mt3', 'st4', 'mt4',
             'st5', 'mt5', 'stAbove5', 'mtAbove5', 'stOverdueAmt', 'mtOverdueAmt', 'stOverdueInt', 'mtOverdueInt',
-            'memberCount', 'waiver'
+            'memberCount', 'waiver', 'stOverduePrin', 'stCurrentPrin', 'stOverdueInt', 'mtOverduePrin', 'mtCurrentPrin', 'mtOverdueInt', 'totalDemand'
         ];
         
         if (!sumKeys.some(k => k.toLowerCase() === colKey.toLowerCase())) {

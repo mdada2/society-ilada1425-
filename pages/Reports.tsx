@@ -73,7 +73,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Loan Reports',
     icon: <Wallet size={24} />,
     color: 'bg-amber-500',
-    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary', 'Loan Recovery Analysis']
+    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary', 'Loan Recovery Analysis', 'Demand Register']
   },
   {
     id: 'membership',
@@ -112,6 +112,7 @@ const Reports = () => {
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [filterLedgerAccount, setFilterLedgerAccount] = useState<string>('All');
   const [selectedFYRange, setSelectedFYRange] = useState<{ start: string; end: string } | null>(null);
+  const [demandDate, setDemandDate] = useState('2026-10-31');
 
   const activeStart = selectedFYRange
     ? selectedFYRange.start
@@ -2605,8 +2606,153 @@ const Reports = () => {
       );
     }
 
+    if (activeSubTab === 'Demand Register') {
+      const targetYear = new Date(demandDate).getFullYear();
 
+      // Gather demand data for all members as of demandDate
+      const demandData = members.map((m, idx) => {
+        // Find most recent loan disbursement transaction before or equal to demandDate
+        const loanTx = transactions
+          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && t.date <= demandDate)
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
 
+        let principal = 0;
+        let loanDateStr = '';
+        let loanType = m.loanType || 'Short Term';
+
+        if (loanTx) {
+          principal = loanTx.amount;
+          loanDateStr = loanTx.date;
+          if (loanTx.loanType) loanType = loanTx.loanType;
+        } else if (m.loanPrincipal > 0) {
+          // Fallback to imported legacy loan principal
+          principal = m.loanPrincipal;
+          loanDateStr = m.originalLoanDate || '2025-04-01';
+        } else {
+          return null; // No active loan at all
+        }
+
+        // Calculate repayments after loan date and up to demandDate
+        const repayments = transactions.filter(t => 
+          t.memberId === m.id && 
+          t.type === 'Credit' && 
+          t.accountType === 'Loan' && 
+          t.date >= loanDateStr && 
+          t.date <= demandDate
+        );
+        const totalRepaid = repayments.reduce((sum, r) => sum + r.amount, 0);
+        const remainingPrincipal = Math.max(0, principal - totalRepaid);
+
+        if (remainingPrincipal <= 0) return null; // fully repaid as of demandDate
+
+        // Determine if loan is current or overdue
+        const loanYear = new Date(loanDateStr).getFullYear();
+        const isShortTerm = loanType === 'Short Term';
+        const isCurrent = isShortTerm ? (loanYear >= targetYear - 1) : (loanYear >= targetYear - 2);
+
+        let overdueYearsLabel = 'चालु';
+        if (!isCurrent) {
+          const yearsDiff = targetYear - loanYear - (isShortTerm ? 1 : 2);
+          overdueYearsLabel = String(Math.max(1, yearsDiff));
+        }
+
+        // Accrued interest up to demandDate
+        const days = Math.max(0, differenceInDays(new Date(demandDate), new Date(loanDateStr)));
+        const rate = isShortTerm ? (settings.firstYearInterestRate || 6) : (settings.subsequentYearInterestRate || 12);
+        const calculatedInterest = Math.round((remainingPrincipal * days * rate) / 36500);
+
+        // Map into columns
+        const isSt = isShortTerm;
+        const stOverduePrin = isSt && !isCurrent ? remainingPrincipal : 0;
+        const stCurrentPrin = isSt && isCurrent ? remainingPrincipal : 0;
+        const stOverdueInt = isSt ? calculatedInterest : 0;
+
+        const mtOverduePrin = !isSt && !isCurrent ? remainingPrincipal : 0;
+        const mtCurrentPrin = !isSt && isCurrent ? remainingPrincipal : 0;
+        const mtOverdueInt = !isSt ? calculatedInterest : 0;
+
+        const totalDemand = stOverduePrin + stCurrentPrin + stOverdueInt + mtOverduePrin + mtCurrentPrin + mtOverdueInt;
+
+        // Repayment details for display
+        let lastRepayDate = '-';
+        if (repayments.length > 0) {
+          const sorted = [...repayments].sort((a,b) => b.date.localeCompare(a.date));
+          lastRepayDate = sorted[0].date;
+        }
+
+        return {
+          id: m.id,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          overdueYears: overdueYearsLabel,
+          loanType: isSt ? 'कि.क्रे.' : 'म.मु.',
+          loanDate: loanDateStr,
+          principal: remainingPrincipal, // sum key is 'principal'
+          stOverduePrin,
+          stCurrentPrin,
+          stOverdueInt,
+          mtOverduePrin,
+          mtCurrentPrin,
+          mtOverdueInt,
+          totalDemand,
+          remarks: lastRepayDate !== '-' ? `मागील भरणा: ${lastRepayDate.split('-').reverse().join('-')}` : '-'
+        };
+      }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      const demandColumns = [
+        { header: 'अ. क्र.', accessorKey: 'memberNo', width: '60px' },
+        {
+          header: 'कर्जदार सभासदाचे नाव', accessorKey: 'name', className: 'font-bold text-blue-600 hover:underline',
+          render: (item: any) => <span onClick={(e) => { e.stopPropagation(); handleMemberClick(item.id); }}>{item.name}</span>
+        },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'खाते पान क्र.', accessorKey: 'ledgerPageNo', render: (i: any) => {
+          const m = members.find(mem => mem.id === i.id);
+          return m?.ledgerPageNo || '';
+        }},
+        { header: 'चालू थकीत वर्ष', accessorKey: 'overdueYears', className: 'text-center' },
+        { header: 'कर्ज प्रकार', accessorKey: 'loanType', className: 'text-center' },
+        { header: 'कर्ज उचल तारीख', accessorKey: 'loanDate', render: (i: any) => i.loanDate.split('-').reverse().join('-') },
+        { header: 'कर्ज बाकी रक्कम', accessorKey: 'principal', render: (i: any) => i.principal.toLocaleString() },
+        { header: 'अमु थकीत मुद्दल', accessorKey: 'stOverduePrin', render: (i: any) => i.stOverduePrin ? i.stOverduePrin.toLocaleString() : '-' },
+        { header: 'अमु चालू मुद्दल', accessorKey: 'stCurrentPrin', render: (i: any) => i.stCurrentPrin ? i.stCurrentPrin.toLocaleString() : '-' },
+        { header: 'अमु थकीत व्याज', accessorKey: 'stOverdueInt', render: (i: any) => i.stOverdueInt ? i.stOverdueInt.toLocaleString() : '-' },
+        { header: 'ममु थकीत मुद्दल', accessorKey: 'mtOverduePrin', render: (i: any) => i.mtOverduePrin ? i.mtOverduePrin.toLocaleString() : '-' },
+        { header: 'ममु चालू मुद्दल', accessorKey: 'mtCurrentPrin', render: (i: any) => i.mtCurrentPrin ? i.mtCurrentPrin.toLocaleString() : '-' },
+        { header: 'ममु थकीत व्याज', accessorKey: 'mtOverdueInt', render: (i: any) => i.mtOverdueInt ? i.mtOverdueInt.toLocaleString() : '-' },
+        { header: 'एकूण कर्ज मागणी रक्कम', accessorKey: 'totalDemand', render: (i: any) => i.totalDemand.toLocaleString(), className: 'font-bold text-green-600' },
+        { header: 'शेरा', accessorKey: 'remarks' }
+      ];
+
+      return (
+        <div className="flex flex-col gap-4 h-full min-h-0">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">मागणी यादी तारीख (Report Date):</span>
+              <input 
+                type="date" 
+                value={demandDate} 
+                onChange={(e) => setDemandDate(e.target.value)} 
+                className="p-1.5 border rounded text-sm bg-white dark:bg-slate-750 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="text-xs text-slate-500 max-w-md">
+              * ही कर्ज मागणी यादी निवडलेल्या तारखेपर्यंतच्या थकबाकी व चालू कर्जाचा तपशील दर्शवते.
+            </div>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ReportTable
+              title={`अमु/ममु/चालू/थकीत कर्ज बाकी व कर्ज मागणी यादी (सन ${targetYear-1}-${String(targetYear).substring(2)})`}
+              columns={demandColumns}
+              data={demandData}
+              onRowClick={(item) => handleMemberClick(item.id)}
+              enableDateFilter={false}
+            />
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="flex flex-col gap-4 h-full min-h-0">
@@ -4831,7 +4977,20 @@ const Reports = () => {
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}
                 `}
               >
-                {tab}
+                {settings.memberNameLanguage === 'en' ? tab : (() => {
+                  switch (tab) {
+                    case 'All Outstanding': return 'सर्व थकबाकी';
+                    case 'Regular (FY)': return 'नियमित कर्ज (चालू वर्ष)';
+                    case 'Recovery Report': return 'वसुली अहवाल';
+                    case 'Repaid (FY)': return 'परतफेड कर्ज (चालू वर्ष)';
+                    case 'Overdue Recoveries': return 'थकीत वसुली';
+                    case 'NPA List': return 'एनपीए (NPA) यादी';
+                    case 'Summary': return 'गोषवारा';
+                    case 'Loan Recovery Analysis': return 'कर्ज वसुली विश्लेषण';
+                    case 'Demand Register': return 'कर्ज मागणी यादी';
+                    default: return tab;
+                  }
+                })()}
               </button>
             ))}
           </div>
