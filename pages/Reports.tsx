@@ -4068,7 +4068,7 @@ const Reports = () => {
         const productValue = principal * days;
 
         const repaidBeforeCutoff = isRepaid && new Date(repaymentDateStr) <= deshmukCutoff;
-        const incentive = repaidBeforeCutoff ? Math.round(principal * 0.03) : null;
+        const incentive = repaidBeforeCutoff ? Math.round((principal * days * 0.03) / 365) : null;
 
         return {
           realId: m.id,
