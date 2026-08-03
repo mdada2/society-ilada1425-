@@ -3,6 +3,7 @@ import { Download, Share2, Search, Calendar, ChevronDown, ChevronUp, Trash2 } fr
 import { format } from 'date-fns';
 import { downloadBlob } from '../utils/downloadUtils';
 import * as XLSX from 'xlsx';
+import { useApp } from '../context/AppContext';
 
 export interface Column<T> {
     header: string;
@@ -42,6 +43,8 @@ function ReportTable<T extends { id?: string | number }>({
     const [endDate, setEndDate] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
+    const { members } = useApp();
+
     // Filter Data
     const filteredData = data.filter((item) => {
         // Basic search implementation - checks all string values
@@ -50,7 +53,24 @@ function ReportTable<T extends { id?: string | number }>({
             const matches = Object.values(item as any).some((val) =>
                 String(val).toLowerCase().includes(searchStr)
             );
-            if (!matches) return false;
+            if (!matches) {
+                // Check if this row maps to a member with matching English name or village
+                const itemId = (item as any).id || (item as any).memberId || (item as any).realId;
+                const itemNo = (item as any).memberNo;
+                
+                const member = members.find(m => 
+                    (itemId && String(m.id) === String(itemId)) || 
+                    (itemNo && String(m.memberNo) === String(itemNo))
+                );
+                
+                if (member) {
+                    const nameEnMatch = member.nameEn && member.nameEn.toLowerCase().includes(searchStr);
+                    const villageEnMatch = member.villageEn && member.villageEn.toLowerCase().includes(searchStr);
+                    if (!nameEnMatch && !villageEnMatch) return false;
+                } else {
+                    return false;
+                }
+            }
         }
         return true;
     });
