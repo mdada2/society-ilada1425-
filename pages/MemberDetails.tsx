@@ -410,11 +410,20 @@ const MemberDetails = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Village</label>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Village (मराठी)</label>
                                             <input
                                                 type="text"
                                                 value={formData.village}
                                                 onChange={e => setFormData({ ...formData, village: e.target.value })}
+                                                className="w-full p-2 border bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:border-slate-500 dark:text-white rounded"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Village (English)</label>
+                                            <input
+                                                type="text"
+                                                value={formData.villageEn || ''}
+                                                onChange={e => setFormData({ ...formData, villageEn: e.target.value })}
                                                 className="w-full p-2 border bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:border-slate-500 dark:text-white rounded"
                                             />
                                         </div>

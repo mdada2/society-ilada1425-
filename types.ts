@@ -176,6 +176,7 @@ export interface Member {
   name: string;
   nameEn?: string;
   village: string;
+  villageEn?: string;
   gender: 'Male' | 'Female' | 'Other';
   designation?: string;
   dob: string;

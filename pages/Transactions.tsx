@@ -381,7 +381,8 @@ const Transactions = () => {
         m.name.toLowerCase().includes(search.toLowerCase()) ||
         (m.nameEn && m.nameEn.toLowerCase().includes(search.toLowerCase())) ||
         m.memberNo.includes(search) ||
-        m.village.toLowerCase().includes(search.toLowerCase())
+        m.village.toLowerCase().includes(search.toLowerCase()) ||
+        (m.villageEn && m.villageEn.toLowerCase().includes(search.toLowerCase()))
     );
 
     const totalInterestDisplay = selectedMember ? selectedMember.loanInterestDue + newPeriodInterest : 0;

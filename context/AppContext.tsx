@@ -593,7 +593,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (lang === 'en') {
       return members.map(m => ({
         ...m,
-        name: m.nameEn ? m.nameEn : m.name
+        name: m.nameEn ? m.nameEn : m.name,
+        village: m.villageEn ? m.villageEn : m.village
       }));
     }
     return members;

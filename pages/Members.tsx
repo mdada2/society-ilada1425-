@@ -884,7 +884,7 @@ const Members = () => {
   const searchIndex = useMemo(() =>
     members.map(m => ({
       id: m.id,
-      searchText: `${m.name} ${m.nameEn || ''} ${m.memberNo} ${m.mobile}`.toLowerCase()
+      searchText: `${m.name} ${m.nameEn || ''} ${m.villageEn || ''} ${m.memberNo} ${m.mobile}`.toLowerCase()
     })), [members]
   );
 
@@ -1118,8 +1118,8 @@ const Members = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["MemberNo", "Name", "NameEn", "Designation", "Gender", "Village", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance", "खाते पान क्र."];
-    const sampleRow = ["101", "Sample Name (मराठीत)", "Sample Name (English)", "शेतकरी", "Male", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0", "45"];
+    const headers = ["MemberNo", "Name", "NameEn", "Designation", "Gender", "Village", "VillageEn", "MembershipDate", "Mobile", "Category", "DOB", "Aadhar", "FarmerId", "OriginalLoanPrincipal", "OriginalLoanDate", "LastLoanPrincipal", "LastPaymentDate", "LoanInterestDue", "LoanAccountNo", "LoanType", "BankAccountNo", "LandArea", "SavingsBalance", "ShareBalance", "FDBalance", "खाते पान क्र."];
+    const sampleRow = ["101", "Sample Name (मराठीत)", "Sample Name (English)", "शेतकरी", "Male", "इळदा", "Ilada", "01-01-2022", "9999999999", "OPEN", "01-01-1990", "123456789012", "987654321098", "50000", "01-04-2024", "50000", "01-04-2024", "0", "LN001", "Short Term", "BANK001", "2.5", "0", "0", "0", "45"];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -1388,6 +1388,7 @@ const Members = () => {
         const idxGender = findCol(['gender', 'sex']);
         const idxDesignation = findCol(['designation', 'role', 'post', 'pad']);
         const idxVillage = findCol(['village', 'city', 'address']);
+        const idxVillageEn = findCol(['villageen', 'village en', 'english village', 'englishvillage', 'village in english']);
         const idxMembershipDate = findCol(['membershipdate', 'reg date', 'joining date']);
         const idxMobile = findCol(['mobile', 'phone', 'contact']);
         const idxCategory = findCol(['category', 'caste']);
@@ -1477,6 +1478,7 @@ const Members = () => {
               gender: getNewValue(idxGender, v => (v === 'Female' || v === 'Other') ? v : 'Male', existing.gender) as any,
               designation: getNewValue(idxDesignation, v => v || 'शेतकरी', existing.designation) as string,
               village: getNewValue(idxVillage, v => v, existing.village) as string,
+              villageEn: getNewValue(idxVillageEn, v => v, existing.villageEn) as string | undefined,
               membershipDate: getNewValue(idxMembershipDate, () => membershipDate, existing.membershipDate) as string | undefined,
               mobile: getNewValue(idxMobile, v => v, existing.mobile) as string,
               category: getNewValue(idxCategory, v => v || 'OPEN', existing.category) as any,
@@ -1519,6 +1521,7 @@ const Members = () => {
               gender: gender as any,
               designation: idxDesignation !== -1 ? (values[idxDesignation] || 'शेतकरी') : 'शेतकरी',
               village: idxVillage !== -1 ? (values[idxVillage] || '') : '',
+              villageEn: idxVillageEn !== -1 ? (values[idxVillageEn] || '') : '',
               membershipDate: membershipDate, mobile: idxMobile !== -1 ? (values[idxMobile] || '') : '',
               category: idxCategory !== -1 ? ((values[idxCategory] || 'OPEN') as any) : 'OPEN',
               dob: dob || '',
@@ -2456,7 +2459,8 @@ const Members = () => {
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Membership Date</label><input type="date" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.membershipDate || ''} onChange={e => setNewMember({ ...newMember, membershipDate: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Gender *</label><select className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.gender} onChange={e => setNewMember({ ...newMember, gender: e.target.value as any })}><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Designation *</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.designation || 'शेतकरी'} onChange={e => setNewMember({ ...newMember, designation: e.target.value })} /></div>
-              <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Village *</label><input required type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.village || ''} onChange={e => setNewMember({ ...newMember, village: e.target.value })} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Village * (मराठीत)</label><input required type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.village || ''} onChange={e => setNewMember({ ...newMember, village: e.target.value })} /></div>
+              <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Village in English (इंग्रजीत)</label><input type="text" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.villageEn || ''} onChange={e => setNewMember({ ...newMember, villageEn: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Mobile</label><input type="tel" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.mobile || ''} onChange={e => setNewMember({ ...newMember, mobile: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Date of Birth</label><input type="date" className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.dob || ''} onChange={e => setNewMember({ ...newMember, dob: e.target.value })} /></div>
               <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Category</label><select className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.category} onChange={e => setNewMember({ ...newMember, category: e.target.value as any })}><option value="OPEN">OPEN</option><option value="OBC">OBC</option><option value="SC">SC</option><option value="ST">ST</option><option value="NT">NT</option></select></div>
