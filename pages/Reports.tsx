@@ -2734,7 +2734,7 @@ const Reports = () => {
                 type="date" 
                 value={demandDate} 
                 onChange={(e) => setDemandDate(e.target.value)} 
-                className="p-1.5 border rounded text-sm bg-white dark:bg-slate-750 text-slate-900 dark:text-white"
+                className="p-1.5 border dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
             <div className="text-xs text-slate-500 max-w-md">
