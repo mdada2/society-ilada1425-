@@ -411,13 +411,15 @@ const Transactions = () => {
         }
     };
 
-    const filteredMembers = members.filter(m =>
-        m.name.toLowerCase().includes(search.toLowerCase()) ||
-        (m.nameEn && m.nameEn.toLowerCase().includes(search.toLowerCase())) ||
-        m.memberNo.includes(search) ||
-        m.village.toLowerCase().includes(search.toLowerCase()) ||
-        (m.villageEn && m.villageEn.toLowerCase().includes(search.toLowerCase()))
-    );
+    const filteredMembers = members
+        .filter(m =>
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            (m.nameEn && m.nameEn.toLowerCase().includes(search.toLowerCase())) ||
+            m.memberNo.includes(search) ||
+            m.village.toLowerCase().includes(search.toLowerCase()) ||
+            (m.villageEn && m.villageEn.toLowerCase().includes(search.toLowerCase()))
+        )
+        .sort((a, b) => (parseInt(a.memberNo) || 0) - (parseInt(b.memberNo) || 0));
 
     const totalInterestDisplay = selectedMember ? selectedMember.loanInterestDue + newPeriodInterest : 0;
     const bFundPreview = (includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
