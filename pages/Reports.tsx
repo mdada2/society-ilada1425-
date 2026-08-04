@@ -113,6 +113,7 @@ const Reports = () => {
   const [filterLedgerAccount, setFilterLedgerAccount] = useState<string>('All');
   const [selectedFYRange, setSelectedFYRange] = useState<{ start: string; end: string } | null>(null);
   const [demandDate, setDemandDate] = useState('2026-10-31');
+  const [showDemandSummary, setShowDemandSummary] = useState(false);
 
   const activeStart = selectedFYRange
     ? selectedFYRange.start
@@ -2725,6 +2726,407 @@ const Reports = () => {
         { header: 'शेरा', accessorKey: 'remarks' }
       ];
 
+      // Gather summary data
+      const demandWithMaster = demandData.map(d => {
+        const m = members.find(mem => mem.id === d.id);
+        return {
+          ...d,
+          farmerType: m?.farmerType || 'Small Farmer',
+          category: m?.category || 'OPEN',
+          landArea: parseFloat(m?.landArea || '0')
+        };
+      });
+
+      const getStats = (filterFn: (item: any) => boolean) => {
+        const list = demandWithMaster.filter(filterFn);
+        
+        const stList = list.filter(d => d.loanType === 'कि.क्रे.');
+        const stCount = stList.length;
+        const stAmount = stList.reduce((sum, d) => sum + d.principal, 0);
+
+        const mtList = list.filter(d => d.loanType === 'म.मु.');
+        const mtCount = mtList.length;
+        const mtAmount = mtList.reduce((sum, d) => sum + d.principal, 0);
+
+        const stOverdueList = stList.filter(d => d.stOverduePrin > 0);
+        const stOverdueCount = stOverdueList.length;
+        const stOverdueAmount = stOverdueList.reduce((sum, d) => sum + d.stOverduePrin, 0);
+
+        const stCurrentList = stList.filter(d => d.stCurrentPrin > 0);
+        const stCurrentCount = stCurrentList.length;
+        const stCurrentAmount = stCurrentList.reduce((sum, d) => sum + d.stCurrentPrin, 0);
+
+        const mtOverdueList = mtList.filter(d => d.mtOverduePrin > 0);
+        const mtOverdueCount = mtOverdueList.length;
+        const mtOverdueAmount = mtOverdueList.reduce((sum, d) => sum + d.mtOverduePrin, 0);
+
+        const mtCurrentList = mtList.filter(d => d.mtCurrentPrin > 0);
+        const mtCurrentCount = mtCurrentList.length;
+        const mtCurrentAmount = mtCurrentList.reduce((sum, d) => sum + d.mtCurrentPrin, 0);
+
+        const combOverdueCount = list.filter(d => d.stOverduePrin > 0 || d.mtOverduePrin > 0).length;
+        const combOverdueAmount = list.reduce((sum, d) => sum + d.stOverduePrin + d.mtOverduePrin, 0);
+
+        const combCurrentCount = list.filter(d => d.stCurrentPrin > 0 || d.mtCurrentPrin > 0).length;
+        const combCurrentAmount = list.reduce((sum, d) => sum + d.stCurrentPrin + d.mtCurrentPrin, 0);
+
+        return {
+          stCount, stAmount,
+          mtCount, mtAmount,
+          stOverdueCount, stOverdueAmount,
+          stCurrentCount, stCurrentAmount,
+          stTotalCount: stCount, stTotalAmount: stAmount,
+          mtOverdueCount, mtOverdueAmount,
+          mtCurrentCount, mtCurrentAmount,
+          mtTotalCount: mtCount, mtTotalAmount: mtAmount,
+          combOverdueCount, combOverdueAmount,
+          combCurrentCount, combCurrentAmount,
+          combTotalCount: list.length, combTotalAmount: list.reduce((sum, d) => sum + d.principal, 0)
+        };
+      };
+
+      const largeStats = getStats(d => d.farmerType === 'Large Farmer' || d.landArea > 5);
+      const smallStats = getStats(d => d.farmerType !== 'Large Farmer' && d.landArea <= 5);
+      
+      const totalStats1 = {
+        stCount: largeStats.stCount + smallStats.stCount,
+        stAmount: largeStats.stAmount + smallStats.stAmount,
+        mtCount: largeStats.mtCount + smallStats.mtCount,
+        mtAmount: largeStats.mtAmount + smallStats.mtAmount,
+        stOverdueCount: largeStats.stOverdueCount + smallStats.stOverdueCount,
+        stOverdueAmount: largeStats.stOverdueAmount + smallStats.stOverdueAmount,
+        stCurrentCount: largeStats.stCurrentCount + smallStats.stCurrentCount,
+        stCurrentAmount: largeStats.stCurrentAmount + smallStats.stCurrentAmount,
+        mtOverdueCount: largeStats.mtOverdueCount + smallStats.mtOverdueCount,
+        mtOverdueAmount: largeStats.mtOverdueAmount + smallStats.mtOverdueAmount,
+        mtCurrentCount: largeStats.mtCurrentCount + smallStats.mtCurrentCount,
+        mtCurrentAmount: largeStats.mtCurrentAmount + smallStats.mtCurrentAmount,
+        combOverdueCount: largeStats.combOverdueCount + smallStats.combOverdueCount,
+        combOverdueAmount: largeStats.combOverdueAmount + smallStats.combOverdueAmount,
+        combCurrentCount: largeStats.combCurrentCount + smallStats.combCurrentCount,
+        combCurrentAmount: largeStats.combCurrentAmount + smallStats.combCurrentAmount,
+        combTotalCount: largeStats.combTotalCount + smallStats.combTotalCount,
+        combTotalAmount: largeStats.combTotalAmount + smallStats.combTotalAmount
+      };
+
+      const adivasiStats = getStats(d => d.category === 'ST');
+      const nonAdivasiStats = getStats(d => d.category !== 'ST');
+
+      // Table 3 (Loan Term) totals
+      const stTotalInterest = demandData.filter(d => d.loanType === 'कि.क्रे.').reduce((sum, d) => sum + (d as any).stOverdueInt, 0);
+      const mtTotalInterest = demandData.filter(d => d.loanType === 'म.मु.').reduce((sum, d) => sum + (d as any).mtOverdueInt, 0);
+
+      const renderDemandSummaryTable = () => {
+        const fmtNum = (val: number) => val === 0 ? '-' : val.toLocaleString();
+        
+        return (
+          <div className="flex flex-col gap-8 bg-white dark:bg-slate-800 p-6 rounded-2xl border dark:border-slate-700 shadow-lg overflow-x-auto mobile-scroll">
+            {/* Header branding */}
+            <div className="text-center border-b pb-4 mb-4 dark:border-slate-700">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५</h2>
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 mt-1">
+                दिनांक {demandDate.split('-').reverse().join('/')} ची अमु /ममु /चालू /थकीत कर्ज बाकी /कर्ज मागणी ( गोषवारा ) सन {targetYear-1}-{String(targetYear).substring(2)}
+              </p>
+            </div>
+
+            {/* Table 1: Land Wise */}
+            <div>
+              <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 mb-2">१. कृषक प्रकारानुसार वर्गीकरण (Classification by Farmer Type)</h3>
+              <table className="w-full text-center border-collapse border border-slate-300 dark:border-slate-600 text-xs min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    <th rowSpan={3} className="border border-slate-300 dark:border-slate-600 p-2">अ. क्र.</th>
+                    <th rowSpan={3} className="border border-slate-300 dark:border-slate-600 p-2">कृषकाचे प्रकार</th>
+                    <th colSpan={4} className="border border-slate-300 dark:border-slate-600 p-1">एकूण कर्ज बाकी रक्कम</th>
+                    <th colSpan={6} className="border border-slate-300 dark:border-slate-600 p-1">दि. {demandDate.split('-').reverse().join('/')} ची अमु कर्ज मागणी</th>
+                    <th colSpan={6} className="border border-slate-300 dark:border-slate-600 p-1">दि. {demandDate.split('-').reverse().join('/')} ची ममु कर्ज मागणी</th>
+                    <th colSpan={6} className="border border-slate-300 dark:border-slate-600 p-1">दि. {demandDate.split('-').reverse().join('/')} ची अमु/ममु एकूण कर्ज मागणी</th>
+                  </tr>
+                  <tr className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">अल्प मुदती</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">मध्यम मुदती</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">थकीत</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">चालु</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकुण</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">थकीत</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">चालु</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकुण</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">थकीत</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">चालु</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकुण</th>
+                  </tr>
+                  <tr className="bg-slate-50 dark:bg-slate-750 text-slate-600 dark:text-slate-400 text-[10px]">
+                    {Array(11).fill(0).map((_, i) => (
+                      <React.Fragment key={i}>
+                        <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">सभा.</th>
+                        <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">रक्कम</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800 dark:text-slate-200">
+                  {/* Row 1: Large */}
+                  <tr>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">१</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold text-left bg-green-50/20">मोठे कृषक</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.stCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.stCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{largeStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(largeStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.mtCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.mtCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{largeStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(largeStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.combOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.combOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{largeStats.combCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(largeStats.combCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{largeStats.combTotalCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(largeStats.combTotalAmount)}</td>
+                  </tr>
+                  {/* Row 2: Small */}
+                  <tr>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">२</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold text-left bg-green-50/20">लघु कृषक</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.stCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.stCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{smallStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(smallStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.mtCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.mtCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{smallStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(smallStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.combOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.combOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{smallStats.combCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(smallStats.combCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{smallStats.combTotalCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(smallStats.combTotalAmount)}</td>
+                  </tr>
+                  {/* Totals */}
+                  <tr className="bg-slate-100 dark:bg-slate-700/60 font-bold">
+                    <td colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2 text-center">एकुण बेरीज</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.combOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.combOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.combCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.combCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{totalStats1.combTotalCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(totalStats1.combTotalAmount)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table 2: Caste wise */}
+            <div>
+              <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 mb-2">२. प्रवर्गानुसार वर्गीकरण (Classification by Category)</h3>
+              <table className="w-full text-center border-collapse border border-slate-300 dark:border-slate-600 text-xs min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    <th rowSpan={3} className="border border-slate-300 dark:border-slate-600 p-2">अ. क्र.</th>
+                    <th rowSpan={3} className="border border-slate-300 dark:border-slate-600 p-2">कृषकाचे प्रकार</th>
+                    <th colSpan={4} className="border border-slate-300 dark:border-slate-600 p-1">एकूण कर्ज बाकी रक्कम</th>
+                    <th colSpan={6} className="border border-slate-300 dark:border-slate-600 p-1">दि. {demandDate.split('-').reverse().join('/')} ची अमु कर्ज मागणी</th>
+                    <th colSpan={6} className="border border-slate-300 dark:border-slate-600 p-1">दि. {demandDate.split('-').reverse().join('/')} ची ममु कर्ज मागणी</th>
+                    <th colSpan={6} className="border border-slate-300 dark:border-slate-600 p-1">दि. {demandDate.split('-').reverse().join('/')} ची अमु/ममु एकूण कर्ज मागणी</th>
+                  </tr>
+                  <tr className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">अल्प मुदती</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">मध्यम मुदती</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">थकीत</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">चालु</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकुण</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">थकीत</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">चालु</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकुण</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">थकीत</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">चालु</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकुण</th>
+                  </tr>
+                  <tr className="bg-slate-50 dark:bg-slate-750 text-slate-600 dark:text-slate-400 text-[10px]">
+                    {Array(11).fill(0).map((_, i) => (
+                      <React.Fragment key={i}>
+                        <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">सभा.</th>
+                        <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">रक्कम</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800 dark:text-slate-200">
+                  {/* Row 1: Adivasi */}
+                  <tr>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">१</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold text-left bg-blue-50/20">आदिवासी कृषक</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.stCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.stCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{adivasiStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(adivasiStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.mtCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.mtCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{adivasiStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(adivasiStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.combOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.combOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{adivasiStats.combCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(adivasiStats.combCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{adivasiStats.combTotalCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(adivasiStats.combTotalAmount)}</td>
+                  </tr>
+                  {/* Row 2: Non Adivasi */}
+                  <tr>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">२</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold text-left bg-blue-50/20">गैर-आदिवासी कृषक</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.stCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.stCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{nonAdivasiStats.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(nonAdivasiStats.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.mtCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.mtCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{nonAdivasiStats.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(nonAdivasiStats.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.combOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.combOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{nonAdivasiStats.combCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(nonAdivasiStats.combCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{nonAdivasiStats.combTotalCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(nonAdivasiStats.combTotalAmount)}</td>
+                  </tr>
+                  {/* Totals */}
+                  <tr className="bg-slate-100 dark:bg-slate-700/60 font-bold">
+                    <td colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2 text-center">एकुण</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.combOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.combOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.combCurrentCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.combCurrentAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">{totalStats1.combTotalCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono font-bold">{fmtNum(totalStats1.combTotalAmount)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table 3: Term wise */}
+            <div className="max-w-xl">
+              <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 mb-2">३. मुदतीनुसार वर्गीकरण (Classification by Term)</h3>
+              <table className="w-full text-center border-collapse border border-slate-300 dark:border-slate-600 text-xs">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">
+                    <th className="border border-slate-300 dark:border-slate-600 p-2">अ. क्र.</th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-2">कृषकाचे प्रकार</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकूण कर्ज बाकी रक्कम</th>
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1">एकूण थकीत रक्कम</th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-2">एकूण व्याज</th>
+                  </tr>
+                  <tr className="bg-slate-50 dark:bg-slate-750 text-slate-600 dark:text-slate-400 text-[10px]">
+                    <th colSpan={2} className="border border-slate-300 dark:border-slate-600 p-1"></th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">सभा.</th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">रक्कम</th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">सभा.</th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">रक्कम</th>
+                    <th className="border border-slate-300 dark:border-slate-600 p-1 font-normal">रक्कम</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-800 dark:text-slate-200">
+                  {/* Row 1: ST */}
+                  <tr>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">१</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold text-left bg-purple-50/20">अल्प मुदती</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono text-right text-red-600 font-semibold">{fmtNum(stTotalInterest)}</td>
+                  </tr>
+                  {/* Row 2: MT */}
+                  <tr>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold">२</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-bold text-left bg-purple-50/20">मध्यम मुदती</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono text-right text-red-600 font-semibold">{fmtNum(mtTotalInterest)}</td>
+                  </tr>
+                  {/* Totals */}
+                  <tr className="bg-slate-100 dark:bg-slate-700/60 font-bold">
+                    <td colSpan={2} className="border border-slate-300 dark:border-slate-600 p-2 text-center">एकुण</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stCount + totalStats1.mtCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stAmount + totalStats1.mtAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2">{totalStats1.stOverdueCount + totalStats1.mtOverdueCount}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono">{fmtNum(totalStats1.stOverdueAmount + totalStats1.mtOverdueAmount)}</td>
+                    <td className="border border-slate-300 dark:border-slate-600 p-2 font-mono text-right text-red-600 font-bold">{fmtNum(stTotalInterest + mtTotalInterest)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      };
+
       return (
         <div className="flex flex-col gap-4 h-full min-h-0">
           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
@@ -2737,18 +3139,29 @@ const Reports = () => {
                 className="p-1.5 border dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDemandSummary(!showDemandSummary)}
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all shadow bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+              >
+                <FileText size={16} />
+                {showDemandSummary ? 'तपशीलवार यादी (Detailed)' : 'गोषवारा अहवाल (Summary)'}
+              </button>
+            </div>
             <div className="text-xs text-slate-500 max-w-md">
               * ही कर्ज मागणी यादी निवडलेल्या तारखेपर्यंतच्या थकबाकी व चालू कर्जाचा तपशील दर्शवते.
             </div>
           </div>
           <div className="flex-1 min-h-0">
-            <ReportTable
-              title={`अमु/ममु/चालू/थकीत कर्ज बाकी व कर्ज मागणी यादी (सन ${targetYear-1}-${String(targetYear).substring(2)})`}
-              columns={demandColumns}
-              data={demandData}
-              onRowClick={(item) => handleMemberClick(item.id)}
-              enableDateFilter={false}
-            />
+            {showDemandSummary ? renderDemandSummaryTable() : (
+              <ReportTable
+                title={`अमु/ममु/चालू/थकीत कर्ज बाकी व कर्ज मागणी यादी (सन ${targetYear-1}-${String(targetYear).substring(2)})`}
+                columns={demandColumns}
+                data={demandData}
+                onRowClick={(item) => handleMemberClick(item.id)}
+                enableDateFilter={false}
+              />
+            )}
           </div>
         </div>
       );

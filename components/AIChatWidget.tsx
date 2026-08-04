@@ -345,7 +345,7 @@ const AIChatWidget = () => {
                     village: payload.village || '', mobile: payload.mobile || '', gender: payload.gender || 'Male',
                     category: payload.category || 'OPEN', dob: payload.dob || '', aadhar: payload.aadhar || '',
                     isActive: true, shareBalance: 0, savingsBalance: 0, loanPrincipal: 0, loanInterestDue: 0, fdBalance: 0,
-                    bankAccountNo: '', landArea: '', loanAccountNo: ''
+                    bankAccountNo: '', landArea: '', loanAccountNo: '', farmerId: ''
                 };
                 addMember(newMember);
                 setLastAction(`New Member Added: ${newMember.name}`);
