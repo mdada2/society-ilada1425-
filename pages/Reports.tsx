@@ -3131,105 +3131,304 @@ const Reports = () => {
       };
 
       const handleExportDemandSummaryExcel = () => {
-        const fmt = (v: number) => v === 0 ? 0 : v;
-        const headers1 = [
-          "अ. क्र.", "कृषकाचे प्रकार", 
-          "कर्ज बाकी रक्कम - अल्प मुदती (सभा)", "कर्ज बाकी रक्कम - अल्प मुदती (रक्कम)",
-          "कर्ज बाकी रक्कम - मध्यम मुदती (सभा)", "कर्ज बाकी रक्कम - मध्यम मुदती (रक्कम)",
-          "अमु मागणी - थकीत (सभा)", "अमु मागणी - थकीत (रक्कम)",
-          "अमु मागणी - चालू (सभा)", "अमु मागणी - चालू (रक्कम)",
-          "अमु मागणी - एकूण (सभा)", "अमु मागणी - एकूण (रक्कम)",
-          "ममु मागणी - थकीत (सभा)", "ममु मागणी - थकीत (रक्कम)",
-          "ममु मागणी - चालू (सभा)", "ममु मागणी - चालू (रक्कम)",
-          "ममु मागणी - एकूण (सभा)", "ममु मागणी - एकूण (रक्कम)",
-          "एकूण मागणी - थकीत (सभा)", "एकूण मागणी - थकीत (रक्कम)",
-          "एकूण मागणी - चालू (सभा)", "एकूण मागणी - चालू (रक्कम)",
-          "एकूण मागणी - एकूण (सभा)", "एकूण मागणी - एकूण (रक्कम)"
+        const ws: any = {};
+        const merges: any[] = [];
+        
+        const setCell = (r: number, c: number, v: any, s: any) => {
+          const ref = XLSXStyle.utils.encode_cell({ r, c });
+          ws[ref] = { v, t: typeof v === 'number' ? 'n' : 's', s };
+        };
+
+        const headerStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          fill: { fgColor: { rgb: 'E2EFDA' } }
+        };
+
+        const subHeaderStyle = {
+          font: { name: 'Calibri', sz: 9, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          fill: { fgColor: { rgb: 'F2F2F2' } }
+        };
+
+        const cellCenterStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+
+        const cellLeftStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'left', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+
+        const cellRightStyle = {
+          font: { name: 'Calibri', sz: 10 },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+            right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+          }
+        };
+
+        const totalStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'double', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          fill: { fgColor: { rgb: 'EAEAEA' } }
+        };
+
+        const totalAmtStyle = {
+          font: { name: 'Calibri', sz: 10, bold: true },
+          alignment: { horizontal: 'right', vertical: 'center' },
+          border: {
+            top: { style: 'double', color: { rgb: '000000' } },
+            bottom: { style: 'double', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          fill: { fgColor: { rgb: 'EAEAEA' } }
+        };
+
+        // Title Rows
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 23 } });
+        setCell(0, 0, "आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५", {
+          font: { name: 'Calibri', sz: 14, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        });
+        for (let col = 1; col <= 23; col++) setCell(0, col, "", {});
+
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 23 } });
+        setCell(1, 0, `दिनांक ${demandDate.split('-').reverse().join('/')} ची अमु/ममु/चालू/थकीत कर्ज बाकी/कर्ज मागणी ( गोषवारा ) सन ${targetYear}-${String(targetYear+1).substring(2)}`, {
+          font: { name: 'Calibri', sz: 11, bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        });
+        for (let col = 1; col <= 23; col++) setCell(1, col, "", {});
+
+        const writeTableHeader = (startRowIdx: number) => {
+          merges.push({ s: { r: startRowIdx, c: 0 }, e: { r: startRowIdx + 2, c: 0 } });
+          setCell(startRowIdx, 0, "अ. क्र.", headerStyle);
+          setCell(startRowIdx + 1, 0, "", headerStyle);
+          setCell(startRowIdx + 2, 0, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx, c: 1 }, e: { r: startRowIdx + 2, c: 1 } });
+          setCell(startRowIdx, 1, "कृषकाचे प्रकार", headerStyle);
+          setCell(startRowIdx + 1, 1, "", headerStyle);
+          setCell(startRowIdx + 2, 1, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx, c: 2 }, e: { r: startRowIdx, c: 5 } });
+          setCell(startRowIdx, 2, "एकूण कर्ज बाकी रक्कम", headerStyle);
+          for (let c = 3; c <= 5; c++) setCell(startRowIdx, c, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 2 }, e: { r: startRowIdx + 1, c: 3 } });
+          setCell(startRowIdx + 1, 2, "अल्प मुदती", headerStyle);
+          setCell(startRowIdx + 1, 3, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 4 }, e: { r: startRowIdx + 1, c: 5 } });
+          setCell(startRowIdx + 1, 4, "मध्यम मुदती", headerStyle);
+          setCell(startRowIdx + 1, 5, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx, c: 6 }, e: { r: startRowIdx, c: 11 } });
+          setCell(startRowIdx, 6, `दि. ${demandDate.split('-').reverse().join('/')} ची अमु कर्ज मागणी`, headerStyle);
+          for (let c = 7; c <= 11; c++) setCell(startRowIdx, c, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 6 }, e: { r: startRowIdx + 1, c: 7 } });
+          setCell(startRowIdx + 1, 6, "थकीत", headerStyle);
+          setCell(startRowIdx + 1, 7, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 8 }, e: { r: startRowIdx + 1, c: 9 } });
+          setCell(startRowIdx + 1, 8, "चालु", headerStyle);
+          setCell(startRowIdx + 1, 9, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 10 }, e: { r: startRowIdx + 1, c: 11 } });
+          setCell(startRowIdx + 1, 10, "एकुण", headerStyle);
+          setCell(startRowIdx + 1, 11, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx, c: 12 }, e: { r: startRowIdx, c: 17 } });
+          setCell(startRowIdx, 12, `दि. ${demandDate.split('-').reverse().join('/')} ची ममु कर्ज मागणी`, headerStyle);
+          for (let c = 13; c <= 17; c++) setCell(startRowIdx, c, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 12 }, e: { r: startRowIdx + 1, c: 13 } });
+          setCell(startRowIdx + 1, 12, "थकीत", headerStyle);
+          setCell(startRowIdx + 1, 13, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 14 }, e: { r: startRowIdx + 1, c: 15 } });
+          setCell(startRowIdx + 1, 14, "चालु", headerStyle);
+          setCell(startRowIdx + 1, 15, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 16 }, e: { r: startRowIdx + 1, c: 17 } });
+          setCell(startRowIdx + 1, 16, "एकुण", headerStyle);
+          setCell(startRowIdx + 1, 17, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx, c: 18 }, e: { r: startRowIdx, c: 23 } });
+          setCell(startRowIdx, 18, `दि. ${demandDate.split('-').reverse().join('/')} ची अमु/ममु एकूण कर्ज मागणी`, headerStyle);
+          for (let c = 19; c <= 23; c++) setCell(startRowIdx, c, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 18 }, e: { r: startRowIdx + 1, c: 19 } });
+          setCell(startRowIdx + 1, 18, "थकीत", headerStyle);
+          setCell(startRowIdx + 1, 19, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 20 }, e: { r: startRowIdx + 1, c: 21 } });
+          setCell(startRowIdx + 1, 20, "चालु", headerStyle);
+          setCell(startRowIdx + 1, 21, "", headerStyle);
+
+          merges.push({ s: { r: startRowIdx + 1, c: 22 }, e: { r: startRowIdx + 1, c: 23 } });
+          setCell(startRowIdx + 1, 22, "एकुण", headerStyle);
+          setCell(startRowIdx + 1, 23, "", headerStyle);
+
+          for (let c = 2; c <= 23; c += 2) {
+            setCell(startRowIdx + 2, c, "सभा.", subHeaderStyle);
+            setCell(startRowIdx + 2, c + 1, "रक्कम", subHeaderStyle);
+          }
+        };
+
+        const writeDataRow = (rowIdx: number, srNo: string, title: string, stats: any, isTotal = false) => {
+          const st = isTotal ? totalStyle : cellCenterStyle;
+          const stL = isTotal ? totalStyle : cellLeftStyle;
+          const stA = isTotal ? totalAmtStyle : cellRightStyle;
+
+          setCell(rowIdx, 0, srNo, st);
+          setCell(rowIdx, 1, title, stL);
+
+          setCell(rowIdx, 2, stats.stCount, st);
+          setCell(rowIdx, 3, stats.stAmount, stA);
+          setCell(rowIdx, 4, stats.mtCount, st);
+          setCell(rowIdx, 5, stats.mtAmount, stA);
+
+          setCell(rowIdx, 6, stats.stOverdueCount, st);
+          setCell(rowIdx, 7, stats.stOverdueAmount, stA);
+          setCell(rowIdx, 8, stats.stCurrentCount, st);
+          setCell(rowIdx, 9, stats.stCurrentAmount, stA);
+          setCell(rowIdx, 10, stats.stTotalCount, st);
+          setCell(rowIdx, 11, stats.stTotalAmount, stA);
+
+          setCell(rowIdx, 12, stats.mtOverdueCount, st);
+          setCell(rowIdx, 13, stats.mtOverdueAmount, stA);
+          setCell(rowIdx, 14, stats.mtCurrentCount, st);
+          setCell(rowIdx, 15, stats.mtCurrentAmount, stA);
+          setCell(rowIdx, 16, stats.mtTotalCount, st);
+          setCell(rowIdx, 17, stats.mtTotalAmount, stA);
+
+          setCell(rowIdx, 18, stats.combOverdueCount, st);
+          setCell(rowIdx, 19, stats.combOverdueAmount, stA);
+          setCell(rowIdx, 20, stats.combCurrentCount, st);
+          setCell(rowIdx, 21, stats.combCurrentAmount, stA);
+          setCell(rowIdx, 22, stats.combTotalCount, st);
+          setCell(rowIdx, 23, stats.combTotalAmount, stA);
+        };
+
+        // Table 1
+        setCell(3, 0, "१. कृषक प्रकारानुसार वर्गीकरण (Classification by Farmer Type)", { font: { name: 'Calibri', sz: 11, bold: true } });
+        writeTableHeader(4);
+        writeDataRow(7, "१", "मोठे कृषक", largeStats);
+        writeDataRow(8, "२", "लघु कृषक", smallStats);
+        writeDataRow(9, "", "एकूण बेरीज", totalStats1, true);
+
+        // Table 2
+        setCell(11, 0, "२. प्रवर्गानुसार वर्गीकरण (Classification by Category)", { font: { name: 'Calibri', sz: 11, bold: true } });
+        writeTableHeader(12);
+        writeDataRow(15, "१", "आदिवासी कृषक", adivasiStats);
+        writeDataRow(16, "२", "गैर-आदिवासी कृषक", nonAdivasiStats);
+        writeDataRow(17, "", "एकूण बेरीज", totalStats1, true);
+
+        // Table 3
+        setCell(19, 0, "३. मुदतीनुसार वर्गीकरण (Classification by Term)", { font: { name: 'Calibri', sz: 11, bold: true } });
+        
+        merges.push({ s: { r: 20, c: 0 }, e: { r: 21, c: 0 } });
+        setCell(20, 0, "अ. क्र.", headerStyle);
+        setCell(21, 0, "", headerStyle);
+
+        merges.push({ s: { r: 20, c: 1 }, e: { r: 21, c: 1 } });
+        setCell(20, 1, "कृषकाचे प्रकार", headerStyle);
+        setCell(21, 1, "", headerStyle);
+
+        merges.push({ s: { r: 20, c: 2 }, e: { r: 20, c: 3 } });
+        setCell(20, 2, "एकूण कर्ज बाकी रक्कम", headerStyle);
+        setCell(20, 3, "", headerStyle);
+
+        merges.push({ s: { r: 20, c: 4 }, e: { r: 20, c: 5 } });
+        setCell(20, 4, "एकूण थकीत रक्कम", headerStyle);
+        setCell(20, 5, "", headerStyle);
+
+        merges.push({ s: { r: 20, c: 6 }, e: { r: 21, c: 6 } });
+        setCell(20, 6, "एकूण व्याज (रक्कम)", headerStyle);
+        setCell(21, 6, "", headerStyle);
+
+        setCell(21, 2, "सभा.", subHeaderStyle);
+        setCell(21, 3, "रक्कम", subHeaderStyle);
+        setCell(21, 4, "सभा.", subHeaderStyle);
+        setCell(21, 5, "रक्कम", subHeaderStyle);
+
+        const writeTable3Row = (rowIdx: number, srNo: string, termTitle: string, count: number, amt: number, odCount: number, odAmt: number, interest: number, isTotal = false) => {
+          const st = isTotal ? totalStyle : cellCenterStyle;
+          const stL = isTotal ? totalStyle : cellLeftStyle;
+          const stA = isTotal ? totalAmtStyle : cellRightStyle;
+
+          setCell(rowIdx, 0, srNo, st);
+          setCell(rowIdx, 1, termTitle, stL);
+          setCell(rowIdx, 2, count, st);
+          setCell(rowIdx, 3, amt, stA);
+          setCell(rowIdx, 4, odCount, st);
+          setCell(rowIdx, 5, odAmt, stA);
+          setCell(rowIdx, 6, interest, stA);
+        };
+
+        writeTable3Row(22, "१", "अल्प मुदती", totalStats1.stCount, totalStats1.stAmount, totalStats1.stOverdueCount, totalStats1.stOverdueAmount, stTotalInterest);
+        writeTable3Row(23, "२", "मध्यम मुदती", totalStats1.mtCount, totalStats1.mtAmount, totalStats1.mtOverdueCount, totalStats1.mtOverdueAmount, mtTotalInterest);
+        writeTable3Row(24, "", "एकूण", totalStats1.stCount + totalStats1.mtCount, totalStats1.stAmount + totalStats1.mtAmount, totalStats1.stOverdueCount + totalStats1.mtOverdueCount, totalStats1.stOverdueAmount + totalStats1.mtOverdueAmount, stTotalInterest + mtTotalInterest, true);
+
+        ws['!merges'] = merges;
+        ws['!ref'] = "A1:X25";
+        ws['!cols'] = [
+          { wch: 6 }, { wch: 22 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 },
+          { wch: 8 }, { wch: 14 }
         ];
 
-        const rowLarge1 = [
-          "१", "मोठे कृषक", 
-          largeStats.stCount, fmt(largeStats.stAmount), largeStats.mtCount, fmt(largeStats.mtAmount),
-          largeStats.stOverdueCount, fmt(largeStats.stOverdueAmount), largeStats.stCurrentCount, fmt(largeStats.stCurrentAmount), largeStats.stCount, fmt(largeStats.stAmount),
-          largeStats.mtOverdueCount, fmt(largeStats.mtOverdueAmount), largeStats.mtCurrentCount, fmt(largeStats.mtCurrentAmount), largeStats.mtCount, fmt(largeStats.mtAmount),
-          largeStats.combOverdueCount, fmt(largeStats.combOverdueAmount), largeStats.combCurrentCount, fmt(largeStats.combCurrentAmount), largeStats.combTotalCount, fmt(largeStats.combTotalAmount)
-        ];
-
-        const rowSmall1 = [
-          "२", "लघु कृषक",
-          smallStats.stCount, fmt(smallStats.stAmount), smallStats.mtCount, fmt(smallStats.mtAmount),
-          smallStats.stOverdueCount, fmt(smallStats.stOverdueAmount), smallStats.stCurrentCount, fmt(smallStats.stCurrentAmount), smallStats.stCount, fmt(smallStats.stAmount),
-          smallStats.mtOverdueCount, fmt(smallStats.mtOverdueAmount), smallStats.mtCurrentCount, fmt(smallStats.mtCurrentAmount), smallStats.mtCount, fmt(smallStats.mtAmount),
-          smallStats.combOverdueCount, fmt(smallStats.combOverdueAmount), smallStats.combCurrentCount, fmt(smallStats.combCurrentAmount), smallStats.combTotalCount, fmt(smallStats.combTotalAmount)
-        ];
-
-        const rowTotal1 = [
-          "", "एकूण बेरीज",
-          totalStats1.stCount, fmt(totalStats1.stAmount), totalStats1.mtCount, fmt(totalStats1.mtAmount),
-          totalStats1.stOverdueCount, fmt(totalStats1.stOverdueAmount), totalStats1.stCurrentCount, fmt(totalStats1.stCurrentAmount), totalStats1.stCount, fmt(totalStats1.stAmount),
-          totalStats1.mtOverdueCount, fmt(totalStats1.mtOverdueAmount), totalStats1.mtCurrentCount, fmt(totalStats1.mtCurrentAmount), totalStats1.mtCount, fmt(totalStats1.mtAmount),
-          totalStats1.combOverdueCount, fmt(totalStats1.combOverdueAmount), totalStats1.combCurrentCount, fmt(totalStats1.combCurrentAmount), totalStats1.combTotalCount, fmt(totalStats1.combTotalAmount)
-        ];
-
-        const rowAdivasi2 = [
-          "१", "आदिवासी कृषक",
-          adivasiStats.stCount, fmt(adivasiStats.stAmount), adivasiStats.mtCount, fmt(adivasiStats.mtAmount),
-          adivasiStats.stOverdueCount, fmt(adivasiStats.stOverdueAmount), adivasiStats.stCurrentCount, fmt(adivasiStats.stCurrentAmount), adivasiStats.stCount, fmt(adivasiStats.stAmount),
-          adivasiStats.mtOverdueCount, fmt(adivasiStats.mtOverdueAmount), adivasiStats.mtCurrentCount, fmt(adivasiStats.mtCurrentAmount), adivasiStats.mtCount, fmt(adivasiStats.mtAmount),
-          adivasiStats.combOverdueCount, fmt(adivasiStats.combOverdueAmount), adivasiStats.combCurrentCount, fmt(adivasiStats.combCurrentAmount), adivasiStats.combTotalCount, fmt(adivasiStats.combTotalAmount)
-        ];
-
-        const rowNonAdivasi2 = [
-          "२", "गैर-आदिवासी कृषक",
-          nonAdivasiStats.stCount, fmt(nonAdivasiStats.stAmount), nonAdivasiStats.mtCount, fmt(nonAdivasiStats.mtAmount),
-          nonAdivasiStats.stOverdueCount, fmt(nonAdivasiStats.stOverdueAmount), nonAdivasiStats.stCurrentCount, fmt(nonAdivasiStats.stCurrentAmount), nonAdivasiStats.stCount, fmt(nonAdivasiStats.stAmount),
-          nonAdivasiStats.mtOverdueCount, fmt(nonAdivasiStats.mtOverdueAmount), nonAdivasiStats.mtCurrentCount, fmt(nonAdivasiStats.mtCurrentAmount), nonAdivasiStats.mtCount, fmt(nonAdivasiStats.mtAmount),
-          nonAdivasiStats.combOverdueCount, fmt(nonAdivasiStats.combOverdueAmount), nonAdivasiStats.combCurrentCount, fmt(nonAdivasiStats.combCurrentAmount), nonAdivasiStats.combTotalCount, fmt(nonAdivasiStats.combTotalAmount)
-        ];
-
-        const headers3 = [
-          "अ. क्र.", "कृषकाचे प्रकार", "एकूण कर्ज बाकी रक्कम (सभा)", "एकूण कर्ज बाकी रक्कम (रक्कम)", "एकूण थकीत रक्कम (सभा)", "एकूण थकीत रक्कम (रक्कम)", "एकूण व्याज (रक्कम)"
-        ];
-
-        const rowSt3 = [
-          "१", "अल्प मुदती", totalStats1.stCount, fmt(totalStats1.stAmount), totalStats1.stOverdueCount, fmt(totalStats1.stOverdueAmount), fmt(stTotalInterest)
-        ];
-
-        const rowMt3 = [
-          "२", "मध्यम मुदती", totalStats1.mtCount, fmt(totalStats1.mtAmount), totalStats1.mtOverdueCount, fmt(totalStats1.mtOverdueAmount), fmt(mtTotalInterest)
-        ];
-
-        const rowTotal3 = [
-          "", "एकूण", totalStats1.stCount + totalStats1.mtCount, fmt(totalStats1.stAmount + totalStats1.mtAmount), totalStats1.stOverdueCount + totalStats1.mtOverdueCount, fmt(totalStats1.stOverdueAmount + totalStats1.mtOverdueAmount), fmt(stTotalInterest + mtTotalInterest)
-        ];
-
-        const wsData = [
-          ["आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५"],
-          ["दिनांक " + demandDate.split('-').reverse().join('/') + " ची अमु/ममु/चालू/थकीत कर्ज बाकी/कर्ज मागणी ( गोषवारा ) सन " + targetYear + "-" + String(targetYear + 1).substring(2)],
-          [],
-          ["१. कृषक प्रकारानुसार वर्गीकरण (Classification by Farmer Type)"],
-          headers1,
-          rowLarge1,
-          rowSmall1,
-          rowTotal1,
-          [],
-          ["२. प्रवर्गानुसार वर्गीकरण (Classification by Category)"],
-          headers1,
-          rowAdivasi2,
-          rowNonAdivasi2,
-          rowTotal1, // Totals same as Table 1
-          [],
-          ["३. मुदतीनुसार वर्गीकरण (Classification by Term)"],
-          headers3,
-          rowSt3,
-          rowMt3,
-          rowTotal3
-        ];
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        XLSX.utils.book_append_sheet(wb, ws, "Goshwara_Summary");
-        XLSX.writeFile(wb, `Demand_Register_Summary_${demandDate}.xlsx`);
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Goshwara_Summary");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Demand_Register_Summary_${demandDate}.xlsx`);
       };
 
       return (
