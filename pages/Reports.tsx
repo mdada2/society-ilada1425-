@@ -2820,7 +2820,7 @@ const Reports = () => {
         const fmtNum = (val: number) => val === 0 ? '-' : val.toLocaleString();
         
         return (
-          <div className="flex flex-col gap-8 bg-white dark:bg-slate-800 p-6 rounded-2xl border dark:border-slate-700 shadow-lg overflow-x-auto mobile-scroll">
+          <div className="flex flex-col gap-8 bg-white dark:bg-slate-800 p-6 rounded-2xl border dark:border-slate-700 shadow-lg overflow-y-auto overflow-x-auto max-h-[70vh] md:max-h-[75vh] mobile-scroll">
             {/* Header branding */}
             <div className="text-center border-b pb-4 mb-4 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५</h2>
@@ -3127,6 +3127,108 @@ const Reports = () => {
         );
       };
 
+      const handleExportDemandSummaryExcel = () => {
+        const fmt = (v: number) => v === 0 ? 0 : v;
+        const headers1 = [
+          "अ. क्र.", "कृषकाचे प्रकार", 
+          "कर्ज बाकी रक्कम - अल्प मुदती (सभा)", "कर्ज बाकी रक्कम - अल्प मुदती (रक्कम)",
+          "कर्ज बाकी रक्कम - मध्यम मुदती (सभा)", "कर्ज बाकी रक्कम - मध्यम मुदती (रक्कम)",
+          "अमु मागणी - थकीत (सभा)", "अमु मागणी - थकीत (रक्कम)",
+          "अमु मागणी - चालू (सभा)", "अमु मागणी - चालू (रक्कम)",
+          "अमु मागणी - एकूण (सभा)", "अमु मागणी - एकूण (रक्कम)",
+          "ममु मागणी - थकीत (सभा)", "ममु मागणी - थकीत (रक्कम)",
+          "ममु मागणी - चालू (सभा)", "ममु मागणी - चालू (रक्कम)",
+          "ममु मागणी - एकूण (सभा)", "ममु मागणी - एकूण (रक्कम)",
+          "एकूण मागणी - थकीत (सभा)", "एकूण मागणी - थकीत (रक्कम)",
+          "एकूण मागणी - चालू (सभा)", "एकूण मागणी - चालू (रक्कम)",
+          "एकूण मागणी - एकूण (सभा)", "एकूण मागणी - एकूण (रक्कम)"
+        ];
+
+        const rowLarge1 = [
+          "१", "मोठे कृषक", 
+          largeStats.stCount, fmt(largeStats.stAmount), largeStats.mtCount, fmt(largeStats.mtAmount),
+          largeStats.stOverdueCount, fmt(largeStats.stOverdueAmount), largeStats.stCurrentCount, fmt(largeStats.stCurrentAmount), largeStats.stCount, fmt(largeStats.stAmount),
+          largeStats.mtOverdueCount, fmt(largeStats.mtOverdueAmount), largeStats.mtCurrentCount, fmt(largeStats.mtCurrentAmount), largeStats.mtCount, fmt(largeStats.mtAmount),
+          largeStats.combOverdueCount, fmt(largeStats.combOverdueAmount), largeStats.combCurrentCount, fmt(largeStats.combCurrentAmount), largeStats.combTotalCount, fmt(largeStats.combTotalAmount)
+        ];
+
+        const rowSmall1 = [
+          "२", "लघु कृषक",
+          smallStats.stCount, fmt(smallStats.stAmount), smallStats.mtCount, fmt(smallStats.mtAmount),
+          smallStats.stOverdueCount, fmt(smallStats.stOverdueAmount), smallStats.stCurrentCount, fmt(smallStats.stCurrentAmount), smallStats.stCount, fmt(smallStats.stAmount),
+          smallStats.mtOverdueCount, fmt(smallStats.mtOverdueAmount), smallStats.mtCurrentCount, fmt(smallStats.mtCurrentAmount), smallStats.mtCount, fmt(smallStats.mtAmount),
+          smallStats.combOverdueCount, fmt(smallStats.combOverdueAmount), smallStats.combCurrentCount, fmt(smallStats.combCurrentAmount), smallStats.combTotalCount, fmt(smallStats.combTotalAmount)
+        ];
+
+        const rowTotal1 = [
+          "", "एकूण बेरीज",
+          totalStats1.stCount, fmt(totalStats1.stAmount), totalStats1.mtCount, fmt(totalStats1.mtAmount),
+          totalStats1.stOverdueCount, fmt(totalStats1.stOverdueAmount), totalStats1.stCurrentCount, fmt(totalStats1.stCurrentAmount), totalStats1.stCount, fmt(totalStats1.stAmount),
+          totalStats1.mtOverdueCount, fmt(totalStats1.mtOverdueAmount), totalStats1.mtCurrentCount, fmt(totalStats1.mtCurrentAmount), totalStats1.mtCount, fmt(totalStats1.mtAmount),
+          totalStats1.combOverdueCount, fmt(totalStats1.combOverdueAmount), totalStats1.combCurrentCount, fmt(totalStats1.combCurrentAmount), totalStats1.combTotalCount, fmt(totalStats1.combTotalAmount)
+        ];
+
+        const rowAdivasi2 = [
+          "१", "आदिवासी कृषक",
+          adivasiStats.stCount, fmt(adivasiStats.stAmount), adivasiStats.mtCount, fmt(adivasiStats.mtAmount),
+          adivasiStats.stOverdueCount, fmt(adivasiStats.stOverdueAmount), adivasiStats.stCurrentCount, fmt(adivasiStats.stCurrentAmount), adivasiStats.stCount, fmt(adivasiStats.stAmount),
+          adivasiStats.mtOverdueCount, fmt(adivasiStats.mtOverdueAmount), adivasiStats.mtCurrentCount, fmt(adivasiStats.mtCurrentAmount), adivasiStats.mtCount, fmt(adivasiStats.mtAmount),
+          adivasiStats.combOverdueCount, fmt(adivasiStats.combOverdueAmount), adivasiStats.combCurrentCount, fmt(adivasiStats.combCurrentAmount), adivasiStats.combTotalCount, fmt(adivasiStats.combTotalAmount)
+        ];
+
+        const rowNonAdivasi2 = [
+          "२", "गैर-आदिवासी कृषक",
+          nonAdivasiStats.stCount, fmt(nonAdivasiStats.stAmount), nonAdivasiStats.mtCount, fmt(nonAdivasiStats.mtAmount),
+          nonAdivasiStats.stOverdueCount, fmt(nonAdivasiStats.stOverdueAmount), nonAdivasiStats.stCurrentCount, fmt(nonAdivasiStats.stCurrentAmount), nonAdivasiStats.stCount, fmt(nonAdivasiStats.stAmount),
+          nonAdivasiStats.mtOverdueCount, fmt(nonAdivasiStats.mtOverdueAmount), nonAdivasiStats.mtCurrentCount, fmt(nonAdivasiStats.mtCurrentAmount), nonAdivasiStats.mtCount, fmt(nonAdivasiStats.mtAmount),
+          nonAdivasiStats.combOverdueCount, fmt(nonAdivasiStats.combOverdueAmount), nonAdivasiStats.combCurrentCount, fmt(nonAdivasiStats.combCurrentAmount), nonAdivasiStats.combTotalCount, fmt(nonAdivasiStats.combTotalAmount)
+        ];
+
+        const headers3 = [
+          "अ. क्र.", "कृषकाचे प्रकार", "एकूण कर्ज बाकी रक्कम (सभा)", "एकूण कर्ज बाकी रक्कम (रक्कम)", "एकूण थकीत रक्कम (सभा)", "एकूण थकीत रक्कम (रक्कम)", "एकूण व्याज (रक्कम)"
+        ];
+
+        const rowSt3 = [
+          "१", "अल्प मुदती", totalStats1.stCount, fmt(totalStats1.stAmount), totalStats1.stOverdueCount, fmt(totalStats1.stOverdueAmount), fmt(stTotalInterest)
+        ];
+
+        const rowMt3 = [
+          "२", "मध्यम मुदती", totalStats1.mtCount, fmt(totalStats1.mtAmount), totalStats1.mtOverdueCount, fmt(totalStats1.mtOverdueAmount), fmt(mtTotalInterest)
+        ];
+
+        const rowTotal3 = [
+          "", "एकूण", totalStats1.stCount + totalStats1.mtCount, fmt(totalStats1.stAmount + totalStats1.mtAmount), totalStats1.stOverdueCount + totalStats1.mtOverdueCount, fmt(totalStats1.stOverdueAmount + totalStats1.mtOverdueAmount), fmt(stTotalInterest + mtTotalInterest)
+        ];
+
+        const wsData = [
+          ["आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५"],
+          ["दिनांक " + demandDate.split('-').reverse().join('/') + " ची अमु/ममु/चालू/थकीत कर्ज बाकी/कर्ज मागणी ( गोषवारा ) सन " + (targetYear-1) + "-" + String(targetYear).substring(2)],
+          [],
+          ["१. कृषक प्रकारानुसार वर्गीकरण (Classification by Farmer Type)"],
+          headers1,
+          rowLarge1,
+          rowSmall1,
+          rowTotal1,
+          [],
+          ["२. प्रवर्गानुसार वर्गीकरण (Classification by Category)"],
+          headers1,
+          rowAdivasi2,
+          rowNonAdivasi2,
+          rowTotal1, // Totals same as Table 1
+          [],
+          ["३. मुदतीनुसार वर्गीकरण (Classification by Term)"],
+          headers3,
+          rowSt3,
+          rowMt3,
+          rowTotal3
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Goshwara_Summary");
+        XLSX.writeFile(wb, `Demand_Register_Summary_${demandDate}.xlsx`);
+      };
+
       return (
         <div className="flex flex-col gap-4 h-full min-h-0">
           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
@@ -3147,6 +3249,15 @@ const Reports = () => {
                 <FileText size={16} />
                 {showDemandSummary ? 'तपशीलवार यादी (Detailed)' : 'गोषवारा अहवाल (Summary)'}
               </button>
+              {showDemandSummary && (
+                <button
+                  onClick={handleExportDemandSummaryExcel}
+                  className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all shadow bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+                >
+                  <Download size={16} />
+                  Excel Export
+                </button>
+              )}
             </div>
             <div className="text-xs text-slate-500 max-w-md">
               * ही कर्ज मागणी यादी निवडलेल्या तारखेपर्यंतच्या थकबाकी व चालू कर्जाचा तपशील दर्शवते.
