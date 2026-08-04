@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import { TransactionType, AccountType, Member } from '../types';
 import { calculateLoanInterest } from '../utils/loanCalculator';
 import { format } from 'date-fns';
-import { Search, Calculator, Save, Printer, MessageSquare, CheckCircle, FileDown, Users, X, Wand2, Loader2, Trash2, AlertCircle, Share2, ArrowRight, ShieldCheck as FundIcon, CheckSquare, Square, History } from 'lucide-react';
+import { Search, Calculator, Save, Printer, MessageSquare, CheckCircle, FileDown, Users, X, Wand2, Loader2, Trash2, AlertCircle, Share2, ArrowRight, ShieldCheck as FundIcon, CheckSquare, Square, History, Mic } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateNarration } from '../services/ai';
@@ -54,6 +54,40 @@ const Transactions = () => {
 
     // AI State
     const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
+    const [isListeningSearch, setIsListeningSearch] = useState(false);
+    const [isListeningAmount, setIsListeningAmount] = useState(false);
+
+    const startSpeechToText = (targetSetter: (val: any) => void, listeningSetter: (listening: boolean) => void, isNumeric = false) => {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("Voice input not supported in this browser.");
+            return;
+        }
+        const recognition = new (window as any).webkitSpeechRecognition();
+        recognition.lang = (settings?.language === 'en') ? 'en-IN' : 'mr-IN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        
+        listeningSetter(true);
+        recognition.onresult = (event: any) => {
+            let resultText = event.results[0][0].transcript;
+            if (isNumeric) {
+                let processed = resultText.toLowerCase();
+                if (processed.includes("हजार") || processed.includes("thousand")) {
+                    const base = parseFloat(processed.replace(/[^0-9.]/g, '')) || 1;
+                    targetSetter(base * 1000);
+                } else {
+                    const parsedNum = parseFloat(processed.replace(/[^0-9.]/g, ''));
+                    if (!isNaN(parsedNum)) targetSetter(parsedNum);
+                }
+            } else {
+                targetSetter(resultText);
+            }
+            listeningSetter(false);
+        };
+        recognition.onerror = () => listeningSetter(false);
+        recognition.onend = () => listeningSetter(false);
+        recognition.start();
+    };
 
     // UI State
     const [showMemberModal, setShowMemberModal] = useState(false);
@@ -539,8 +573,16 @@ const Transactions = () => {
                                 <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Member Search</label>
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
-                                        <input type="text" placeholder="Type Name or No..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-8 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                                        <input type="text" placeholder="Type Name or No..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-8 pr-10 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                                         <Search className="absolute left-2 top-2.5 text-slate-400" size={18} />
+                                        <button
+                                            type="button"
+                                            onClick={() => startSpeechToText(setSearch, setIsListeningSearch)}
+                                            className={`absolute right-2 top-2 p-1 rounded-full transition ${isListeningSearch ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600'}`}
+                                            title="Speak member name"
+                                        >
+                                            <Mic size={16} />
+                                        </button>
                                         {search && (
                                             <div className="mt-1 border dark:border-slate-600 rounded max-h-48 overflow-y-auto bg-white dark:bg-slate-800 absolute z-20 w-full shadow-xl">
                                                 {filteredMembers.map(m => (<div key={m.id} className="p-3 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer text-sm text-slate-800 dark:text-slate-200 border-b dark:border-slate-700" onClick={() => handleSelectMember(m)}>#{m.memberNo} - {m.name} <span className="text-[10px] text-slate-500">({m.village})</span></div>))}
@@ -869,15 +911,27 @@ const Transactions = () => {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Amount (एकूण रक्कम) ₹</label>
-                                <input 
-                                    type="number" 
-                                    required 
-                                    min="1" 
-                                    disabled={isGovtWaiver}
-                                    value={amount || ''} 
-                                    onChange={e => handleInputChange(setAmount, parseFloat(e.target.value))} 
-                                    className={`w-full p-2 border dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none shadow-inner ${isGovtWaiver ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-amber-600' : 'bg-white dark:bg-slate-700'}`} 
-                                />
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="1" 
+                                        disabled={isGovtWaiver}
+                                        value={amount || ''} 
+                                        onChange={e => handleInputChange(setAmount, parseFloat(e.target.value))} 
+                                        className={`w-full pl-2 pr-10 p-2 border dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none shadow-inner ${isGovtWaiver ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-amber-600' : 'bg-white dark:bg-slate-700'}`} 
+                                    />
+                                    {!isGovtWaiver && (
+                                        <button
+                                            type="button"
+                                            onClick={() => startSpeechToText(setAmount, setIsListeningAmount, true)}
+                                            className={`absolute right-3 top-2.5 p-1 rounded-full transition ${isListeningAmount ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600'}`}
+                                            title="Speak amount"
+                                        >
+                                            <Mic size={18} />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* कर्ज माफी (Loan Waiver) Option */}

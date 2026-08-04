@@ -13,7 +13,8 @@ import {
   BadgeIndianRupee,
   Share2,
   Download,
-  Info
+  Info,
+  MessageSquare
 } from 'lucide-react';
 import ReportTable, { Column } from '../components/ReportTable';
 import { useApp } from '../context/AppContext';
@@ -411,6 +412,7 @@ const Reports = () => {
         memberNo: m.memberNo,
         name: m.name,
         village: m.village,
+        mobile: m.mobile || '',
         loanDate: loanDate,
         principal: safePrincipal,
         interest: totalInterest,
@@ -951,6 +953,28 @@ const Reports = () => {
       { header: 'Principal', accessorKey: 'principal', render: (i) => `${i.principal.toLocaleString()}` },
       { header: 'Interest', accessorKey: 'interest', render: (i) => `${i.interest.toLocaleString()}` },
       { header: 'Total', accessorKey: 'total', render: (i) => `${i.total.toLocaleString()}` },
+      {
+        header: 'Remind',
+        accessorKey: 'id',
+        width: '60px',
+        render: (item) => {
+          if (!item.mobile) return <span className="text-[9px] text-slate-400">No Mobile</span>;
+          const msg = `*आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५*\n\nप्रिय सभासद, आपले कर्ज खात्यावरील एकूण येणे मुद्दल रु. ${item.principal.toLocaleString()} आणि व्याज रु. ${item.interest.toLocaleString()} (एकूण रु. ${item.total.toLocaleString()}) थकीत आहे. कृपया त्वरित बँकेत जमा करावे.`;
+          const url = `https://wa.me/91${item.mobile.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`;
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(url, '_blank');
+              }}
+              className="p-1.5 rounded-lg bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-600 dark:text-green-400 transition flex items-center justify-center shadow-sm"
+              title="WhatsApp Reminder पाठवा"
+            >
+              <MessageSquare size={14} />
+            </button>
+          );
+        }
+      }
     ];
 
     // Filter logic for Loan tabs

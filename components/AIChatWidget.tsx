@@ -890,7 +890,9 @@ const AIChatWidget = () => {
         if (!('webkitSpeechRecognition' in window)) { alert("Voice input not supported."); return; }
         if (isListening) return;
         const recognition = new (window as any).webkitSpeechRecognition();
-        recognition.lang = 'en-IN'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+        recognition.lang = (settings?.language === 'en') ? 'en-IN' : 'mr-IN';
+        recognition.interimResults = false; 
+        recognition.maxAlternatives = 1;
         setIsListening(true);
         recognition.onresult = (event: any) => { setQuery(event.results[0][0].transcript); setIsListening(false); };
         recognition.onerror = () => { setIsListening(false); };
