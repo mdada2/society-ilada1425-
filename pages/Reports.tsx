@@ -112,7 +112,10 @@ const Reports = () => {
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [filterLedgerAccount, setFilterLedgerAccount] = useState<string>('All');
   const [selectedFYRange, setSelectedFYRange] = useState<{ start: string; end: string } | null>(null);
-  const [demandDate, setDemandDate] = useState('2026-10-31');
+  const [demandDate, setDemandDate] = useState(() => {
+    const fyYear = new Date(settings.financialYearStart || '2026-04-01').getFullYear();
+    return `${fyYear}-10-31`;
+  });
   const [showDemandSummary, setShowDemandSummary] = useState(false);
 
   const activeStart = selectedFYRange
@@ -2825,7 +2828,7 @@ const Reports = () => {
             <div className="text-center border-b pb-4 mb-4 dark:border-slate-700">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५</h2>
               <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 mt-1">
-                दिनांक {demandDate.split('-').reverse().join('/')} ची अमु /ममु /चालू /थकीत कर्ज बाकी /कर्ज मागणी ( गोषवारा ) सन {targetYear-1}-{String(targetYear).substring(2)}
+                दिनांक {demandDate.split('-').reverse().join('/')} ची अमु /ममु /चालू /थकीत कर्ज बाकी /कर्ज मागणी ( गोषवारा ) सन {targetYear}-{String(targetYear + 1).substring(2)}
               </p>
             </div>
 
@@ -3202,7 +3205,7 @@ const Reports = () => {
 
         const wsData = [
           ["आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं. १४२५"],
-          ["दिनांक " + demandDate.split('-').reverse().join('/') + " ची अमु/ममु/चालू/थकीत कर्ज बाकी/कर्ज मागणी ( गोषवारा ) सन " + (targetYear-1) + "-" + String(targetYear).substring(2)],
+          ["दिनांक " + demandDate.split('-').reverse().join('/') + " ची अमु/ममु/चालू/थकीत कर्ज बाकी/कर्ज मागणी ( गोषवारा ) सन " + targetYear + "-" + String(targetYear + 1).substring(2)],
           [],
           ["१. कृषक प्रकारानुसार वर्गीकरण (Classification by Farmer Type)"],
           headers1,
@@ -3266,7 +3269,7 @@ const Reports = () => {
           <div className="flex-1 min-h-0">
             {showDemandSummary ? renderDemandSummaryTable() : (
               <ReportTable
-                title={`अमु/ममु/चालू/थकीत कर्ज बाकी व कर्ज मागणी यादी (सन ${targetYear-1}-${String(targetYear).substring(2)})`}
+                title={`अमु/ममु/चालू/थकीत कर्ज बाकी व कर्ज मागणी यादी (सन ${targetYear}-${String(targetYear + 1).substring(2)})`}
                 columns={demandColumns}
                 data={demandData}
                 onRowClick={(item) => handleMemberClick(item.id)}
