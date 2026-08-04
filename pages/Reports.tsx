@@ -2685,9 +2685,11 @@ const Reports = () => {
         }
 
         // Accrued interest up to demandDate
+        // चालू आर्थिक वर्षातील (current FY) नवीन नियमित कर्जावर व्याज आकारू नका (व्याज = ०)
+        const isCurrentFYLoan = new Date(loanDateStr) >= new Date(`${targetYear}-04-01`);
         const days = Math.max(0, differenceInDays(new Date(demandDate), new Date(loanDateStr)));
         const rate = isShortTerm ? (settings.firstYearInterestRate || 6) : (settings.subsequentYearInterestRate || 12);
-        const calculatedInterest = Math.round((remainingPrincipal * days * rate) / 36500);
+        const calculatedInterest = isCurrentFYLoan ? 0 : Math.round((remainingPrincipal * days * rate) / 36500);
 
         // Map into columns
         const isSt = isShortTerm;
