@@ -1082,15 +1082,39 @@ const Transactions = () => {
                         <div className="flex-1 overflow-y-auto p-2 space-y-1">
                             {filteredMembers.length === 0 ? (
                                 <div className="text-center py-12 text-slate-400 italic">No members found.</div>
-                            ) : filteredMembers.map(m => (
-                                <div key={m.id} onClick={() => handleSelectMember(m)} className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-transparent hover:border-blue-200 dark:hover:border-blue-800 rounded-xl transition cursor-pointer flex justify-between items-center group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-colors">{m.name.charAt(0)}</div>
-                                        <div><p className="font-bold text-slate-800 dark:text-white">{m.name}</p><p className="text-xs text-slate-500">#{m.memberNo} | {m.village}</p></div>
+                            ) : filteredMembers.map(m => {
+                                const hasLoan = m.loanPrincipal > 0;
+                                const oneYearAgo = new Date();
+                                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                                const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+                                const isOverdue = hasLoan && m.originalLoanDate && m.originalLoanDate < oneYearAgoStr;
+                                const isCurrent = hasLoan && (!m.originalLoanDate || m.originalLoanDate >= oneYearAgoStr);
+
+                                return (
+                                    <div key={m.id} onClick={() => handleSelectMember(m)} className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-transparent hover:border-blue-200 dark:hover:border-blue-800 rounded-xl transition cursor-pointer flex justify-between items-center group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-colors">{m.name.charAt(0)}</div>
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <p className="font-bold text-slate-800 dark:text-white">{m.name}</p>
+                                                    {isOverdue && (
+                                                        <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900 animate-pulse">
+                                                            थकीत कर्ज (Overdue)
+                                                        </span>
+                                                    )}
+                                                    {isCurrent && (
+                                                        <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900">
+                                                            चालू कर्ज (Current)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-slate-500">#{m.memberNo} | {m.village}</p>
+                                            </div>
+                                        </div>
+                                        <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                                     </div>
-                                    <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
