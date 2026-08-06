@@ -3740,6 +3740,15 @@ const Reports = () => {
               return;
             }
 
+            const headers = (rows[0] || []).map(h => String(h || '').toLowerCase());
+            const memberNoIdx = headers.findIndex(h => h.includes("सभासद क्रमांक") || h.includes("member no") || h.includes("memberno"));
+            const sharesAddIdx = headers.findIndex(h => h.includes("नवीन हिस्से") || h.includes("add new shares") || h.includes("sharesadd") || h.includes("add shares"));
+
+            if (memberNoIdx === -1 || sharesAddIdx === -1) {
+              alert("Excel शीटमध्ये 'सभासद क्रमांक (Member No)' किंवा 'नवीन हिस्से जमा (Add New Shares)' हे रकाने सापडले नाहीत. कृपया रकान्याचे नाव बदलू नका.");
+              return;
+            }
+
             let updatedCount = 0;
             let totalAmountAdded = 0;
             const updatedMembersList = [...members];
@@ -3747,10 +3756,10 @@ const Reports = () => {
 
             for (let i = 1; i < rows.length; i++) {
               const row = rows[i];
-              if (!row || row.length < 4) continue;
+              if (!row || row.length <= Math.max(memberNoIdx, sharesAddIdx)) continue;
 
-              const memberNo = String(row[0] || '').trim();
-              const newSharesAddedVal = parseFloat(String(row[3] || '').trim());
+              const memberNo = String(row[memberNoIdx] || '').trim();
+              const newSharesAddedVal = parseFloat(String(row[sharesAddIdx] || '').trim());
 
               if (memberNo && !isNaN(newSharesAddedVal) && newSharesAddedVal > 0) {
                 const mIdx = updatedMembersList.findIndex(m => String(m.memberNo).trim() === memberNo);
