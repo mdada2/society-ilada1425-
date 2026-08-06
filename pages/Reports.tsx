@@ -14,7 +14,8 @@ import {
   Share2,
   Download,
   Info,
-  MessageSquare
+  MessageSquare,
+  Upload
 } from 'lucide-react';
 import ReportTable, { Column } from '../components/ReportTable';
 import { useApp } from '../context/AppContext';
@@ -100,7 +101,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
 ];
 
 const Reports = () => {
-  const { members, transactions, deleteTransaction, settings } = useApp();
+  const { members, transactions, deleteTransaction, settings, updateMembers, setTransactions } = useApp();
   const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const { categoryId, subTab } = useParams<{ categoryId: CategoryId; subTab: string }>();
@@ -3690,6 +3691,111 @@ const Reports = () => {
         downloadBlob(blob, `Shares_Capital_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
       };
 
+      const handleSharesCapitalImportTemplate = () => {
+        const ws: any = {};
+        
+        const headerStyle = { font: { name: 'Calibri', sz: 10, bold: true }, fill: { fgColor: { rgb: 'E2EFDA' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '000000' } }, bottom: { style: 'thin', color: { rgb: '000000' } }, left: { style: 'thin', color: { rgb: '000000' } }, right: { style: 'thin', color: { rgb: '000000' } } } };
+        const cellStyle = { font: { name: 'Calibri', sz: 10 }, border: { top: { style: 'thin', color: { rgb: 'D3D3D3' } }, bottom: { style: 'thin', color: { rgb: 'D3D3D3' } }, left: { style: 'thin', color: { rgb: 'D3D3D3' } }, right: { style: 'thin', color: { rgb: 'D3D3D3' } } } };
+        
+        const headers = ["सभासद क्रमांक (Member No)", "नाव (Name)", "चालू हिस्से रक्कम (Current Shares)", "नवीन हिस्से जमा (Add New Shares)"];
+        headers.forEach((h, i) => {
+          ws[XLSXStyle.utils.encode_cell({ r: 0, c: i })] = { v: h, t: 's', s: headerStyle };
+        });
+
+        const sortedMembersList = [...members].sort((a, b) => (parseInt(a.memberNo) || 0) - (parseInt(b.memberNo) || 0));
+        sortedMembersList.forEach((m, idx) => {
+          const r = idx + 1;
+          ws[XLSXStyle.utils.encode_cell({ r, c: 0 })] = { v: m.memberNo, t: 's', s: cellStyle };
+          ws[XLSXStyle.utils.encode_cell({ r, c: 1 })] = { v: m.name, t: 's', s: cellStyle };
+          ws[XLSXStyle.utils.encode_cell({ r, c: 2 })] = { v: m.shareBalance || 0, t: 'n', s: cellStyle };
+          ws[XLSXStyle.utils.encode_cell({ r, c: 3 })] = { v: "", t: 's', s: cellStyle };
+        });
+
+        ws['!ref'] = `A1:D${sortedMembersList.length + 1}`;
+        ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 30 }];
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, "Shares_Template");
+
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Shares_Import_Template.xlsx`);
+      };
+
+      const handleSharesCapitalImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+            if (rows.length <= 1) {
+              alert("Excel फाईल रिकामी आहे.");
+              return;
+            }
+
+            let updatedCount = 0;
+            let totalAmountAdded = 0;
+            const updatedMembersList = [...members];
+            const newTransactions: any[] = [];
+
+            for (let i = 1; i < rows.length; i++) {
+              const row = rows[i];
+              if (!row || row.length < 4) continue;
+
+              const memberNo = String(row[0] || '').trim();
+              const newSharesAddedVal = parseFloat(String(row[3] || '').trim());
+
+              if (memberNo && !isNaN(newSharesAddedVal) && newSharesAddedVal > 0) {
+                const mIdx = updatedMembersList.findIndex(m => String(m.memberNo).trim() === memberNo);
+                if (mIdx !== -1) {
+                  const memberObj = updatedMembersList[mIdx];
+                  const updatedMember = {
+                    ...memberObj,
+                    shareBalance: (memberObj.shareBalance || 0) + newSharesAddedVal
+                  };
+                  updatedMembersList[mIdx] = updatedMember;
+
+                  const txnId = `txn-share-import-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
+                  const newTxn = {
+                    id: txnId,
+                    memberId: memberObj.id,
+                    type: 'Credit' as any,
+                    accountType: 'Shares' as any,
+                    amount: newSharesAddedVal,
+                    date: format(new Date(), 'yyyy-MM-dd'),
+                    details: `Excel Import: हिस्से जमा (Shares Added: ₹${newSharesAddedVal})`,
+                    remarks: `Shares Import`
+                  };
+                  newTransactions.push(newTxn);
+
+                  updatedCount++;
+                  totalAmountAdded += newSharesAddedVal;
+                }
+              }
+            }
+
+            if (updatedCount > 0) {
+              updateMembers(updatedMembersList);
+              setTransactions(prev => [...prev, ...newTransactions]);
+              alert(`यशस्वीरित्या ${updatedCount} सभासदांचे हिस्से जमा केले! एकूण हिस्से बेरीज: ₹${totalAmountAdded.toLocaleString()}`);
+            } else {
+              alert("Excel शीटमध्ये कोणतीही नवीन हिस्से रक्कम सापडली नाही.");
+            }
+          } catch (err: any) {
+            console.error("Shares Import Error:", err);
+            alert("Excel फाईल वाचताना त्रुटी आली. कृपया योग्य टेम्प्लेट वापरा.");
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+
       return (
         <div className="flex flex-col gap-4 h-full w-full max-w-full min-w-0">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-in fade-in duration-300">
@@ -3699,7 +3805,29 @@ const Reports = () => {
                 <h2 className="text-xl font-bold">हिस्से यादी (Shares Capital List)</h2>
                 <p className="text-xs opacity-80 mt-1">आदिवासी विविध कार्यकारी सहकारी संस्था मयो. ईळदा र. नं. १४२५</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleSharesCapitalImportTemplate}
+                  className="flex items-center gap-2 px-3 py-2 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-100 rounded-lg transition text-sm font-medium border border-indigo-400/30"
+                  title="Import Excel Template डाऊनलोड करा"
+                >
+                  <Download size={16} /> Import Template
+                </button>
+                <button
+                  onClick={() => document.getElementById('shares-import-excel-input')?.click()}
+                  className="flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/40 text-amber-100 rounded-lg transition text-sm font-medium border border-amber-400/30"
+                  title="Excel द्वारे नवीन हिस्से जमा करा"
+                >
+                  <Upload size={16} /> हिस्से Excel Import
+                </button>
+                <input
+                  id="shares-import-excel-input"
+                  type="file"
+                  accept=".xlsx, .xls"
+                  className="hidden"
+                  onChange={handleSharesCapitalImport}
+                  onClick={(e: any) => { e.target.value = null; }}
+                />
                 <button
                   onClick={handleSharesCapitalExport}
                   className="flex items-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/40 text-green-100 rounded-lg transition text-sm font-medium border border-green-400/30"
