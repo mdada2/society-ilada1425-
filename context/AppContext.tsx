@@ -321,6 +321,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timeout);
   }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings]);
 
+  // Database Auto-Repair Migration for Negative Loan Principal
+  useEffect(() => {
+    if (members && members.length > 0 && transactions && transactions.length > 0) {
+      let needsUpdate = false;
+      const repairedMembers = members.map(m => {
+        if (m.loanPrincipal < 0) {
+          needsUpdate = true;
+          const loanTxns = transactions.filter(t => t.memberId === m.id && t.accountType === AccountType.LOAN);
+          let calculatedPrincipal = 0;
+          loanTxns.forEach(t => {
+            if (t.type === TransactionType.DEBIT) {
+              calculatedPrincipal += t.amount;
+            } else if (t.type === TransactionType.CREDIT) {
+              calculatedPrincipal -= (t.principalPaid || t.amount);
+            }
+          });
+          if (calculatedPrincipal < 0) {
+            calculatedPrincipal = 0;
+          }
+          return {
+            ...m,
+            loanPrincipal: calculatedPrincipal
+          };
+        }
+        return m;
+      });
+
+      if (needsUpdate) {
+        setMembers(repairedMembers);
+      }
+    }
+  }, [members, transactions]);
+
   const login = async (email: string, password: string): Promise<void> => {
     await signInWithEmail(email, password);
   };
