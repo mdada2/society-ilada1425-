@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 import XLSXStyle from 'xlsx-js-style';
 
 const Members = () => {
-  const { members, addMember, deleteMember, settings, importMembers, updateMembers, addTransaction, transactions, nclRecords } = useApp();
+  const { members, addMember, deleteMember, settings, importMembers, updateMembers, addTransaction, transactions, nclRecords, societyBanks, setSocietyBanks } = useApp();
   const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -85,6 +85,24 @@ const Members = () => {
   // -- Bulk Import Disbursement States --
   const [bulkDisburseList, setBulkDisburseList] = useState<any[]>([]);
   const [showBulkDisburseModal, setShowBulkDisburseModal] = useState(false);
+  const [showLoanImportModeModal, setShowLoanImportModeModal] = useState(false);
+  const [loanImportPaymentMode, setLoanImportPaymentMode] = useState<'Cash' | 'Bank'>('Bank');
+  const [loanImportSelectedBankId, setLoanImportSelectedBankId] = useState('');
+
+  // Auto-select KCC bank account on load
+  useEffect(() => {
+    if (societyBanks && societyBanks.length > 0) {
+      const kccBank = societyBanks.find(b => 
+        String(b.accountType || '').toLowerCase().includes('kcc') || 
+        String(b.bankName || '').toLowerCase().includes('kcc')
+      );
+      if (kccBank) {
+        setLoanImportSelectedBankId(kccBank.id);
+      } else {
+        setLoanImportSelectedBankId(societyBanks[0].id);
+      }
+    }
+  }, [societyBanks]);
 
   // -- Bulk Setup States --
   const [bulkDate, setBulkDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -202,7 +220,7 @@ const Members = () => {
     });
   };
 
-  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string, landArea?: string }) => {
+  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string, landArea?: string }, bankId?: string) => {
     const member = members.find(m => m.id === id);
     if (!member) return;
 
@@ -229,7 +247,8 @@ const Members = () => {
       type: TransactionType.DEBIT,
       amount: data.loanAmount,
       details: `Loan Disbursed / कर्ज वाटप करण्यात आले (${data.loanType})`,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      bankId: bankId
     };
 
     addTransaction(loanTxn, {
@@ -248,7 +267,8 @@ const Members = () => {
         type: TransactionType.CREDIT,
         amount: data.shareAmount,
         details: `Shares added during loan disbursement / कर्ज वाटपाच्या वेळी शेअर्स जमा`,
-        timestamp: Date.now() + 1
+        timestamp: Date.now() + 1,
+        bankId: bankId
       };
       addTransaction(shareTxn);
     }
@@ -1353,7 +1373,14 @@ const Members = () => {
       return;
     }
 
+    setShowLoanImportModeModal(true);
+  };
+
+  const executeBulkDisburse = (mode: 'Cash' | 'Bank', bankId: string) => {
     let count = 0;
+    let totalPrincipalDisbursed = 0;
+    let totalSharesDeducted = 0;
+
     bulkDisburseList.forEach(row => {
       if (!row.realId || row.loanAmount <= 0) return;
       
@@ -1365,11 +1392,24 @@ const Members = () => {
         landArea: row.landArea
       };
 
-      handleSaveDisbursement(row.realId, customData);
+      handleSaveDisbursement(row.realId, customData, mode === 'Bank' ? bankId : undefined);
       count++;
+      totalPrincipalDisbursed += row.loanAmount;
+      totalSharesDeducted += row.shareAmount;
     });
 
-    alert(`Successfully processed loan disbursements for ${count} members!`);
+    if (mode === 'Bank' && bankId) {
+      setSocietyBanks(prev => prev.map(b => {
+        if (b.id === bankId) {
+          const netEffect = totalPrincipalDisbursed - totalSharesDeducted;
+          return { ...b, balance: b.balance - netEffect };
+        }
+        return b;
+      }));
+    }
+
+    alert(`Successfully processed loan disbursements for ${count} members! (${mode === 'Bank' ? 'बँक खात्यातून वजा' : 'रोख वजा'})`);
+    setShowLoanImportModeModal(false);
     setShowBulkDisburseModal(false);
     setBulkDisburseList([]);
   };
@@ -2704,6 +2744,88 @@ const Members = () => {
                   Submit / सबमिट करा
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loan Import Mode Selection Modal */}
+      {showLoanImportModeModal && (
+        <div className="fixed inset-0 bg-black/60 z-[210] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-5 border dark:border-slate-700 animate-fade-in-up">
+            <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white flex items-center gap-2">
+              <Upload className="text-blue-600" size={20} /> कर्ज वाटप व्यवहार माध्यम निवडा (Select Disbursement Account)
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Excel मधून नवीन कर्ज वाटप करताना रक्कम रोख (Cash in Hand) मधून वजा करायची आहे की बँकेतून वजा करायची आहे हे निवडा.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">व्यवहार माध्यम (Disbursement Mode)</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="loanImportPaymentMode"
+                      value="Cash"
+                      checked={loanImportPaymentMode === 'Cash'}
+                      onChange={() => setLoanImportPaymentMode('Cash')}
+                      className="accent-blue-600"
+                    />
+                    रोख (Cash in Hand)
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="loanImportPaymentMode"
+                      value="Bank"
+                      checked={loanImportPaymentMode === 'Bank'}
+                      onChange={() => setLoanImportPaymentMode('Bank')}
+                      className="accent-blue-600"
+                    />
+                    बँक व्यवहार (Bank Account)
+                  </label>
+                </div>
+              </div>
+
+              {loanImportPaymentMode === 'Bank' && (
+                <div className="animate-fade-in">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">बँक खाते निवडा (Select Bank)</label>
+                  <select
+                    value={loanImportSelectedBankId}
+                    onChange={e => setLoanImportSelectedBankId(e.target.value)}
+                    className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs"
+                  >
+                    <option value="">-- बँक खाते निवडा --</option>
+                    {societyBanks.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.bankName} - {b.accountType} ({b.accountNo})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLoanImportModeModal(false);
+                }}
+                className="px-4 py-2 border dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 text-xs font-bold transition"
+              >
+                रद्द करा (Cancel)
+              </button>
+              <button
+                type="button"
+                onClick={() => executeBulkDisburse(loanImportPaymentMode, loanImportSelectedBankId)}
+                disabled={loanImportPaymentMode === 'Bank' && !loanImportSelectedBankId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs font-bold transition shadow-md"
+              >
+                वाटप पूर्ण करा (Confirm Disbursement)
+              </button>
             </div>
           </div>
         </div>
