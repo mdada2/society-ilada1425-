@@ -401,46 +401,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addTransaction = (transaction: Transaction, memberUpdates?: Partial<Member>) => {
     if (transaction.memberId) {
-      const member = members.find(m => m.id === transaction.memberId);
-      if (member) {
-        transaction.previousLoanCalculationDate = member.lastLoanCalculationDate;
-        const updatedMember = { ...member };
-        const amt = transaction.amount;
-        if (transaction.type === TransactionType.CREDIT) {
-          if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
-          if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance += amt;
-          if (transaction.accountType === AccountType.LOAN) {
-            if (transaction.interestAccrued) updatedMember.loanInterestDue += transaction.interestAccrued;
-            if (transaction.interestPaid) updatedMember.loanInterestDue -= transaction.interestPaid;
-            if (transaction.principalPaid) updatedMember.loanPrincipal -= transaction.principalPaid;
-            if (updatedMember.loanPrincipal < 0) {
-              updatedMember.loanPrincipal = 0;
+      setMembers(prevMembers => prevMembers.map(member => {
+        if (member.id === transaction.memberId) {
+          transaction.previousLoanCalculationDate = member.lastLoanCalculationDate;
+          const updatedMember = { ...member };
+          const amt = transaction.amount;
+          if (transaction.type === TransactionType.CREDIT) {
+            if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
+            if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance += amt;
+            if (transaction.accountType === AccountType.LOAN) {
+              if (transaction.interestAccrued) updatedMember.loanInterestDue += transaction.interestAccrued;
+              if (transaction.interestPaid) updatedMember.loanInterestDue -= transaction.interestPaid;
+              if (transaction.principalPaid) updatedMember.loanPrincipal -= transaction.principalPaid;
+              if (updatedMember.loanPrincipal < 0) {
+                updatedMember.loanPrincipal = 0;
+              }
+              updatedMember.lastLoanCalculationDate = transaction.date;
             }
-            updatedMember.lastLoanCalculationDate = transaction.date;
-          }
-        } else {
-          if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance -= amt;
-          if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance -= amt;
-          if (transaction.accountType === AccountType.LOAN) {
-            if (updatedMember.loanPrincipal < 0) {
-              updatedMember.loanPrincipal = 0;
+          } else {
+            if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance -= amt;
+            if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance -= amt;
+            if (transaction.accountType === AccountType.LOAN) {
+              if (updatedMember.loanPrincipal < 0) {
+                updatedMember.loanPrincipal = 0;
+              }
+              if (updatedMember.loanPrincipal <= 0) updatedMember.originalLoanDate = transaction.date;
+              updatedMember.loanPrincipal += amt;
+              updatedMember.lastLoanCalculationDate = transaction.date;
             }
-            if (updatedMember.loanPrincipal <= 0) updatedMember.originalLoanDate = transaction.date;
-            updatedMember.loanPrincipal += amt;
-            updatedMember.lastLoanCalculationDate = transaction.date;
           }
-        }
 
-        // Apply manual member updates (e.g. waiver overrides to 0) after automatic transaction calculations
-        if (memberUpdates) {
-          Object.assign(updatedMember, memberUpdates);
-        }
+          if (memberUpdates) {
+            Object.assign(updatedMember, memberUpdates);
+          }
 
-        updateMember(updatedMember);
-      }
+          return updatedMember;
+        }
+        return member;
+      }));
     }
 
-    // Bank specific logic for society bank accounts (any transaction linked to a bank)
     if (transaction.bankId) {
       setSocietyBanks(prev => prev.map(b => {
         if (b.id === transaction.bankId) {
@@ -457,36 +457,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const transaction = transactions.find(t => t.id === transactionId);
     if (!transaction) return false;
     if (transaction.memberId) {
-      const member = members.find(m => m.id === transaction.memberId);
-      if (member) {
-        const updatedMember = { ...member };
-        const amt = transaction.amount;
-        if (transaction.type === TransactionType.CREDIT) {
-          if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance -= amt;
-          if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance -= amt;
-          if (transaction.accountType === AccountType.LOAN) {
-            updatedMember.loanPrincipal += (transaction.principalPaid || 0);
-            updatedMember.loanInterestDue += (transaction.interestPaid || 0);
-            if (transaction.interestAccrued) updatedMember.loanInterestDue -= transaction.interestAccrued;
-            if (transaction.previousLoanCalculationDate) updatedMember.lastLoanCalculationDate = transaction.previousLoanCalculationDate;
-          }
-        } else {
-          if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
-          if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance += amt;
-          if (transaction.accountType === AccountType.LOAN) {
-            updatedMember.loanPrincipal -= amt;
-            if (updatedMember.loanPrincipal < 0) {
-              updatedMember.loanPrincipal = 0;
+      setMembers(prevMembers => prevMembers.map(member => {
+        if (member.id === transaction.memberId) {
+          const updatedMember = { ...member };
+          const amt = transaction.amount;
+          if (transaction.type === TransactionType.CREDIT) {
+            if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance -= amt;
+            if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance -= amt;
+            if (transaction.accountType === AccountType.LOAN) {
+              updatedMember.loanPrincipal += (transaction.principalPaid || 0);
+              updatedMember.loanInterestDue += (transaction.interestPaid || 0);
+              if (transaction.interestAccrued) updatedMember.loanInterestDue -= transaction.interestAccrued;
+              if (transaction.previousLoanCalculationDate) updatedMember.lastLoanCalculationDate = transaction.previousLoanCalculationDate;
             }
-            // Clear original loan date if loan is fully repaid
-            if (updatedMember.loanPrincipal <= 0) {
-              updatedMember.originalLoanDate = undefined;
+          } else {
+            if (transaction.accountType === AccountType.SAVINGS) updatedMember.savingsBalance += amt;
+            if (transaction.accountType === AccountType.SHARES) updatedMember.shareBalance += amt;
+            if (transaction.accountType === AccountType.LOAN) {
+              updatedMember.loanPrincipal -= amt;
+              if (updatedMember.loanPrincipal < 0) {
+                updatedMember.loanPrincipal = 0;
+              }
+              if (updatedMember.loanPrincipal <= 0) {
+                updatedMember.originalLoanDate = undefined;
+              }
+              if (transaction.previousLoanCalculationDate) updatedMember.lastLoanCalculationDate = transaction.previousLoanCalculationDate;
             }
-            if (transaction.previousLoanCalculationDate) updatedMember.lastLoanCalculationDate = transaction.previousLoanCalculationDate;
           }
+          return updatedMember;
         }
-        updateMember(updatedMember);
-      }
+        return member;
+      }));
     }
 
     // Revert bank balance adjustment for any transaction linked to a bank
