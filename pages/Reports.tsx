@@ -101,13 +101,20 @@ const REPORT_CATEGORIES: ReportCategory[] = [
 ];
 
 const Reports = () => {
-  const { members, transactions, deleteTransaction, settings, updateMembers, setTransactions } = useApp();
+  const { members, transactions, deleteTransaction, settings, updateMembers, setTransactions, societyBanks, setSocietyBanks } = useApp();
   const { showConfirm } = useDialog();
   const navigate = useNavigate();
   const { categoryId, subTab } = useParams<{ categoryId: CategoryId; subTab: string }>();
 
   const selectedCategory = categoryId || null;
   const activeSubTab = subTab || '';
+
+  // Shares Import Mode States
+  const [showImportModeModal, setShowImportModeModal] = useState(false);
+  const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
+  const [importPaymentMode, setImportPaymentMode] = useState<'Cash' | 'Bank'>('Cash');
+  const [importSelectedBankId, setImportSelectedBankId] = useState('');
+  const [importCallback, setImportCallback] = useState<((mode: 'Cash' | 'Bank', bankId: string) => void) | null>(null);
 
   const [activeBucket, setActiveBucket] = useState<string>('1 Year');
   const [showPinModal, setShowPinModal] = useState(false);
@@ -3725,84 +3732,106 @@ const Reports = () => {
       const handleSharesCapitalImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setImportPendingFile(file);
+        setImportPaymentMode('Cash');
+        setImportSelectedBankId('');
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          try {
-            const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        setImportCallback(() => (mode: 'Cash' | 'Bank', bankId: string) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-            if (rows.length <= 1) {
-              alert("Excel फाईल रिकामी आहे.");
-              return;
-            }
+              if (rows.length <= 1) {
+                alert("Excel फाईल रिकामी आहे.");
+                return;
+              }
 
-            const headers = (rows[0] || []).map(h => String(h || '').toLowerCase());
-            const memberNoIdx = headers.findIndex(h => h.includes("सभासद क्रमांक") || h.includes("member no") || h.includes("memberno"));
-            const sharesAddIdx = headers.findIndex(h => h.includes("नवीन हिस्से") || h.includes("add new shares") || h.includes("sharesadd") || h.includes("add shares"));
+              const headers = (rows[0] || []).map(h => String(h || '').toLowerCase());
+              const memberNoIdx = headers.findIndex(h => h.includes("सभासद क्रमांक") || h.includes("member no") || h.includes("memberno"));
+              const sharesAddIdx = headers.findIndex(h => h.includes("नवीन हिस्से") || h.includes("add new shares") || h.includes("sharesadd") || h.includes("add shares"));
 
-            if (memberNoIdx === -1 || sharesAddIdx === -1) {
-              alert("Excel शीटमध्ये 'सभासद क्रमांक (Member No)' किंवा 'नवीन हिस्से जमा (Add New Shares)' हे रकाने सापडले नाहीत. कृपया रकान्याचे नाव बदलू नका.");
-              return;
-            }
+              if (memberNoIdx === -1 || sharesAddIdx === -1) {
+                alert("Excel शीटमध्ये 'सभासद क्रमांक (Member No)' किंवा 'नवीन हिस्से जमा (Add New Shares)' हे रकाने सापडले नाहीत. कृपया रकान्याचे नाव बदलू नका.");
+                return;
+              }
 
-            let updatedCount = 0;
-            let totalAmountAdded = 0;
-            const updatedMembersList = [...members];
-            const newTransactions: any[] = [];
+              let updatedCount = 0;
+              let totalAmountAdded = 0;
+              const updatedMembersList = [...members];
+              const newTransactions: any[] = [];
 
-            for (let i = 1; i < rows.length; i++) {
-              const row = rows[i];
-              if (!row || row.length <= Math.max(memberNoIdx, sharesAddIdx)) continue;
+              for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length <= Math.max(memberNoIdx, sharesAddIdx)) continue;
 
-              const memberNo = String(row[memberNoIdx] || '').trim();
-              const newSharesAddedVal = parseFloat(String(row[sharesAddIdx] || '').trim());
+                const memberNo = String(row[memberNoIdx] || '').trim();
+                const newSharesAddedVal = parseFloat(String(row[sharesAddIdx] || '').trim());
 
-              if (memberNo && !isNaN(newSharesAddedVal) && newSharesAddedVal > 0) {
-                const mIdx = updatedMembersList.findIndex(m => String(m.memberNo).trim() === memberNo);
-                if (mIdx !== -1) {
-                  const memberObj = updatedMembersList[mIdx];
-                  const updatedMember = {
-                    ...memberObj,
-                    shareBalance: (memberObj.shareBalance || 0) + newSharesAddedVal
-                  };
-                  updatedMembersList[mIdx] = updatedMember;
+                if (memberNo && !isNaN(newSharesAddedVal) && newSharesAddedVal > 0) {
+                  const mIdx = updatedMembersList.findIndex(m => String(m.memberNo).trim() === memberNo);
+                  if (mIdx !== -1) {
+                    const memberObj = updatedMembersList[mIdx];
+                    const updatedMember = {
+                      ...memberObj,
+                      shareBalance: (memberObj.shareBalance || 0) + newSharesAddedVal
+                    };
+                    updatedMembersList[mIdx] = updatedMember;
 
-                  const txnId = `txn-share-import-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
-                  const newTxn = {
-                    id: txnId,
-                    memberId: memberObj.id,
-                    type: 'Credit' as any,
-                    accountType: 'Shares' as any,
-                    amount: newSharesAddedVal,
-                    date: format(new Date(), 'yyyy-MM-dd'),
-                    details: `Excel Import: हिस्से जमा (Shares Added: ₹${newSharesAddedVal})`,
-                    remarks: `Shares Import`
-                  };
-                  newTransactions.push(newTxn);
+                    const txnId = `txn-share-import-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
+                    const newTxn = {
+                      id: txnId,
+                      memberId: memberObj.id,
+                      type: 'Credit' as any,
+                      accountType: 'Shares' as any,
+                      amount: newSharesAddedVal,
+                      date: format(new Date(), 'yyyy-MM-dd'),
+                      details: `Excel Import: हिस्से जमा (${mode === 'Bank' ? 'बँक व्यवहार' : 'रोख'}) (Shares Added: ₹${newSharesAddedVal})`,
+                      remarks: `Shares Import`,
+                      bankId: mode === 'Bank' ? bankId : undefined
+                    };
+                    newTransactions.push(newTxn);
 
-                  updatedCount++;
-                  totalAmountAdded += newSharesAddedVal;
+                    updatedCount++;
+                    totalAmountAdded += newSharesAddedVal;
+                  }
                 }
               }
-            }
 
-            if (updatedCount > 0) {
-              updateMembers(updatedMembersList);
-              setTransactions(prev => [...prev, ...newTransactions]);
-              alert(`यशस्वीरित्या ${updatedCount} सभासदांचे हिस्से जमा केले! एकूण हिस्से बेरीज: ₹${totalAmountAdded.toLocaleString()}`);
-            } else {
-              alert("Excel शीटमध्ये कोणतीही नवीन हिस्से रक्कम सापडली नाही.");
+              if (updatedCount > 0) {
+                updateMembers(updatedMembersList);
+                setTransactions(prev => [...prev, ...newTransactions]);
+
+                if (mode === 'Bank' && bankId) {
+                  setSocietyBanks(prev => prev.map(b => {
+                    if (b.id === bankId) {
+                      return { ...b, balance: b.balance + totalAmountAdded };
+                    }
+                    return b;
+                  }));
+                }
+
+                alert(`यशस्वीरित्या ${updatedCount} सभासदांचे हिस्से जमा केले! एकूण हिस्से बेरीज: ₹${totalAmountAdded.toLocaleString()} (${mode === 'Bank' ? 'बँक खात्यात जमा' : 'रोख जमा'})`);
+              } else {
+                alert("Excel शीटमध्ये कोणतीही नवीन हिस्से रक्कम सापडली नाही.");
+              }
+            } catch (err: any) {
+              console.error("Shares Import Error:", err);
+              alert("Excel फाईल वाचताना त्रुटी आली. कृपया योग्य टेम्प्लेट वापरा.");
+            } finally {
+              setShowImportModeModal(false);
+              setImportPendingFile(null);
+              setImportCallback(null);
             }
-          } catch (err: any) {
-            console.error("Shares Import Error:", err);
-            alert("Excel फाईल वाचताना त्रुटी आली. कृपया योग्य टेम्प्लेट वापरा.");
-          }
-        };
-        reader.readAsArrayBuffer(file);
+          };
+          reader.readAsArrayBuffer(file);
+        });
+
+        setShowImportModeModal(true);
       };
 
       return (
@@ -5893,6 +5922,98 @@ const Reports = () => {
       <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-6 bg-slate-50 dark:bg-slate-900 overflow-y-auto md:overflow-hidden">
         {renderContent()}
       </div>
+
+      {/* Import Mode Selection Modal */}
+      {showImportModeModal && (
+        <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-5 border dark:border-slate-700 animate-fade-in-up">
+            <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white flex items-center gap-2">
+              <Upload className="text-blue-600" size={20} /> व्यवहार माध्यम निवडा (Select Import Mode)
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Excel मधून रकमा इंपोर्ट करताना त्या रोख (Cash in Hand) मध्ये जमा करायच्या आहेत की बँकेत जमा करायच्या आहेत हे निवडा.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">व्यवहार माध्यम (Payment Mode)</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="importPaymentMode"
+                      value="Cash"
+                      checked={importPaymentMode === 'Cash'}
+                      onChange={() => setImportPaymentMode('Cash')}
+                      className="accent-blue-600"
+                    />
+                    रोख (Cash in Hand)
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="importPaymentMode"
+                      value="Bank"
+                      checked={importPaymentMode === 'Bank'}
+                      onChange={() => {
+                        setImportPaymentMode('Bank');
+                        if (societyBanks.length > 0) {
+                          setImportSelectedBankId(societyBanks[0].id);
+                        }
+                      }}
+                      className="accent-blue-600"
+                    />
+                    बँक व्यवहार (Bank Account)
+                  </label>
+                </div>
+              </div>
+
+              {importPaymentMode === 'Bank' && (
+                <div className="animate-fade-in">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">बँक खाते निवडा (Select Bank)</label>
+                  <select
+                    value={importSelectedBankId}
+                    onChange={e => setImportSelectedBankId(e.target.value)}
+                    className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs"
+                  >
+                    <option value="">-- बँक खाते निवडा --</option>
+                    {societyBanks.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.bankName} - {b.accountType} ({b.accountNo})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportModeModal(false);
+                  setImportPendingFile(null);
+                }}
+                className="px-4 py-2 border dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 text-xs font-bold transition"
+              >
+                रद्द करा (Cancel)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (importCallback) {
+                    importCallback(importPaymentMode, importSelectedBankId);
+                  }
+                }}
+                disabled={importPaymentMode === 'Bank' && !importSelectedBankId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs font-bold transition shadow-md"
+              >
+                अपलोड करा (Confirm Import)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SecurityPinModal
         isOpen={showPinModal}
