@@ -88,6 +88,7 @@ const Members = () => {
   const [showLoanImportModeModal, setShowLoanImportModeModal] = useState(false);
   const [loanImportPaymentMode, setLoanImportPaymentMode] = useState<'Cash' | 'Bank'>('Bank');
   const [loanImportSelectedBankId, setLoanImportSelectedBankId] = useState('');
+  const [importCallback, setImportCallback] = useState<((mode: 'Cash' | 'Bank', bankId: string) => void) | null>(null);
 
   // Auto-select KCC bank account on load
   useEffect(() => {
@@ -286,32 +287,54 @@ const Members = () => {
       return;
     }
 
-    let successCount = 0;
-    selectedMemberIds.forEach(id => {
-      if (disbursedLog.has(id)) return; // skip already saved
+    setLoanImportPaymentMode('Bank');
+    setImportCallback(() => (mode: 'Cash' | 'Bank', bankId: string) => {
+      let successCount = 0;
+      let totalPrincipalDisbursed = 0;
+      let totalSharesDeducted = 0;
 
-      const member = members.find(m => m.id === id);
-      if (!member) return;
+      selectedMemberIds.forEach(id => {
+        if (disbursedLog.has(id)) return; // skip already saved
 
-      const data = disbursementData[id] || {
-        shareAmount: 0,
-        loanAmount: bulkAmount || 0,
-        date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
-        loanType: bulkType || member.loanType || 'Short Term'
-      };
+        const member = members.find(m => m.id === id);
+        if (!member) return;
 
-      if (data.loanAmount <= 0) return; // skip invalid in bulk
+        const data = disbursementData[id] || {
+          shareAmount: 0,
+          loanAmount: bulkAmount || 0,
+          date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
+          loanType: bulkType || member.loanType || 'Short Term'
+        };
 
-      handleSaveDisbursement(id, data);
-      successCount++;
+        if (data.loanAmount <= 0) return; // skip invalid in bulk
+
+        handleSaveDisbursement(id, data, mode === 'Bank' ? bankId : undefined);
+        successCount++;
+        totalPrincipalDisbursed += data.loanAmount;
+        totalSharesDeducted += data.shareAmount;
+      });
+
+      if (mode === 'Bank' && bankId) {
+        setSocietyBanks(prev => prev.map(b => {
+          if (b.id === bankId) {
+            const netEffect = totalPrincipalDisbursed - totalSharesDeducted;
+            return { ...b, balance: b.balance - netEffect };
+          }
+          return b;
+        }));
+      }
+
+      if (successCount > 0) {
+        alert(`Successfully disbursed loans to ${successCount} members! (${mode === 'Bank' ? 'बँक खात्यातून वजा' : 'रोख वजा'})`);
+        setSelectedMemberIds([]);
+      } else {
+        alert("No pending valid disbursements were found to save.");
+      }
+      setShowLoanImportModeModal(false);
+      setImportCallback(null);
     });
 
-    if (successCount > 0) {
-      alert(`Successfully disbursed loans to ${successCount} members!`);
-      setSelectedMemberIds([]);
-    } else {
-      alert("No pending valid disbursements were found to save. Please make sure loan amount is greater than 0.");
-    }
+    setShowLoanImportModeModal(true);
   };
 
   // Precompute disbursement history on a specific date or date range
@@ -2820,7 +2843,13 @@ const Members = () => {
               </button>
               <button
                 type="button"
-                onClick={() => executeBulkDisburse(loanImportPaymentMode, loanImportSelectedBankId)}
+                onClick={() => {
+                  if (importCallback) {
+                    importCallback(loanImportPaymentMode, loanImportSelectedBankId);
+                  } else {
+                    executeBulkDisburse(loanImportPaymentMode, loanImportSelectedBankId);
+                  }
+                }}
                 disabled={loanImportPaymentMode === 'Bank' && !loanImportSelectedBankId}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs font-bold transition shadow-md"
               >
