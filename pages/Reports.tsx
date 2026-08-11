@@ -5919,7 +5919,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-6 bg-slate-50 dark:bg-slate-900 overflow-y-auto md:overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-24 md:pb-6 bg-slate-50 dark:bg-slate-900 overflow-y-auto md:overflow-hidden">
         {renderContent()}
       </div>
 
