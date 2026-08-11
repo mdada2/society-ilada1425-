@@ -296,8 +296,8 @@ body,
   }
   
   table th, table td {
-    padding: 6px 8px !important;
-    font-size: 12px !important;
+    padding: 4px 6px;
+    font-size: 10px;
     white-space: nowrap !important;
   }
 
