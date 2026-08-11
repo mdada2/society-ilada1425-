@@ -338,7 +338,7 @@ function ReportTable<T extends { id?: string | number }>({
                                 <th
                                     key={idx}
                                     onClick={() => handleSort(col.accessorKey as string)}
-                                    className={`p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${col.className || ''}`}
+                                    className={`p-2 md:p-4 text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${col.className || ''}`}
                                     style={{ width: col.width }}
                                 >
                                     <div className="flex items-center gap-1">
@@ -366,7 +366,7 @@ function ReportTable<T extends { id?: string | number }>({
                                     {columns.map((col, colIdx) => (
                                         <td
                                             key={colIdx}
-                                            className={`p-4 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap ${col.className || ''}`}
+                                            className={`p-2 md:p-4 text-xs md:text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap ${col.className || ''}`}
                                         >
                                             {col.render ? col.render(item) : (item as any)[col.accessorKey]}
                                         </td>
@@ -425,7 +425,7 @@ function ReportTable<T extends { id?: string | number }>({
                                     return (
                                         <td
                                             key={idx}
-                                            className={`p-4 text-sm font-bold whitespace-nowrap ${col.className || ''}`}
+                                            className={`p-2 md:p-4 text-xs md:text-sm font-bold whitespace-nowrap ${col.className || ''}`}
                                         >
                                             {content}
                                         </td>
