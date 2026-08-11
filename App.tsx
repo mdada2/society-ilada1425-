@@ -582,10 +582,10 @@ const MainLayout = () => {
   return (
     <div className="flex bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors duration-200">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <div className="flex-1 md:ml-64 flex flex-col w-full transition-all duration-300 print:ml-0 print:w-full overflow-x-hidden pt-16 md:pt-0">
-        <div className="md:hidden flex items-center justify-between bg-slate-900 text-white fixed top-0 left-0 right-0 z-50 shadow-md no-print h-16 px-4 w-full" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-          <div className="font-bold text-base text-blue-400">Society Ilada</div>
-          <button onClick={() => setIsSidebarOpen(true)} className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-full transition"><Menu size={20} /></button>
+      <div className="flex-1 md:ml-64 flex flex-col w-full transition-all duration-300 print:ml-0 print:w-full overflow-x-hidden pt-12 md:pt-0">
+        <div className="md:hidden flex items-center justify-between bg-slate-900 text-white fixed top-0 left-0 right-0 z-50 shadow-md no-print h-12 px-4 w-full" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+          <div className="font-bold text-sm text-blue-400">Society Ilada</div>
+          <button onClick={() => setIsSidebarOpen(true)} className="p-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded-full transition"><Menu size={18} /></button>
         </div>
         <Routes>
           <Route path="/" element={<Dashboard />} />
