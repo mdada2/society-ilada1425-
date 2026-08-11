@@ -910,6 +910,28 @@ const Reports = () => {
     );
   };
 
+  const CollapsibleInfo = ({ title, text }: { title: string; text: string }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-2.5 text-xs md:text-sm text-blue-800 dark:text-blue-300 animate-fade-in mb-2">
+        <div className="flex items-center justify-between cursor-pointer select-none" onClick={() => setIsOpen(!isOpen)}>
+          <div className="flex items-center gap-2">
+            <Info size={16} className="text-blue-500 shrink-0" />
+            <span className="font-bold">{title}</span>
+          </div>
+          <button className="text-blue-500 hover:text-blue-700 font-medium text-[11px] px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 transition-colors">
+            {isOpen ? 'माहिती लपवा (Hide)' : 'माहिती पहा (Show)'}
+          </button>
+        </div>
+        {isOpen && (
+          <div className="mt-2 pt-2 border-t border-blue-100 dark:border-blue-900/60 opacity-90 leading-relaxed">
+            {text}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTabInfo = (subTab: string) => {
     let text = '';
     let title = '';
@@ -938,15 +960,7 @@ const Reports = () => {
         return null;
     }
 
-    return (
-      <div className="flex gap-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-3 text-xs md:text-sm text-blue-800 dark:text-blue-300 animate-fade-in mb-1">
-        <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-bold">{title}</p>
-          <p className="mt-0.5 opacity-90">{text}</p>
-        </div>
-      </div>
-    );
+    return <CollapsibleInfo title={title} text={text} />;
   };
 
   const renderLoan = () => {
@@ -5869,7 +5883,7 @@ const Reports = () => {
   const currentCategory = REPORT_CATEGORIES.find(c => c.id === selectedCategory);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-96px)] md:h-screen overflow-hidden">
+    <div className="flex flex-col h-auto md:h-screen overflow-visible md:overflow-hidden">
       {/* Top Navigation Bar */}
       <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 shadow-sm z-10">
         <div className="flex flex-col gap-4">
@@ -5919,7 +5933,7 @@ const Reports = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-24 md:pb-6 bg-slate-50 dark:bg-slate-900 overflow-y-auto md:overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-24 md:pb-6 bg-slate-50 dark:bg-slate-900 overflow-y-visible md:overflow-y-auto md:overflow-hidden">
         {renderContent()}
       </div>
 

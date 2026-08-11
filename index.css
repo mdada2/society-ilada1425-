@@ -220,3 +220,11 @@ body,
 .dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* Mobile Table Font Size & Padding Reduction */
+@media (max-width: 768px) {
+  table th, table td {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+  }
+}

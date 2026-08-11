@@ -249,84 +249,89 @@ function ReportTable<T extends { id?: string | number }>({
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col h-full">
             {/* Header Controls */}
-            <div className="p-4 border-b dark:border-slate-700 flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white shrink-0">{title}</h2>
+            <div className="p-3 md:p-4 border-b dark:border-slate-700 flex flex-col gap-2.5">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                    <h2 className="text-base md:text-xl font-bold text-slate-800 dark:text-white shrink-0">{title}</h2>
                     
-                    {!enableDateFilter && enableSearch && (
-                        <div className="relative flex-1 max-w-xs sm:max-w-md w-full mx-0 sm:mx-4">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    {!enableDateFilter && (
+                        <div className="hidden md:flex gap-2 shrink-0">
+                            {enableShare && (
+                                <button onClick={handleShare} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-sm font-medium">
+                                    <Share2 size={16} /> Share
+                                </button>
+                            )}
+                            {enableExport && (
+                                <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-sm font-medium">
+                                    <Download size={16} /> CSV
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {enableDateFilter && (
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-lg border dark:border-slate-700 w-full md:w-auto self-start">
+                        <Calendar size={16} className="text-slate-400 ml-1.5" />
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => {
+                                setStartDate(e.target.value);
+                                if (onDateRangeChange) onDateRangeChange(e.target.value, endDate);
+                            }}
+                            className="bg-transparent text-xs outline-none text-slate-700 dark:text-slate-300 w-full md:w-28"
+                        />
+                        <span className="text-slate-400">-</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => {
+                                setEndDate(e.target.value);
+                                if (onDateRangeChange) onDateRangeChange(startDate, e.target.value);
+                            }}
+                            className="bg-transparent text-xs outline-none text-slate-700 dark:text-slate-300 w-full md:w-28"
+                        />
+                    </div>
+                )}
+
+                {/* Search Bar & Buttons Row - Unified single row on mobile! */}
+                <div className="flex items-center gap-2 w-full">
+                    {enableSearch && (
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                             <input
                                 type="text"
                                 placeholder="Search records..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
+                                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
                             />
                         </div>
                     )}
 
-                    <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
+                    <div className="flex gap-1.5 shrink-0">
                         {enableShare && (
                             <button
                                 onClick={handleShare}
-                                className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-sm font-medium"
+                                className="flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-xs font-medium"
+                                title="Share Report"
                             >
-                                <Share2 size={16} /> Share
+                                <Share2 size={14} />
+                                <span className="hidden md:inline">Share</span>
                             </button>
                         )}
                         {enableExport && (
                             <button
                                 onClick={handleExportCSV}
-                                className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-sm font-medium"
+                                className="flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-xs font-medium"
+                                title="Export CSV"
                             >
-                                <Download size={16} /> CSV
+                                <Download size={14} />
+                                <span className="hidden md:inline">CSV</span>
                             </button>
                         )}
                     </div>
                 </div>
-
-                {enableDateFilter && (
-                    <div className="flex flex-col lg:flex-row gap-3">
-                        {/* Date Filter */}
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-lg border dark:border-slate-700 w-full lg:w-auto">
-                            <Calendar size={18} className="text-slate-400 ml-2" />
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => {
-                                    setStartDate(e.target.value);
-                                    if (onDateRangeChange) onDateRangeChange(e.target.value, endDate);
-                                }}
-                                className="bg-transparent text-sm outline-none text-slate-700 dark:text-slate-300 w-full lg:w-32"
-                            />
-                            <span className="text-slate-400">-</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => {
-                                    setEndDate(e.target.value);
-                                    if (onDateRangeChange) onDateRangeChange(startDate, e.target.value);
-                                }}
-                                className="bg-transparent text-sm outline-none text-slate-700 dark:text-slate-300 w-full lg:w-32"
-                            />
-                        </div>
-
-                        {/* Search */}
-                        {enableSearch && (
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="Search records..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Table Content */}
@@ -366,7 +371,7 @@ function ReportTable<T extends { id?: string | number }>({
                                     {columns.map((col, colIdx) => (
                                         <td
                                             key={colIdx}
-                                            className={`p-4 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap ${col.className || ''}`}
+                                            className={`p-4 text-sm text-slate-700 dark:text-slate-300 ${col.accessorKey === 'name' ? 'whitespace-normal min-w-[120px]' : 'whitespace-nowrap'} ${col.className || ''}`}
                                         >
                                             {col.render ? col.render(item) : (item as any)[col.accessorKey]}
                                         </td>
