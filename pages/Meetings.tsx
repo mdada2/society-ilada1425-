@@ -42,6 +42,7 @@ const Meetings = () => {
   const [invitePeriod, setInvitePeriod] = useState('सकाळी');
   const [inviteChiefGuest, setInviteChiefGuest] = useState('');
   const [inviteGuestDesignation, setInviteGuestDesignation] = useState('अध्यक्ष');
+  const [customEventName, setCustomEventName] = useState('महाराष्ट्र दिनानिमित्त');
 
   // Meeting Form State
   const [title, setTitle] = useState('');
@@ -509,7 +510,7 @@ const Meetings = () => {
     } else if (inviteType === '26jan') {
       eventName = `${inviteEdition} व्या प्रजासत्ताक दिनानिमित्त`;
     } else {
-      eventName = `राष्ट्रीय दिनानिमित्त`;
+      eventName = customEventName || `राष्ट्रीय दिनानिमित्त`;
     }
 
     const flagSvgStr = `
@@ -993,6 +994,19 @@ const Meetings = () => {
                   </select>
                 </div>
 
+                {inviteType === 'custom' && (
+                  <div className="animate-fade-in">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">उत्सवाचे नाव (उदा. महाराष्ट्र दिनानिमित्त / संविधान दिनानिमित्त)</label>
+                    <input
+                      type="text"
+                      value={customEventName}
+                      onChange={(e) => setCustomEventName(e.target.value)}
+                      className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-bold"
+                      placeholder="उदा. महाराष्ट्र दिनानिमित्त"
+                    />
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">दिनांक (Date)</label>
@@ -1126,7 +1140,7 @@ const Meetings = () => {
                     श्री/श्रीमती <span className="border-b border-dashed border-black px-3 py-0.5 inline-block text-center font-bold text-slate-800 min-w-[120px]">_________________</span> स.न.वि.वि.
                   </p>
                   <p className="text-justify indent-6">
-                    आपणास कळविण्यात येते की दि. <strong>{inviteDate.split('-').reverse().join('.')}</strong> रोज <strong>{getInviteDay(inviteDate)}</strong> ला {invitePeriod !== 'none' ? <strong>{invitePeriod} </strong> : ''}ठीक <strong>{inviteTime}</strong> वाजता <strong>{inviteType === '15aug' ? `${inviteEdition} व्या स्वातंत्र्य दिनानिमित्त` : inviteType === '26jan' ? `${inviteEdition} व्या प्रजासत्ताक दिनानिमित्त` : 'राष्ट्रीय दिनानिमित्त'}</strong> ध्वजारोहण मा. श्री. <strong>{inviteChiefGuest}</strong> {inviteGuestDesignation} {SOCIETY_FULL_NAME} यांचे शुभ हस्ते होत आहे.
+                    आपणास कळविण्यात येते की दि. <strong>{inviteDate.split('-').reverse().join('.')}</strong> रोज <strong>{getInviteDay(inviteDate)}</strong> ला {invitePeriod !== 'none' ? <strong>{invitePeriod} </strong> : ''}ठीक <strong>{inviteTime}</strong> वाजता <strong>{inviteType === '15aug' ? `${inviteEdition} व्या स्वातंत्र्य दिनानिमित्त` : inviteType === '26jan' ? `${inviteEdition} व्या प्रजासत्ताक दिनानिमित्त` : (customEventName || 'राष्ट्रीय दिनानिमित्त')}</strong> ध्वजारोहण मा. श्री. <strong>{inviteChiefGuest}</strong> {inviteGuestDesignation} {SOCIETY_FULL_NAME} यांचे शुभ हस्ते होत आहे.
                   </p>
                   <p className="text-center font-bold mt-2 text-[11px]">
                     तरी सदर कार्यक्रमास आपली उपस्थिती प्रार्थनीय आहे.
