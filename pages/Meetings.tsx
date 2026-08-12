@@ -19,7 +19,7 @@ const Meetings = () => {
   const currentViceChairmanIds = viceChairmanIds || [];
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'records' | 'board' | 'allowance' | 'notice'>('records');
+  const [activeTab, setActiveTab] = useState<'records' | 'board' | 'allowance' | 'notice' | 'invitation'>('records');
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -33,6 +33,15 @@ const Meetings = () => {
   const [meetingToDelete, setMeetingToDelete] = useState<string | null>(null);
   const [deletePin, setDeletePin] = useState('');
   const [deleteError, setDeleteError] = useState('');
+
+  // --- Invitation Card State ---
+  const [inviteType, setInviteType] = useState<'15aug' | '26jan' | 'custom'>('15aug');
+  const [inviteEdition, setInviteEdition] = useState('८०');
+  const [inviteDate, setInviteDate] = useState(format(new Date(), 'yyyy-08-15'));
+  const [inviteTime, setInviteTime] = useState('०८:१०');
+  const [invitePeriod, setInvitePeriod] = useState('सकाळी');
+  const [inviteChiefGuest, setInviteChiefGuest] = useState('');
+  const [inviteGuestDesignation, setInviteGuestDesignation] = useState('अध्यक्ष');
 
   // Meeting Form State
   const [title, setTitle] = useState('');
@@ -208,6 +217,27 @@ const Meetings = () => {
       }
     }
   }, [noticeMeetingDate]);
+
+  useEffect(() => {
+    const chairman = members.find(m => m.id === settings.chairmanId);
+    if (chairman && !inviteChiefGuest) {
+      setInviteChiefGuest(chairman.name);
+    }
+  }, [members, settings.chairmanId, inviteChiefGuest]);
+
+  useEffect(() => {
+    if (inviteDate) {
+      const dateObj = new Date(inviteDate);
+      if (!isNaN(dateObj.getTime())) {
+        const year = dateObj.getFullYear();
+        if (inviteType === '15aug') {
+          setInviteEdition(toMarathiNumber(year - 1946));
+        } else if (inviteType === '26jan') {
+          setInviteEdition(toMarathiNumber(year - 1949));
+        }
+      }
+    }
+  }, [inviteDate, inviteType]);
 
   useEffect(() => {
     if (settings.allowanceSettings) {
@@ -461,6 +491,174 @@ const Meetings = () => {
     }
   };
 
+  const renderSingleInvitationTemplate = (recipientName: string, isForPdf = false) => {
+    const el = document.createElement('div');
+    el.className = "p-6 flex flex-col justify-between text-black relative bg-white";
+    el.style.width = '185mm';
+    el.style.height = '125mm';
+    el.style.border = '5px double #000';
+    el.style.fontFamily = "'DVOT SurekhMR', serif";
+    el.style.boxSizing = 'border-box';
+
+    const marathiDate = inviteDate.split('-').reverse().join('.');
+    const day = getInviteDay(inviteDate);
+    
+    let eventName = '';
+    if (inviteType === '15aug') {
+      eventName = `${inviteEdition} व्या स्वातंत्र्य दिनानिमित्त`;
+    } else if (inviteType === '26jan') {
+      eventName = `${inviteEdition} व्या प्रजासत्ताक दिनानिमित्त`;
+    } else {
+      eventName = `राष्ट्रीय दिनानिमित्त`;
+    }
+
+    const flagSvgStr = `
+      <svg viewBox="0 0 100 24" style="width: 100px; height: 24px;">
+        <path d="M 0 6 Q 25 2 50 6 T 100 6 L 100 12 Q 75 12 50 16 T 0 16 Z" fill="#FF9933" />
+        <path d="M 0 11 Q 25 7 50 11 T 100 11 L 100 17 Q 75 17 50 21 T 0 21 Z" fill="#FFFFFF" />
+        <path d="M 0 16 Q 25 12 50 16 T 100 16 L 100 22 Q 75 22 50 26 T 0 26 Z" fill="#138808" />
+        <circle cx="50" cy="13.5" r="2.5" fill="none" stroke="#000080" stroke-width="0.4" />
+      </svg>
+    `;
+
+    const isBlank = recipientName.startsWith('___');
+    const displayName = isBlank ? '' : recipientName;
+
+    el.innerHTML = `
+      <div style="text-align: center; border-bottom: 1.5px solid #ccc; padding-bottom: 6px; margin-bottom: 6px;">
+        <h2 style="font-size: 19px; font-weight: bold; margin: 0; color: #000; letter-spacing: 0.5px;">${SOCIETY_FULL_NAME}</h2>
+        <p style="font-size: 13px; margin: 2px 0 0 0; color: #475569; font-weight: bold;">ता. अर्जुनी/मोर. जि. गोंदिया</p>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; margin: 6px 0;">
+        <div>${flagSvgStr}</div>
+        <h3 style="font-size: 22px; font-weight: bold; text-decoration: underline; margin: 0; letter-spacing: 1px;">✡ निमंत्रण पत्रिका ✡</h3>
+        <div>${flagSvgStr}</div>
+      </div>
+
+      <div style="margin: 8px 0; font-size: 17px; line-height: 1.7; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+        <div style="width: 100%;">
+          <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 17.5px;">
+            श्री/श्रीमती <span style="border-bottom: 2px solid #000; padding: 0 10px; min-width: 440px; display: inline-block; text-align: center; font-weight: bold; margin: 0 4px;">${displayName}</span> स.न.वि.वि.
+          </p>
+          <p style="text-indent: 40px; margin: 0; text-align: justify; font-weight: bold;">
+            आपणास कळविण्यात येते की दि. <strong>${toMarathiNumber(marathiDate)}</strong> रोज <strong>${day}</strong> ला ${invitePeriod !== 'none' ? '<strong>' + invitePeriod + '</strong> ' : ''}ठीक <strong>${toMarathiNumber(inviteTime)}</strong> वाजता <strong>${eventName}</strong> ध्वजारोहण मा. श्री. <strong>${inviteChiefGuest}</strong> ${inviteGuestDesignation} ${SOCIETY_FULL_NAME} यांचे शुभ हस्ते होत आहे.
+          </p>
+          <p style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 17px; letter-spacing: 0.5px;">
+            तरी सदर कार्यक्रमास आपली उपस्थिती प्रार्थनीय आहे.
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top: auto; border-top: 1.5px solid #ddd; padding-top: 6px;">
+        <div style="text-align: center; font-size: 16px; font-weight: bold; line-height: 1.4;">
+          <p style="margin: 0; text-decoration: underline; letter-spacing: 0.5px;">आपले विनीत</p>
+          <p style="margin: 3px 0 0 0; font-size: 13.5px; color: #334155;">संचालक मंडळ तथा सचिव व कर्मचारी</p>
+          <p style="margin: 1px 0 0 0; font-size: 12px; color: #475569;">${SOCIETY_FULL_NAME}</p>
+        </div>
+      </div>
+    `;
+
+    return el;
+  };
+
+  const getInviteDay = (dateStr: string) => {
+    try {
+      const dateObj = new Date(dateStr);
+      if (isNaN(dateObj.getTime())) return '';
+      return MARATHI_DAYS[getDay(dateObj)];
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const handlePrintInvitation = async (printType: 'directors' | 'blank') => {
+    setIsPrinting(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      try {
+        await loadDVOTFont(pdf);
+        pdf.setFont('DVOT SurekhMR', 'normal');
+      } catch (fontError) {
+        console.warn('Could not load custom font, using default:', fontError);
+      }
+
+      const recipients = printType === 'directors' 
+        ? currentDirectors.map(d => d.name) 
+        : ['________________________________________'];
+
+      const totalPages = Math.ceil(recipients.length / 2);
+      setPrintProgress({ current: 0, total: totalPages });
+
+      const canvasOptions = {
+        scale: Capacitor.isNativePlatform() ? 1.5 : 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        allowTaint: false
+      };
+
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'fixed';
+      printContainer.style.top = '-10000px';
+      printContainer.style.left = '-10000px';
+      document.body.appendChild(printContainer);
+
+      for (let i = 0; i < recipients.length; i += 2) {
+        const container = document.createElement('div');
+        container.style.width = '210mm';
+        container.style.height = '297mm';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.backgroundColor = 'white';
+        container.style.padding = '15mm 10mm';
+        container.style.gap = '25mm';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'flex-start';
+
+        const card1 = renderSingleInvitationTemplate(recipients[i], true);
+        container.appendChild(card1);
+
+        if (recipients[i + 1]) {
+          const card2 = renderSingleInvitationTemplate(recipients[i + 1], true);
+          container.appendChild(card2);
+        } else {
+          const cardBlank = renderSingleInvitationTemplate('________________________________________', true);
+          container.appendChild(cardBlank);
+        }
+
+        printContainer.appendChild(container);
+
+        const currentPage = Math.floor(i / 2) + 1;
+        setPrintProgress({ current: currentPage, total: totalPages });
+
+        if (Capacitor.isNativePlatform() && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        const canvas = await html2canvas(container, canvasOptions);
+        printContainer.removeChild(container);
+
+        if (i > 0) pdf.addPage();
+        
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      }
+
+      document.body.removeChild(printContainer);
+      
+      const filename = inviteType === '15aug' ? 'Independence_Day_Invitation.pdf' : inviteType === '26jan' ? 'Republic_Day_Invitation.pdf' : 'Invitation_Card.pdf';
+      const blob = pdf.output('blob');
+      await downloadBlob(blob, filename);
+    } catch (err) {
+      console.error(err);
+      alert('प्रिंट करताना अडचण आली!');
+    } finally {
+      setIsPrinting(false);
+      setPrintProgress({ current: 0, total: 0 });
+    }
+  };
+
   // Helper to get recipient designation for notice
   const getRecipientDesignation = (director: Member) => {
     const isChairman = director.id === chairmanId;
@@ -606,6 +804,7 @@ const Meetings = () => {
         <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg overflow-x-auto no-scrollbar max-w-full">
           <button onClick={() => setActiveTab('records')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'records' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><FileText size={16} /> Records</button>
           <button onClick={() => setActiveTab('notice')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'notice' ? 'bg-white dark:bg-slate-600 text-purple-600 dark:text-purple-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><BellRing size={16} /> सभेचे नोटीस</button>
+          <button onClick={() => setActiveTab('invitation')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'invitation' ? 'bg-white dark:bg-slate-600 text-rose-600 dark:text-rose-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Mail size={16} /> निमंत्रण पत्रिका</button>
           <button onClick={() => setActiveTab('board')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'board' ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Briefcase size={16} /> Directors</button>
           <button onClick={() => setActiveTab('allowance')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'allowance' ? 'bg-white dark:bg-slate-600 text-green-600 dark:text-green-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Banknote size={16} /> Allowance</button>
         </div>
@@ -755,6 +954,190 @@ const Meetings = () => {
                     </div>
                   </div>
                   <p className="text-[15px] font-normal italic text-center">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'invitation' && (
+        <div className="animate-fade-in space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            {/* Invitation Details Form */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2">
+                <Mail className="text-rose-600" /> निमंत्रण पत्रिका माहिती भरा (Invitation Details)
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">कार्यक्रम प्रकार (Event Type)</label>
+                  <select
+                    value={inviteType}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setInviteType(val);
+                      const currentYear = new Date().getFullYear();
+                      if (val === '15aug') {
+                        setInviteDate(`${currentYear}-08-15`);
+                      } else if (val === '26jan') {
+                        setInviteDate(`${currentYear + 1}-01-26`);
+                      }
+                    }}
+                    className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+                  >
+                    <option value="15aug">१५ ऑगस्ट (स्वातंत्र्य दिन)</option>
+                    <option value="26jan">२६ जानेवारी (प्रजासत्ताक दिन)</option>
+                    <option value="custom">इतर / राष्ट्रीय दिन (Custom)</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">दिनांक (Date)</label>
+                    <input
+                      type="date"
+                      value={inviteDate}
+                      onChange={(e) => setInviteDate(e.target.value)}
+                      className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">दिवस / वार (Day)</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={getInviteDay(inviteDate)}
+                      className="w-full p-2 border dark:border-slate-600 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-sm font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">प्रहर (Period)</label>
+                    <select
+                      value={invitePeriod}
+                      onChange={(e) => setInvitePeriod(e.target.value)}
+                      className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold"
+                    >
+                      <option value="none">काही नाही</option>
+                      <option value="सकाळी">सकाळी</option>
+                      <option value="दुपारी">दुपारी</option>
+                      <option value="संध्याकाळी">संध्याकाळी</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">वेळ (Time)</label>
+                    <input
+                      type="text"
+                      value={inviteTime}
+                      onChange={(e) => setInviteTime(e.target.value)}
+                      className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">उत्सव वर्ष (Ed. No.)</label>
+                    <input
+                      type="text"
+                      value={inviteEdition}
+                      onChange={(e) => setInviteEdition(e.target.value)}
+                      className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">ध्वजारोहण शुभहस्ते (Chief Guest Name)</label>
+                  <input
+                    type="text"
+                    value={inviteChiefGuest}
+                    onChange={(e) => setInviteChiefGuest(e.target.value)}
+                    className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-bold"
+                    placeholder="उदा. मा. श्री. तानाजी शामराव ताराम"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">हुद्दा / पद (Designation)</label>
+                  <input
+                    type="text"
+                    value={inviteGuestDesignation}
+                    onChange={(e) => setInviteGuestDesignation(e.target.value)}
+                    className="w-full p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+                  />
+                </div>
+
+                <div className="pt-4 border-t dark:border-slate-700 space-y-3">
+                  <button
+                    onClick={() => handlePrintInvitation('directors')}
+                    className="w-full bg-rose-600 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-rose-700 transition shadow-sm font-bold text-sm"
+                  >
+                    <Printer size={18} /> संचालक निमंत्रण पत्रिका प्रिंट करा (Print for Directors)
+                  </button>
+
+                  <button
+                    onClick={() => handlePrintInvitation('blank')}
+                    className="w-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-bold text-sm border dark:border-slate-600"
+                  >
+                    <Download size={18} /> कोरी निमंत्रण पत्रिका प्रिंट करा (Print Blank Card)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Interactive Card Preview */}
+            <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border dark:border-slate-700">
+              <span className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Live Preview (निमंत्रण पत्रिका स्वरूप)</span>
+              
+              <div
+                className="bg-white text-black p-4 rounded-lg shadow-xl relative border-2 border-dashed border-slate-400 w-full max-w-[420px] min-h-[275px] flex flex-col justify-between"
+                style={{ fontFamily: "'DVOT SurekhMR', serif" }}
+              >
+                {/* Header Block */}
+                <div className="text-center border-b pb-1 mb-1 border-slate-300">
+                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">{SOCIETY_FULL_NAME}</h4>
+                  <p className="text-[8.5px] text-slate-500 mt-0.5">ता. अर्जुनी/मोर. जि. गोंदिया</p>
+                </div>
+
+                {/* Flags and Title Row */}
+                <div className="flex items-center justify-between my-1">
+                  <svg viewBox="0 0 100 24" className="w-14 h-5 opacity-90">
+                    <path d="M 0 6 Q 25 2 50 6 T 100 6 L 100 12 Q 75 12 50 16 T 0 16 Z" fill="#FF9933" />
+                    <path d="M 0 11 Q 25 7 50 11 T 100 11 L 100 17 Q 75 17 50 21 T 0 21 Z" fill="#FFFFFF" />
+                    <path d="M 0 16 Q 25 12 50 16 T 100 16 L 100 22 Q 75 22 50 26 T 0 26 Z" fill="#138808" />
+                    <circle cx="50" cy="13.5" r="2.5" fill="none" stroke="#000080" strokeWidth="0.4" />
+                  </svg>
+
+                  <h3 className="text-xs font-bold text-black text-center underline">✡ निमंत्रण पत्रिका ✡</h3>
+
+                  <svg viewBox="0 0 100 24" className="w-14 h-5 opacity-90">
+                    <path d="M 0 6 Q 25 2 50 6 T 100 6 L 100 12 Q 75 12 50 16 T 0 16 Z" fill="#FF9933" />
+                    <path d="M 0 11 Q 25 7 50 11 T 100 11 L 100 17 Q 75 17 50 21 T 0 21 Z" fill="#FFFFFF" />
+                    <path d="M 0 16 Q 25 12 50 16 T 100 16 L 100 22 Q 75 22 50 26 T 0 26 Z" fill="#138808" />
+                    <circle cx="50" cy="13.5" r="2.5" fill="none" stroke="#000080" strokeWidth="0.4" />
+                  </svg>
+                </div>
+
+                {/* Content Block */}
+                <div className="flex-1 flex flex-col justify-center text-[10.5px] leading-relaxed my-1.5">
+                  <p className="mb-1.5 font-bold">
+                    श्री/श्रीमती <span className="border-b border-dashed border-black px-3 py-0.5 inline-block text-center font-bold text-slate-800 min-w-[120px]">_________________</span> स.न.वि.वि.
+                  </p>
+                  <p className="text-justify indent-6">
+                    आपणास कळविण्यात येते की दि. <strong>{inviteDate.split('-').reverse().join('.')}</strong> रोज <strong>{getInviteDay(inviteDate)}</strong> ला {invitePeriod !== 'none' ? <strong>{invitePeriod} </strong> : ''}ठीक <strong>{inviteTime}</strong> वाजता <strong>{inviteType === '15aug' ? `${inviteEdition} व्या स्वातंत्र्य दिनानिमित्त` : inviteType === '26jan' ? `${inviteEdition} व्या प्रजासत्ताक दिनानिमित्त` : 'राष्ट्रीय दिनानिमित्त'}</strong> ध्वजारोहण मा. श्री. <strong>{inviteChiefGuest}</strong> {inviteGuestDesignation} {SOCIETY_FULL_NAME} यांचे शुभ हस्ते होत आहे.
+                  </p>
+                  <p className="text-center font-bold mt-2 text-[11px]">
+                    तरी सदर कार्यक्रमास आपली उपस्थिती प्रार्थनीय आहे.
+                  </p>
+                </div>
+
+                {/* Footer Signature Block */}
+                <div className="border-t pt-1 mt-1 text-center text-[9px] font-bold">
+                  <p className="underline text-slate-700">आपले विनीत</p>
+                  <p className="text-slate-600 mt-0.5">संचालक मंडळ तथा सचिव व कर्मचारी</p>
+                  <p className="text-slate-500 mt-0.5">{SOCIETY_FULL_NAME}</p>
                 </div>
               </div>
             </div>

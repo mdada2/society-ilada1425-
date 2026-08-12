@@ -253,20 +253,18 @@ function ReportTable<T extends { id?: string | number }>({
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                     <h2 className="text-base md:text-xl font-bold text-slate-800 dark:text-white shrink-0">{title}</h2>
                     
-                    {!enableDateFilter && (
-                        <div className="hidden md:flex gap-2 shrink-0">
-                            {enableShare && (
-                                <button onClick={handleShare} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-sm font-medium">
-                                    <Share2 size={16} /> Share
-                                </button>
-                            )}
-                            {enableExport && (
-                                <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-sm font-medium">
-                                    <Download size={16} /> CSV
-                                </button>
-                            )}
-                        </div>
-                    )}
+                    <div className="hidden md:flex gap-2 shrink-0">
+                        {enableShare && (
+                            <button onClick={handleShare} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition text-sm font-medium">
+                                <Share2 size={16} /> Share
+                            </button>
+                        )}
+                        {enableExport && (
+                            <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 transition text-sm font-medium">
+                                <Download size={16} /> CSV
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {enableDateFilter && (
@@ -309,7 +307,7 @@ function ReportTable<T extends { id?: string | number }>({
                         </div>
                     )}
 
-                    <div className="flex gap-1.5 shrink-0">
+                    <div className="flex md:hidden gap-1.5 shrink-0">
                         {enableShare && (
                             <button
                                 onClick={handleShare}
