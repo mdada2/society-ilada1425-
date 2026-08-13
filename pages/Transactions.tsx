@@ -213,9 +213,12 @@ const Transactions = () => {
 
                     // Auto-set payment mode to Bank and search for GDCC Bank KCC 01
                     setPaymentMode('Bank');
-                    const gdccBank = societyBanks.find(b => b.bankName.toLowerCase().includes("gdcc") && b.bankName.toLowerCase().includes("kcc")) ||
-                                     societyBanks.find(b => b.bankName.toLowerCase().includes("gdcc")) ||
-                                     societyBanks[0];
+                    const gdccBank = societyBanks.find(b => {
+                        const fullSearch = `${b.bankName} ${b.accountType} ${b.accountNo}`.toLowerCase();
+                        return fullSearch.includes("gdcc") && (fullSearch.includes("kcc") || fullSearch.includes("01") || fullSearch.includes("०१"));
+                    }) ||
+                    societyBanks.find(b => b.bankName.toLowerCase().includes("gdcc")) ||
+                    societyBanks[0];
                     if (gdccBank) {
                         setSelectedBankId(gdccBank.id);
                     }
