@@ -211,6 +211,15 @@ const Transactions = () => {
                         setAmount(selectedMember.loanPrincipal + totalInterest + bFund + jFund);
                     }
 
+                    // Auto-set payment mode to Bank and search for GDCC Bank KCC 01
+                    setPaymentMode('Bank');
+                    const gdccBank = societyBanks.find(b => b.bankName.toLowerCase().includes("gdcc") && b.bankName.toLowerCase().includes("kcc")) ||
+                                     societyBanks.find(b => b.bankName.toLowerCase().includes("gdcc")) ||
+                                     societyBanks[0];
+                    if (gdccBank) {
+                        setSelectedBankId(gdccBank.id);
+                    }
+
                     prevFundsRef.current = { building: needsBuilding, joint: needsJoint };
                 }
             }
@@ -222,7 +231,7 @@ const Transactions = () => {
             prevMemberIdRef.current = '';
         }
         isInitialLoadRef.current = false;
-    }, [selectedMember, date, settings, fundStatus, type, accountType]);
+    }, [selectedMember, date, settings, fundStatus, type, accountType, societyBanks]);
 
     // Adjust Amount when Checkboxes are toggled
     useEffect(() => {
