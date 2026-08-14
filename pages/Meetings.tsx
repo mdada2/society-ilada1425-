@@ -80,7 +80,37 @@ const Meetings = () => {
   );
   const [noticeMainBody, setNoticeMainBody] = useState('या नोटीसाद्वारे आपणास कळविण्यात येते की, संस्थेच्या व्यवस्थापकीय संचालक मंडळाची [सभेचा प्रकार] दिनांक [तारीख] रोज [वार] ला [वेळ] वाजता [स्थळ] होईल तरी सभेला आपण वेळेवर उपस्थित राहावे ही विनंती.');
 
+  // --- Annual General Meeting Notice (AGM Notice) State ---
+  const [agmYear, setAgmYear] = useState('३५वी');
+  const [agmOutwardNo, setAgmOutwardNo] = useState('622/2025');
+  const [agmNoticeDate, setAgmNoticeDate] = useState('2025-08-21');
+  const [agmMeetingYear, setAgmMeetingYear] = useState('2024-25');
+  const [agmMeetingDate, setAgmMeetingDate] = useState('2025-09-23');
+  const [agmMeetingTime, setAgmMeetingTime] = useState('12:00');
+  const [agmMeetingPeriod, setAgmMeetingPeriod] = useState('दुपारी');
+  const [agmVenue, setAgmVenue] = useState('संस्थेचे नविन गोडाऊन येथे');
+  const [agmChairmanName, setAgmChairmanName] = useState('श्री. तानाजी शामराव ताराम');
+  const [agmAgenda, setAgmAgenda] = useState<string>(
+    "मागील वार्षिक साधारण सभेचे ( आमसभेचे ) प्रतिवृत्त वाचुन कायम करणे.\nसंस्थेचे सन 2024-25 या वर्षाचे वार्षिक पत्रक, जमा खर्च , नफा तोटा पत्रक , ताळेबंद पत्रक , व्यापारी पत्रके वाचुन मंजूर करणे.\nसंस्थेचे सन 2024-25 चे ऑडिट दोष दुरुस्ती अहवाल संचालक मंडळाने मंजूरी केलेले दोष दुरुस्ती अहवाल सहित स्वीकारणे.\nसंस्थेचे सन 2024-25 या वर्षाचे मंजूर अंदाज पत्रकाच्या कमी अधिक तरतुदीस मंजूरी देणे व सन 2025-26 च्या अंदाज पत्रकास शिफारस करणे.\nसंस्थेचे सन 2025-26 वर्षाकरीता लेखापरीक्षणासाठी लेखापरीक्षक नियुक्त करणे.\nउपविधी क्र. ५ मधील मर्यादेस राहुन पुढील वर्षाकरीता उभारावयाची बाहेरील कर्जाची मर्यादा ठरवणे.\nथकीत सभासदाला संस्थेच्या कामकाजात भाग घेता येणार नाही.\nथकीत सभासदाचे अवॉर्ड कार्यवाही करण्यास निर्णय घेणे. ( अवॉर्ड कारवाई करीता येणारा अतिरिक्त खर्च वसूल करणे)\nमा. अध्यक्षाच्या परवानगीने वेळेवर येणारे विषय।"
+  );
+  const [agmTips, setAgmTips] = useState<string>(
+    "१) कोरम अभावी तहकूब झालेली सभा त्याच दिवशी, त्याच ठिकाणी विषय सुचीप्रमाणे अर्ध्या तासानंतर घेण्यात येईल. त्यास कोरमची आवश्यकता राहणार नाही.\n२) ज्या सभासदांना विषयाला अनुसरून काही प्रश्न विचारावयांचे असल्यास सभेच्या ३ दिवसा अगोदर संस्थेच्या कार्यालयीन वेळात लेखी अर्जाने कळवावे अन्यथा वेळेवर विचारलेल्या प्रश्नांचा विचार केला जाणार नाही.\n३) सभासदाशिवाय इतरांना सभेत भाग घेता येणार नाही.\n४) संस्थेचे वार्षिक हिसोबाचे पत्रके सन 2024-25 चे संस्थेच्या कार्यालयात कार्यालयीन वेळात नोटीस बोर्डवर पाहावयास मिळेल।"
+  );
+  const [agmManagerName, setAgmManagerName] = useState('श्री. सी. बी. बागडेरिया');
+  const [agmViceChairmanName, setAgmViceChairmanName] = useState('श्री. सि. व्ही. रामटेके');
+  const [agmChairmanSignName, setAgmChairmanSignName] = useState('श्री. टी. एस. ताराम');
+  const [agmForwardList, setAgmForwardList] = useState<string>(
+    "१) मा. तालुका सहायक निबंधक साहेब सहकारी संस्था अर्जुनी/मोर. यांचे माहिती करीता सादर।\n२) मा. उपप्रादेशिक व्यवस्थापक साहेब शाखा- नवेगाव/बांध यांचे माहिती करीता सादर।\n३) मा. शाखा व्यवस्थापक साहेब शाखा दि. गोंदिया डि. से. को. ऑप. बँक शाखा- केशोरी\n४) मा. उपलेखा परीक्षक साहेब सहकारी संस्था, अर्जुनी/मोर।"
+  );
+
+  // --- AGM Font Sizes ---
+  const [agmBodyFontSize, setAgmBodyFontSize] = useState<number>(14.5);
+  const [agmAgendaFontSize, setAgmAgendaFontSize] = useState<number>(13.0);
+  const [agmTipsFontSize, setAgmTipsFontSize] = useState<number>(11.5);
+  const [agmForwardFontSize, setAgmForwardFontSize] = useState<number>(12.5);
+
   const noticePrintRef = useRef<HTMLDivElement>(null);
+  const agmNoticePrintRef = useRef<HTMLDivElement>(null);
   const allowanceRef = useRef<HTMLDivElement>(null);
 
   // Helper for Marathi Numbers
@@ -492,6 +522,210 @@ const Meetings = () => {
     }
   };
 
+  const renderSingleAgmNoticeTemplate = (recipientName: string = '', isForPdf = false) => {
+    const el = document.createElement('div');
+    el.className = "flex flex-col text-black bg-white";
+    el.style.width = '210mm';
+    el.style.height = '297mm';
+    el.style.padding = '8mm 12mm 6mm 12mm';
+    el.style.border = '2px solid #000';
+    el.style.fontFamily = "'DVOT SurekhMR', serif";
+    el.style.boxSizing = 'border-box';
+
+    el.style.fontSize = `${agmBodyFontSize}px`;
+    el.style.lineHeight = '1.45';
+
+    const formattedNoticeDate = agmNoticeDate.split('-').reverse().join('/');
+    const formattedMeetingDate = agmMeetingDate.split('-').reverse().join('/');
+    const day = getInviteDay(agmMeetingDate);
+
+    // Format list items
+    const agendaLines = agmAgenda.split('\n').filter(l => l.trim() !== '');
+    const tipLines = agmTips.split('\n').filter(l => l.trim() !== '');
+    const forwardLines = agmForwardList.split('\n').filter(l => l.trim() !== '');
+
+    const agendaHtml = agendaLines.map((line, idx) => {
+      const cleanLine = line.replace(/^\d+[\s\.\)-]+/, '').trim();
+      return `<li style="margin-bottom: 3px; text-align: justify; text-indent: -18px; padding-left: 18px;">${toMarathiNumber(idx + 1)}) ${cleanLine}</li>`;
+    }).join('');
+
+    const tipsHtml = tipLines.map((line) => {
+      return `<li style="margin-bottom: 2px; text-align: justify;">${line}</li>`;
+    }).join('');
+
+    const forwardHtml = forwardLines.map((line) => {
+      return `<li style="margin-bottom: 1px; text-align: justify;">${line}</li>`;
+    }).join('');
+
+    const sigBlockHtml = `
+      <div style="display: flex; justify-content: space-between; text-align: center; font-weight: bold; font-size: ${agmBodyFontSize - 1}px; margin-top: 10px; margin-bottom: 4px;">
+        <div style="width: 33%;">
+          <p style="margin: 0; font-size: ${agmBodyFontSize}px; white-space: nowrap;">${agmManagerName}</p>
+          <p style="margin: 2px 0 0 0; font-size: ${agmBodyFontSize - 2}px; font-weight: normal;">प्रभारी व्यवस्थापक</p>
+        </div>
+        <div style="width: 33%;">
+          <p style="margin: 0; font-size: ${agmBodyFontSize}px; white-space: nowrap;">${agmViceChairmanName}</p>
+          <p style="margin: 2px 0 0 0; font-size: ${agmBodyFontSize - 2}px; font-weight: normal;">उपाध्यक्ष</p>
+        </div>
+        <div style="width: 33%;">
+          <p style="margin: 0; font-size: ${agmBodyFontSize}px; white-space: nowrap;">${agmChairmanSignName}</p>
+          <p style="margin: 2px 0 0 0; font-size: ${agmBodyFontSize - 2}px; font-weight: normal;">अध्यक्ष</p>
+        </div>
+      </div>
+      <p style="text-align: center; font-weight: bold; margin: 3px 0 6px 0; font-size: ${agmBodyFontSize - 1.5}px; letter-spacing: 0.5px;">
+        आदिवासी विविध कार्य. सह. संस्था मर्या. ईळदा र. नं.१४२५
+      </p>
+    `;
+
+    el.innerHTML = `
+      <!-- Header -->
+      <div style="text-align: center; position: relative;">
+        <p style="margin: 0; font-size: ${agmBodyFontSize - 2.5}px; font-weight: bold; letter-spacing: 0.5px;">* बिना सहकार नाही उध्दार *</p>
+        <h1 style="margin: 2px 0 0 0; font-size: ${agmBodyFontSize + 4.5}px; font-weight: bold; color: #000; letter-spacing: 0.5px;">
+          आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं.१४२५
+        </h1>
+        <p style="margin: 0; font-size: ${agmBodyFontSize - 1}px; font-weight: bold;">ता.अर्जुनी/मोर. जि. गोंदिया</p>
+        <div style="border-bottom: 1.5px solid #000; margin-top: 4px; margin-bottom: 2px;"></div>
+      </div>
+
+      <!-- Year and Outward Row -->
+      <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${agmBodyFontSize - 1}px; margin-top: 2px; padding: 0 4px;">
+        <div style="width: 25%;">
+          <span>वर्ष ${agmYear},</span>
+        </div>
+        <div style="width: 50%; text-align: center;">
+          <h2 style="margin: 0; font-size: ${agmBodyFontSize + 5.5}px; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; white-space: nowrap;">
+            वार्षिक सर्वसाधारण सभेची नोटीस
+          </h2>
+        </div>
+        <div style="width: 25%; text-align: right;">
+          <span>दिनांक: ${toMarathiNumber(formattedNoticeDate)}</span>
+        </div>
+      </div>
+
+      <!-- Subtitle and Outward Row -->
+      <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${agmBodyFontSize - 1}px; margin-top: 2px; margin-bottom: 6px; padding: 0 4px;">
+        <div style="font-size: ${agmBodyFontSize - 1}px; width: 33%;">
+          जावक क्र. ${toMarathiNumber(agmOutwardNo)}
+        </div>
+        <div style="font-size: ${agmBodyFontSize - 1}px; font-style: italic; width: 34%; text-align: center;">
+          ( संस्थेच्या सभासदाकरिता )
+        </div>
+        <div style="width: 33%;"></div>
+      </div>
+
+      <!-- Recipient Address Line (Single Line, No Wrap) -->
+      <div style="font-size: ${agmBodyFontSize + 0.5}px; font-weight: bold; margin-bottom: 6px; padding-bottom: 4px; display: flex; align-items: baseline; gap: 4px;">
+        <span style="white-space: nowrap;">प्रति, सभासद श्री / श्रीमती :</span>
+        <span style="border-bottom: 1px dashed #000; flex: 1; min-width: 150px; display: inline-block;">
+          ${recipientName || '&nbsp;'}
+        </span>
+        <span style="white-space: nowrap; margin-left: 10px;">राहणार :</span>
+        <span style="border-bottom: 1px dashed #000; width: 110px; display: inline-block;">&nbsp;</span>
+      </div>
+
+      <!-- Salutation and Body -->
+      <div style="margin-bottom: 6px;">
+        <p style="margin: 0; font-weight: bold; font-size: ${agmBodyFontSize}px;">महोदय,</p>
+        <p style="text-indent: 40px; margin: 2px 0 0 0; text-align: justify; font-weight: 500; font-size: ${agmBodyFontSize}px; line-height: 1.45;">
+          आपणास सदर नोटीसाद्वारे सुचित करण्यात येते की, आदिवासी विविध कार्यकारी सह. संस्था मर्या. ईळदा र. नं. १४२५ या संस्थेची सन ${toMarathiNumber(agmMeetingYear)} ची <strong>“वार्षिक आमसभा”</strong> ( सर्वसाधारण सभा ) दि. <strong>${toMarathiNumber(formattedMeetingDate)}</strong> रोज <strong>${day}</strong> ${agmMeetingPeriod} ठीक <strong>${toMarathiNumber(agmMeetingTime)}</strong> वाजता <strong>${agmVenue}</strong> घेण्याचे ठरवले आहे. तरी संस्थेचे सर्व सभासदांनी सभेला हजर राहुन खालील विषय सुची प्रमाणे सभेचे कामकाज चालविण्यास मदत करावे. सभेचे अध्यक्ष मा. श्री. <strong>${agmChairmanName}</strong> यांच्या अध्यक्षते खाली सभा पार पडेल.
+        </p>
+      </div>
+
+      <!-- Agenda Title -->
+      <p style="text-align: center; font-weight: bold; margin: 4px 0; font-size: ${agmBodyFontSize + 0.5}px; text-decoration: underline;">
+        -: सभेपुढील विषय :-
+      </p>
+
+      <!-- Agenda List -->
+      <ul style="list-style-type: none; padding-left: 0; margin: 0 0 4px 0; font-size: ${agmAgendaFontSize}px; line-height: 1.4;">
+        ${agendaHtml}
+      </ul>
+
+      <!-- Tips Title & List -->
+      <div style="border: 1.5px solid #000; background-color: #f1f5f9; padding: 6px 10px; margin-top: 6px; border-radius: 4px; font-size: ${agmTipsFontSize}px; line-height: 1.35;">
+        <span style="font-weight: bold; text-decoration: underline; display: block; margin-bottom: 3px;">टिप:-</span>
+        <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+          ${tipsHtml}
+        </ul>
+      </div>
+
+      <!-- First Signature Block -->
+      ${sigBlockHtml}
+
+      <!-- Separator for Dispatch Copy Removed -->
+      <div style="margin-top: 5px; margin-bottom: 5px;"></div>
+
+      <!-- Forward / Copy Section -->
+      <div style="font-size: ${agmForwardFontSize}px; line-height: 1.4; margin-bottom: 4px;">
+        <span style="font-weight: bold; text-decoration: underline; display: block; margin-bottom: 3px;">प्रतिलीपी सादर :-</span>
+        <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+          ${forwardHtml}
+        </ul>
+      </div>
+
+      <!-- Bottom Signature Block (Repeated) -->
+      <div style="margin-top: auto;">
+        ${sigBlockHtml}
+      </div>
+    `;
+
+    return el;
+  };
+
+  const handlePrintAgmNotice = async () => {
+    setIsPrinting(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      // Load custom font
+      try {
+        await loadDVOTFont(pdf);
+        pdf.setFont('DVOT SurekhMR', 'normal');
+      } catch (fontError) {
+        console.warn('Could not load custom font, using default:', fontError);
+      }
+
+      const totalPages = 1;
+      setPrintProgress({ current: 1, total: totalPages });
+
+      const canvasOptions = {
+        scale: Capacitor.isNativePlatform() ? 1.5 : 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        allowTaint: false
+      };
+
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'fixed';
+      printContainer.style.top = '-10000px';
+      printContainer.style.left = '-10000px';
+      document.body.appendChild(printContainer);
+
+      // Render general blank notice
+      const container = renderSingleAgmNoticeTemplate('', true);
+      printContainer.appendChild(container);
+
+      const canvas = await html2canvas(container, canvasOptions);
+      printContainer.removeChild(container);
+      document.body.removeChild(printContainer);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.7);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+
+      const itemBlob = pdf.output('blob');
+      await downloadBlob(itemBlob, `AGM_Meeting_Notice_${format(new Date(agmMeetingDate), 'dd_MM_yyyy')}.pdf`);
+
+    } catch (e) {
+      console.error('Print AGM notice error:', e);
+      alert("प्रिंट प्रक्रिया अयशस्वी झाली. कृपया पुन्हा प्रयत्न करा.");
+    } finally {
+      setIsPrinting(false);
+      setPrintProgress({ current: 0, total: 0 });
+    }
+  };
+
   const renderSingleInvitationTemplate = (recipientName: string, isForPdf = false) => {
     const el = document.createElement('div');
     el.className = "p-6 flex flex-col justify-between text-black relative bg-white";
@@ -785,15 +1019,25 @@ const Meetings = () => {
     setShowModal(false);
   };
 
-  const initiateDeleteMeeting = (id: string) => {
-    setMeetingToDelete(id); setDeletePin(''); setDeleteError(''); setShowDeleteModal(true);
-  };
-
   const confirmDeleteMeeting = () => {
     if (deletePin === settings.securityPin && meetingToDelete) {
       deleteMeeting(meetingToDelete); setShowDeleteModal(false); setMeetingToDelete(null);
     } else setDeleteError("Incorrect PIN");
   };
+
+  const initiateDeleteMeeting = (id: string) => {
+    setMeetingToDelete(id); setDeletePin(''); setDeleteError(''); setShowDeleteModal(true);
+  };
+
+  const totalLength = agmAgenda.length + agmTips.length + agmForwardList.length;
+  let baseFontSize = 15.5;
+  if (totalLength > 1200) {
+    baseFontSize = 13.0;
+  } else if (totalLength > 1000) {
+    baseFontSize = 14.0;
+  } else if (totalLength < 700) {
+    baseFontSize = 16.5;
+  }
 
   return (
     <div className="p-4 md:p-6 pb-24">
@@ -805,6 +1049,7 @@ const Meetings = () => {
         <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg overflow-x-auto no-scrollbar max-w-full">
           <button onClick={() => setActiveTab('records')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'records' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><FileText size={16} /> Records</button>
           <button onClick={() => setActiveTab('notice')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'notice' ? 'bg-white dark:bg-slate-600 text-purple-600 dark:text-purple-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><BellRing size={16} /> सभेचे नोटीस</button>
+          <button onClick={() => setActiveTab('agm_notice')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'agm_notice' ? 'bg-white dark:bg-slate-600 text-teal-600 dark:text-teal-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><FileText size={16} /> वार्षिक आमसभा नोटीस</button>
           <button onClick={() => setActiveTab('invitation')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'invitation' ? 'bg-white dark:bg-slate-600 text-rose-600 dark:text-rose-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Mail size={16} /> निमंत्रण पत्रिका</button>
           <button onClick={() => setActiveTab('board')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'board' ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Briefcase size={16} /> Directors</button>
           <button onClick={() => setActiveTab('allowance')} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'allowance' ? 'bg-white dark:bg-slate-600 text-green-600 dark:text-green-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Banknote size={16} /> Allowance</button>
@@ -955,6 +1200,302 @@ const Meetings = () => {
                     </div>
                   </div>
                   <p className="text-[15px] font-normal italic text-center">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'agm_notice' && (
+        <div className="animate-fade-in space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            {/* Form Details */}
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border dark:border-slate-700">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2 flex items-center gap-2 border-b dark:border-slate-700 pb-2">
+                <ClipboardList className="text-teal-600" /> वार्षिक आमसभा नोटीस माहिती भरा (AGM Details)
+              </h3>
+
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">वर्ष (उदा. ३५वी)</label>
+                  <input type="text" value={agmYear} onChange={e => setAgmYear(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">जावक क्र. (Outward No)</label>
+                  <input type="text" value={agmOutwardNo} onChange={e => setAgmOutwardNo(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">नोटीस दिनांक</label>
+                  <input type="date" value={agmNoticeDate} onChange={e => setAgmNoticeDate(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">सभेचे आर्थिक वर्ष (FY Year)</label>
+                  <input type="text" value={agmMeetingYear} onChange={e => setAgmMeetingYear(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">सभेचा दिनांक</label>
+                  <input type="date" value={agmMeetingDate} onChange={e => setAgmMeetingDate(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">प्रहर (Period)</label>
+                  <select value={agmMeetingPeriod} onChange={e => setAgmMeetingPeriod(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold">
+                    <option value="सकाळी">सकाळी</option>
+                    <option value="दुपारी">दुपारी</option>
+                    <option value="संध्याकाळी">संध्याकाळी</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">सभेची वेळ (Time)</label>
+                  <input type="text" value={agmMeetingTime} onChange={e => setAgmMeetingTime(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">सभेचे स्थळ (Venue)</label>
+                  <input type="text" value={agmVenue} onChange={e => setAgmVenue(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">सभेचे अध्यक्ष (Meeting Chairman)</label>
+                  <input type="text" value={agmChairmanName} onChange={e => setAgmChairmanName(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">प्रभारी व्यवस्थापक</label>
+                  <input type="text" value={agmManagerName} onChange={e => setAgmManagerName(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">उपाध्यक्ष</label>
+                  <input type="text" value={agmViceChairmanName} onChange={e => setAgmViceChairmanName(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">अध्यक्ष (स्वाक्षरी नाव)</label>
+                  <input type="text" value={agmChairmanSignName} onChange={e => setAgmChairmanSignName(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-bold" />
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">सभेपुढील विषय सूची (Agenda Subjects)</label>
+                <textarea rows={6} value={agmAgenda} onChange={e => setAgmAgenda(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-medium" />
+              </div>
+
+              <div className="mb-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">टिप (Notes)</label>
+                <textarea rows={4} value={agmTips} onChange={e => setAgmTips(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-medium" />
+              </div>
+
+              <div className="mb-3">
+                <label className="block text-xs font-bold text-slate-500 mb-1">प्रतिलीपी सादर (Copy Forwarded to)</label>
+                <textarea rows={4} value={agmForwardList} onChange={e => setAgmForwardList(e.target.value)} className="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white text-xs font-medium" />
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-4">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1">
+                  🔍 फॉन्ट आकार नियंत्रण (Font Size Controls)
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded border dark:border-slate-700">
+                    <span className="font-semibold text-slate-500">मुख्य मजकूर:</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => setAgmBodyFontSize(Math.max(10, agmBodyFontSize - 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">-</button>
+                      <span className="font-bold text-slate-800 dark:text-white w-8 text-center">{agmBodyFontSize.toFixed(1)}</span>
+                      <button type="button" onClick={() => setAgmBodyFontSize(Math.min(22, agmBodyFontSize + 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">+</button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded border dark:border-slate-700">
+                    <span className="font-semibold text-slate-500">सभेचे विषय:</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => setAgmAgendaFontSize(Math.max(10, agmAgendaFontSize - 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">-</button>
+                      <span className="font-bold text-slate-800 dark:text-white w-8 text-center">{agmAgendaFontSize.toFixed(1)}</span>
+                      <button type="button" onClick={() => setAgmAgendaFontSize(Math.min(22, agmAgendaFontSize + 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">+</button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded border dark:border-slate-700">
+                    <span className="font-semibold text-slate-500">टिप (Notes):</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => setAgmTipsFontSize(Math.max(8, agmTipsFontSize - 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">-</button>
+                      <span className="font-bold text-slate-800 dark:text-white w-8 text-center">{agmTipsFontSize.toFixed(1)}</span>
+                      <button type="button" onClick={() => setAgmTipsFontSize(Math.min(20, agmTipsFontSize + 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">+</button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded border dark:border-slate-700">
+                    <span className="font-semibold text-slate-500">प्रतिलीपी:</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => setAgmForwardFontSize(Math.max(9, agmForwardFontSize - 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">-</button>
+                      <span className="font-bold text-slate-800 dark:text-white w-8 text-center">{agmForwardFontSize.toFixed(1)}</span>
+                      <button type="button" onClick={() => setAgmForwardFontSize(Math.min(22, agmForwardFontSize + 0.5))} className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold dark:text-white">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setShowPreview(!showPreview)} className="bg-amber-100 text-amber-700 py-3 rounded-lg font-bold flex items-center justify-center gap-2">
+                  <Eye size={20} /> {showPreview ? 'लपवा' : 'Preview पहा'}
+                </button>
+                <button
+                  onClick={handlePrintAgmNotice}
+                  disabled={isPrinting}
+                  className={`bg-teal-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 shadow-lg transition ${isPrinting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-teal-700'}`}
+                >
+                  {isPrinting ? <Loader2 size={20} className="animate-spin" /> : <Printer size={20} />}
+                  {isPrinting ? 'प्रिंट होत आहे...' : 'आमसभा नोटीस प्रिंट (A4)'}
+                </button>
+              </div>
+            </div>
+
+            {/* Live Preview */}
+            <div className={`bg-slate-100 dark:bg-slate-950 p-4 rounded-xl border-2 border-dashed border-slate-300 flex justify-center overflow-x-auto min-h-[700px] ${!showPreview ? 'hidden lg:flex' : ''}`}>
+              <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+                <div ref={agmNoticePrintRef} className="bg-white text-black w-[210mm] shadow-2xl relative min-h-[297mm] border-2 border-black flex flex-col" style={{ fontFamily: "'DVOT SurekhMR', serif", boxSizing: 'border-box', fontSize: `${baseFontSize}px`, padding: '8mm 12mm 6mm 12mm', lineHeight: '1.45' }}>
+                  
+                  {/* Header */}
+                  <div className="text-center relative">
+                    <p className="m-0 font-bold tracking-wider" style={{ fontSize: `${baseFontSize - 1.5}px` }}>* बिना सहकार नाही उध्दार *</p>
+                    <h1 className="m-1 font-bold text-black letter-spacing-[0.5px]" style={{ fontSize: `${baseFontSize + 4.5}px` }}>
+                      आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र.नं.१४२५
+                    </h1>
+                    <p className="m-0 text-[13px] font-bold text-slate-800">ता.अर्जुनी/मोर. जि. गोंदिया</p>
+                    <div className="border-b border-black mt-2 mb-1"></div>
+                  </div>
+
+                  {/* Year, Title and Date Row */}
+                  <div className="flex justify-between font-bold text-[13px] mt-2 px-1">
+                    <div className="w-[25%]">
+                      <span>वर्ष {agmYear},</span>
+                    </div>
+                    <div className="w-[50%] text-center">
+                      <h2 className="m-0 text-[20px] font-bold underline tracking-wider whitespace-nowrap">
+                        वार्षिक सर्वसाधारण सभेची नोटीस
+                      </h2>
+                    </div>
+                    <div className="w-[25%] text-right">
+                      <span>दिनांक: {toMarathiNumber(agmNoticeDate.split('-').reverse().join('/'))}</span>
+                    </div>
+                  </div>
+
+                  {/* Subtitle and Outward Row */}
+                  <div className="flex justify-between font-bold text-[13px] mt-1 mb-3 px-1">
+                    <div className="w-[33%] text-left">
+                      जावक क्र. {toMarathiNumber(agmOutwardNo)}
+                    </div>
+                    <div className="w-[34%] text-center italic text-slate-700">
+                      ( संस्थेच्या सभासदाकरिता )
+                    </div>
+                    <div className="w-[33%]"></div>
+                  </div>
+
+                  {/* Recipient Address Line */}
+                  <div className="font-bold mb-3 border-b border-dashed border-slate-300 pb-2 flex items-baseline gap-1" style={{ fontSize: `${baseFontSize + 0.5}px` }}>
+                    <span className="whitespace-nowrap">प्रति, सभासद श्री / श्रीमती :</span>
+                    <span className="border-b border-dashed border-black flex-1 pl-2 text-slate-800 font-bold">
+                      &nbsp;
+                    </span>
+                    <span className="ml-2 whitespace-nowrap">राहणार :</span>
+                    <span className="border-b border-dashed border-black w-[110px]">&nbsp;</span>
+                  </div>
+
+                  {/* Salutation and Body */}
+                  <div className="mb-3" style={{ fontSize: `${baseFontSize}px` }}>
+                    <p className="m-0 font-bold">महोदय,</p>
+                    <p className="indent-10 m-1 text-justify leading-relaxed font-medium">
+                      आपणास सदर नोटीसाद्वारे सुचित करण्यात येते की, आदिवासी विविध कार्यकारी सह. संस्था मर्या. ईळदा र. नं. १४२५ या संस्थेची सन {toMarathiNumber(agmMeetingYear)} ची <strong>“वार्षिक आमसभा”</strong> ( सर्वसाधारण सभा ) दि. <strong>{toMarathiNumber(agmMeetingDate.split('-').reverse().join('/'))}</strong> रोज <strong>{getInviteDay(agmMeetingDate)}</strong> {agmMeetingPeriod} ठीक <strong>{toMarathiNumber(agmMeetingTime)}</strong> वाजता <strong>{agmVenue}</strong> घेण्याचे ठरवले आहे. तरी संस्थेचे सर्व सभासदांनी सभेला हजर राहुन खालील विषय सुची प्रमाणे सभेचे कामकाज चालविण्यास मदत करावे. सभेचे अध्यक्ष मा. श्री. <strong>{agmChairmanName}</strong> यांच्या अध्यक्षते खाली सभा पार पडेल.
+                    </p>
+                  </div>
+
+                  {/* Agenda Title */}
+                  <p className="text-center font-bold my-2 underline" style={{ fontSize: `${baseFontSize + 0.5}px` }}>
+                    -: सभेपुढील विषय :-
+                  </p>
+
+                  {/* Agenda List */}
+                  <ul className="list-none pl-0 m-0 space-y-1 font-medium" style={{ fontSize: `${baseFontSize - 1.5}px`, lineHeight: '1.4' }}>
+                    {agmAgenda.split('\n').filter(l => l.trim() !== '').map((line, idx) => (
+                      <li key={idx} className="text-justify pl-[18px] -indent-[18px]">
+                        {toMarathiNumber(idx + 1)}) {line.replace(/^\d+[\s\.\)-]+/, '').trim()}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Tips Title & List */}
+                  <div className="border border-black bg-slate-100 p-2 mt-3 rounded font-medium text-slate-800" style={{ fontSize: `${baseFontSize - 2}px`, lineHeight: '1.35' }}>
+                    <span className="font-bold underline block mb-1">टिप:-</span>
+                    <ul className="list-none pl-0 m-0 space-y-0.5">
+                      {agmTips.split('\n').filter(l => l.trim() !== '').map((line, idx) => (
+                        <li key={idx} className="text-justify">{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* First Signature Block */}
+                  <div className="py-2 mt-4">
+                    <div className="flex justify-between text-center font-bold" style={{ fontSize: `${baseFontSize - 0.5}px` }}>
+                      <div className="w-[33%]">
+                        <p className="m-0 whitespace-nowrap">{agmManagerName}</p>
+                        <p className="m-0 font-normal" style={{ fontSize: `${baseFontSize - 1.5}px` }}>प्रभारी व्यवस्थापक</p>
+                      </div>
+                      <div className="w-[33%]">
+                        <p className="m-0 whitespace-nowrap">{agmViceChairmanName}</p>
+                        <p className="m-0 font-normal" style={{ fontSize: `${baseFontSize - 1.5}px` }}>उपाध्यक्ष</p>
+                      </div>
+                      <div className="w-[33%]">
+                        <p className="m-0 whitespace-nowrap">{agmChairmanSignName}</p>
+                        <p className="m-0 font-normal" style={{ fontSize: `${baseFontSize - 1.5}px` }}>अध्यक्ष</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-center font-bold m-1 underline" style={{ fontSize: `${baseFontSize - 1}px` }}>
+                    आदिवासी विविध कार्य. सह. संस्था मर्या. ईळदा र. नं.१४२५
+                  </p>
+
+                  {/* Separator Removed */}
+                  <div className="mt-4"></div>
+
+                  {/* Forward Section */}
+                  <div className="font-medium mb-3" style={{ fontSize: `${baseFontSize - 1}px`, lineHeight: '1.4' }}>
+                    <span className="font-bold underline block mb-1">प्रतिलीपी सादर :-</span>
+                    <ul className="list-none pl-0 m-0 space-y-0.5">
+                      {agmForwardList.split('\n').filter(l => l.trim() !== '').map((line, idx) => (
+                        <li key={idx} className="text-justify">{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Bottom Signature Block (Repeated) */}
+                  <div className="mt-auto">
+                    <div className="py-2">
+                      <div className="flex justify-between text-center font-bold" style={{ fontSize: `${baseFontSize - 0.5}px` }}>
+                        <div className="w-[33%]">
+                          <p className="m-0 whitespace-nowrap">{agmManagerName}</p>
+                          <p className="m-0 font-normal" style={{ fontSize: `${baseFontSize - 1.5}px` }}>प्रभारी व्यवस्थापक</p>
+                        </div>
+                        <div className="w-[33%]">
+                          <p className="m-0 whitespace-nowrap">{agmViceChairmanName}</p>
+                          <p className="m-0 font-normal" style={{ fontSize: `${baseFontSize - 1.5}px` }}>उपाध्यक्ष</p>
+                        </div>
+                        <div className="w-[33%]">
+                          <p className="m-0 whitespace-nowrap">{agmChairmanSignName}</p>
+                          <p className="m-0 font-normal" style={{ fontSize: `${baseFontSize - 1.5}px` }}>अध्यक्ष</p>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-center font-bold m-1 underline" style={{ fontSize: `${baseFontSize - 1}px` }}>
+                      आदिवासी विविध कार्य. सह. संस्था मर्या. ईळदा र. नं.१४२५
+                    </p>
+                  </div>
+
                 </div>
               </div>
             </div>
