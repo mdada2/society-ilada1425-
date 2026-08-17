@@ -58,12 +58,39 @@ export const askSocietyAI = async (
       acc: t.accountType
     }));
 
+  // Calculate statistics to provide rich answers to the user
+  const currentYear = new Date().getFullYear();
+  const currentFYStart = `${currentYear}-04-01`;
+  const prevFYStart = `${currentYear - 1}-04-01`;
+  const prevFYEnd = `${currentYear}-03-31`;
+
+  const newMembersThisYear = contextData.members.filter(m => m.membershipDate && m.membershipDate >= currentFYStart).length;
+  const newMembersLastYear = contextData.members.filter(m => m.membershipDate && m.membershipDate >= prevFYStart && m.membershipDate <= prevFYEnd).length;
+
+  const loanDisbursedThisYear = contextData.transactions
+    .filter(t => t.type === 'Debit' && t.accountType === 'Loan' && t.date >= currentFYStart)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const loanRecoveredThisYear = contextData.transactions
+    .filter(t => t.type === 'Credit' && t.accountType === 'Loan' && t.date >= currentFYStart)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const totalPrincipalOutstanding = contextData.members.reduce((sum, m) => sum + (m.loanPrincipal || 0), 0);
+  const totalInterestOutstanding = contextData.members.reduce((sum, m) => sum + (m.loanInterestDue || 0), 0);
+
   const systemPrompt = `
     You are 'Society Mitra', an AI assistant for a Cooperative Society Management App.
     
     Current Data Context:
     - Members: ${JSON.stringify(memberSummary)}
     - Recent Transactions: ${JSON.stringify(recentTransactions)}
+    - Society Statistics Summary:
+      * New members registered this Financial Year (since ${currentFYStart}): ${newMembersThisYear}
+      * New members registered last Financial Year: ${newMembersLastYear}
+      * Total Loan Principal Disbursed this Financial Year: ₹${loanDisbursedThisYear.toLocaleString('en-IN')}
+      * Total Loan Principal + Interest Recovered this Financial Year: ₹${loanRecoveredThisYear.toLocaleString('en-IN')}
+      * Total Outstanding Loan Principal: ₹${totalPrincipalOutstanding.toLocaleString('en-IN')}
+      * Total Outstanding Loan Interest: ₹${totalInterestOutstanding.toLocaleString('en-IN')}
     
     INSTRUCTIONS:
     1. Answer questions based on the provided JSON data OR perform App Automation tasks.

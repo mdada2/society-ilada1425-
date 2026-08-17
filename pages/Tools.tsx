@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
+import { differenceInDays } from 'date-fns';
 import {
   Wrench,
   Upload,
@@ -60,6 +61,199 @@ const Tools: React.FC = () => {
   const { transactions, setTransactions, societyBanks, setSocietyBanks } = useApp();
   const [selectedTargetBankId, setSelectedTargetBankId] = useState('');
   const [isLinking, setIsLinking] = useState(false);
+
+  // --- App State Destructuring ---
+  const { members, setMembers, settings } = useApp();
+
+  // --- Crop Loan Simulator State ---
+  const [sim1stYearRate, setSim1stYearRate] = useState<number>(settings.firstYearInterestRate || 6);
+  const [simSubsequentRate, setSimSubsequentRate] = useState<number>(settings.subsequentYearInterestRate || 12);
+  const [simDate, setSimDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [simResult, setSimResult] = useState<{
+    memberCount: number;
+    totalPrincipal: number;
+    currentInterest: number;
+    simulatedInterest: number;
+    difference: number;
+  } | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // --- Bulk Cleanup State ---
+  const [cleanupAction, setCleanupAction] = useState<'empty' | 'date' | 'duplicate'>('empty');
+  const [cleanupDate, setCleanupDate] = useState<string>('');
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [cleanupLog, setCleanupLog] = useState<string[]>([]);
+
+  // --- Simulator Calculation Handler ---
+  const handleRunSimulation = () => {
+    setIsSimulating(true);
+    setSimResult(null);
+
+    setTimeout(() => {
+      let memberCount = 0;
+      let totalPrincipal = 0;
+      let currentInterest = 0;
+      let simulatedInterest = 0;
+
+      const targetYear = new Date(simDate).getFullYear();
+
+      members.forEach(m => {
+        // Find most recent loan disbursement transaction before or equal to simDate
+        const loanTx = transactions
+          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && t.date <= simDate)
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+        let principal = 0;
+        let loanDateStr = '';
+        let loanType = m.loanType || 'Short Term';
+
+        if (loanTx) {
+          principal = loanTx.amount;
+          loanDateStr = loanTx.date;
+          if (loanTx.loanType) loanType = loanTx.loanType;
+        } else if (m.loanPrincipal > 0) {
+          principal = m.loanPrincipal;
+          loanDateStr = m.originalLoanDate || '2025-04-01';
+        } else {
+          return; // No loan
+        }
+
+        // Calculate repayments up to simDate
+        const repayments = transactions.filter(t =>
+          t.memberId === m.id &&
+          t.type === 'Credit' &&
+          t.accountType === 'Loan' &&
+          t.date >= loanDateStr &&
+          t.date <= simDate
+        );
+        const totalRepaid = repayments.reduce((sum, r) => sum + r.amount, 0);
+        const remainingPrincipal = Math.max(0, principal - totalRepaid);
+
+        if (remainingPrincipal <= 0) return; // paid off
+
+        memberCount++;
+        totalPrincipal += remainingPrincipal;
+
+        const isShortTerm = loanType === 'Short Term';
+        const isCurrentFYLoan = new Date(loanDateStr) >= new Date(`${targetYear}-04-01`);
+        const days = Math.max(0, differenceInDays(new Date(simDate), new Date(loanDateStr)));
+
+        // 1. Current rates logic
+        const currentRate = isShortTerm ? (settings.firstYearInterestRate || 6) : (settings.subsequentYearInterestRate || 12);
+        const currentInt = isCurrentFYLoan ? 0 : Math.round((remainingPrincipal * days * currentRate) / 36500);
+        currentInterest += currentInt;
+
+        // 2. Simulated rates logic
+        const simRate = isShortTerm ? sim1stYearRate : simSubsequentRate;
+        const simInt = isCurrentFYLoan ? 0 : Math.round((remainingPrincipal * days * simRate) / 36500);
+        simulatedInterest += simInt;
+      });
+
+      setSimResult({
+        memberCount,
+        totalPrincipal,
+        currentInterest,
+        simulatedInterest,
+        difference: simulatedInterest - currentInterest
+      });
+      setIsSimulating(false);
+    }, 800);
+  };
+
+  // --- Bulk Cleanup Handler ---
+  const handleRunCleanup = () => {
+    if (cleanupAction === 'date' && !cleanupDate) {
+      alert("कृपया तारीख निवडा!");
+      return;
+    }
+
+    const confirmMsg = cleanupAction === 'empty'
+      ? "तुम्हाला खात्री आहे का की तुम्ही सर्व शून्य रकमेचे किंवा अवैध रिकामे व्यवहार हटवू इच्छिता?"
+      : cleanupAction === 'date'
+      ? `तुम्हाला खात्री आहे का की तुम्ही ${cleanupDate.split('-').reverse().join('-')} पूर्वीचे सर्व व्यवहार हटवू इच्छिता?`
+      : "तुम्हाला खात्री आहे का की तुम्ही दुबार व्यवहार शोधून (Duplicate transactions) ते एकत्र करू इच्छिता?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsCleaning(true);
+    setCleanupLog([]);
+
+    setTimeout(() => {
+      const logs: string[] = [];
+      let updatedTxns = [...transactions];
+      let removedCount = 0;
+      let bankAdjustment = 0;
+
+      if (cleanupAction === 'empty') {
+        const initialCount = updatedTxns.length;
+        updatedTxns = updatedTxns.filter(t => t.amount > 0 && t.memberName);
+        removedCount = initialCount - updatedTxns.length;
+        logs.push(`अवैध / शून्य रकमेचे ${removedCount} व्यवहार यशस्वीरित्या हटवले.`);
+      } 
+      else if (cleanupAction === 'date') {
+        const initialCount = updatedTxns.length;
+        // Identify bank adjustments for deleted transactions
+        const toDelete = updatedTxns.filter(t => t.date < cleanupDate);
+        toDelete.forEach(t => {
+          if (t.bankId) {
+            // Revert balance adjustments
+            if (t.type === 'Credit') bankAdjustment -= t.amount;
+            else bankAdjustment += t.amount;
+          }
+        });
+
+        updatedTxns = updatedTxns.filter(t => t.date >= cleanupDate);
+        removedCount = initialCount - updatedTxns.length;
+        logs.push(`${cleanupDate.split('-').reverse().join('-')} पूर्वीचे ${removedCount} व्यवहार हटवले.`);
+        if (bankAdjustment !== 0) {
+          logs.push(`बँक खात्यांमध्ये ₹${bankAdjustment.toLocaleString()} चा ताळमेळ दुरुस्त केला.`);
+        }
+      } 
+      else if (cleanupAction === 'duplicate') {
+        const seen = new Set<string>();
+        const uniqueTxns: typeof transactions = [];
+        let dupCount = 0;
+
+        updatedTxns.forEach(t => {
+          // Generate unique signature for transaction comparison
+          const sig = `${t.memberId || 'gen'}-${t.date}-${t.amount}-${t.type}-${t.accountType}`;
+          if (seen.has(sig)) {
+            dupCount++;
+            // Revert bank balance
+            if (t.bankId) {
+              if (t.type === 'Credit') bankAdjustment -= t.amount;
+              else bankAdjustment += t.amount;
+            }
+          } else {
+            seen.add(sig);
+            uniqueTxns.push(t);
+          }
+        });
+
+        updatedTxns = uniqueTxns;
+        removedCount = dupCount;
+        logs.push(`एकूण ${removedCount} दुबार व्यवहार (Duplicates) यशस्वीरित्या स्वच्छ केले.`);
+        if (bankAdjustment !== 0) {
+          logs.push(`दुबार व्यवहारांमुळे बँकांमधील अतिरिक्त फरक ₹${bankAdjustment.toLocaleString()} काढला.`);
+        }
+      }
+
+      // Save transactions
+      setTransactions(updatedTxns);
+
+      // Save bank adjustment if any
+      if (bankAdjustment !== 0 && societyBanks.length > 0) {
+        setSocietyBanks(prev => prev.map(b => ({
+          ...b,
+          balance: b.balance + bankAdjustment
+        })));
+      }
+
+      setCleanupLog(logs);
+      setIsCleaning(false);
+      alert("स्वच्छता मोहीम यशस्वीरित्या पूर्ण झाली!");
+    }, 1000);
+  };
 
   const handleLinkLoansToBank = () => {
     if (!selectedTargetBankId) {
@@ -1031,6 +1225,174 @@ const Tools: React.FC = () => {
               )}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* ════ Crop Loan Simulator Card ════ */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 md:px-6 md:py-4 flex items-center gap-3">
+          <Wrench size={20} className="text-white/90 shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-white font-bold text-base md:text-lg">पीक कर्ज व्याज दर सिम्युलेटर (Crop Loan Interest Simulator)</h2>
+            <p className="text-blue-100 text-xs mt-0.5 leading-relaxed">
+              व्याज दर बदलून एकूण कर्ज थकबाकीवर काय परिणाम होईल ते तपासा
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 md:p-6 space-y-4">
+          <div className="flex gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 md:p-4 text-xs md:text-sm text-blue-800 dark:text-blue-300">
+            <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">हे टूल काय करते?</p>
+              <p className="mt-1 opacity-90">
+                या सिम्युलेटरद्वारे तुम्ही व्याज दर बदलल्यास (उदा. ६% ऐवजी ७% किंवा १२% ऐवजी १४%) निवडलेल्या विशिष्ट तारखेपर्यंत सभासदांचे एकूण किती व्याज वाढेल किंवा कमी होईल, याचे तात्पुरते सिम्युलेशन करून फरक तपासू शकता. यामुळे प्रत्यक्ष डेटावर कोणताही बदल होत नाही.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1">नवीन पहिल्या वर्षाचा व्याज दर (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={sim1stYearRate}
+                onChange={e => setSim1stYearRate(parseFloat(e.target.value) || 0)}
+                className="w-full p-2 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1">नवीन पुढील वर्षांचा व्याज दर (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={simSubsequentRate}
+                onChange={e => setSimSubsequentRate(parseFloat(e.target.value) || 0)}
+                className="w-full p-2 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1">सिम्युलेशन दिनांक (Simulation Date)</label>
+              <input
+                type="date"
+                value={simDate}
+                onChange={e => setSimDate(e.target.value)}
+                className="w-full p-2 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold text-sm"
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRunSimulation}
+            disabled={isSimulating}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
+          >
+            {isSimulating ? <Loader2 size={16} className="animate-spin" /> : 'सिम्युलेशन गणना करा'}
+          </button>
+
+          {simResult && (
+            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border dark:border-slate-700 space-y-3 animate-fade-in text-xs md:text-sm">
+              <h4 className="font-bold text-slate-800 dark:text-slate-200 font-bold">📊 सिम्युलेशन अहवाल (Simulation Result)</h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700">
+                  <p className="text-[10px] text-slate-400 font-bold">एकूण कर्जदार संख्या</p>
+                  <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{simResult.memberCount} सभासद</p>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700">
+                  <p className="text-[10px] text-slate-400 font-bold">एकूण कर्ज मुद्दल</p>
+                  <p className="text-lg font-black text-slate-800 dark:text-white mt-1">₹{simResult.totalPrincipal.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700">
+                  <p className="text-[10px] text-slate-400 font-bold">सध्याच्या दरानुसार व्याज</p>
+                  <p className="text-lg font-black text-slate-800 dark:text-white mt-1">₹{simResult.currentInterest.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700">
+                  <p className="text-[10px] text-slate-400 font-bold">नवीन दरानुसार व्याज</p>
+                  <p className="text-lg font-black text-blue-600 mt-1 font-mono">₹{simResult.simulatedInterest.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700 col-span-2 md:col-span-1">
+                  <p className="text-[10px] text-slate-400 font-bold">व्याजातील एकूण फरक</p>
+                  <p className={`text-lg font-black mt-1 font-mono ${simResult.difference >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {simResult.difference >= 0 ? '+' : ''}₹{simResult.difference.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ════ Bulk Data Cleanup Card ════ */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 md:px-6 md:py-4 flex items-center gap-3">
+          <Wrench size={20} className="text-white/90 shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-white font-bold text-base md:text-lg">बल्क डेटा दुरुस्ती आणि क्लीनअप (Bulk Data Cleanup & Correction)</h2>
+            <p className="text-red-100 text-xs mt-0.5 leading-relaxed">
+              अवैध व्यवहार दुरुस्त करा, दुबार नोंदी काढून टाका किंवा जुना डेटा आर्काइव्ह करा
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 md:p-6 space-y-4">
+          <div className="flex gap-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-xl p-3 md:p-4 text-xs md:text-sm text-red-800 dark:text-red-300">
+            <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">⚠️ महत्वाची सूचना (Caution)</p>
+              <p className="mt-1 opacity-90">
+                हे ॲडमिनिस्ट्रेटिव्ह टूल थेट व्यवहारांवर प्रक्रिया करते. कोणताही क्लीनअप करण्यापूर्वी आपल्या डेटाचा योग्य विचार करा.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1">क्लीनअप पद्धत निवडा (Select Action)</label>
+              <select
+                value={cleanupAction}
+                onChange={e => setCleanupAction(e.target.value as any)}
+                className="w-full p-2.5 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm"
+              >
+                <option value="empty">शून्य रकमेचे / अवैध व्यवहार साफ करा (Remove Empty/Invalid)</option>
+                <option value="duplicate">दुबार व्यवहार ओळखा व एकत्र करा (Auto-Merge Duplicates)</option>
+                <option value="date">विशिष्ट तारखेपूर्वीचा जुना इतिहास काढून टाका (Clear History Before Date)</option>
+              </select>
+            </div>
+
+            {cleanupAction === 'date' && (
+              <div className="animate-fade-in">
+                <label className="block text-xs font-bold text-slate-500 mb-1">कोणत्या तारखेपूर्वीचे व्यवहार काढायचे? (Cutoff Date)</label>
+                <input
+                  type="date"
+                  value={cleanupDate}
+                  onChange={e => setCleanupDate(e.target.value)}
+                  className="w-full p-2 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold text-sm"
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRunCleanup}
+            disabled={isCleaning}
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
+          >
+            {isCleaning ? <Loader2 size={16} className="animate-spin" /> : 'क्लीनअप प्रक्रिया सुरू करा'}
+          </button>
+
+          {cleanupLog.length > 0 && (
+            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border dark:border-slate-700 space-y-2 animate-fade-in">
+              <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300">📝 क्लीनअप अहवाल (Log Summary):</h4>
+              <ul className="list-disc list-inside space-y-1 text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                {cleanupLog.map((log, index) => (
+                  <li key={index} className="text-emerald-600 dark:text-emerald-400">{log}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -47,6 +47,15 @@ function ReportTable<T extends { id?: string | number }>({
 
     // Filter Data
     const filteredData = data.filter((item) => {
+        // Local Date Range Filter
+        if (enableDateFilter && (startDate || endDate)) {
+            const itemDate = (item as any).date;
+            if (itemDate && typeof itemDate === 'string') {
+                if (startDate && itemDate < startDate) return false;
+                if (endDate && itemDate > endDate) return false;
+            }
+        }
+
         // Basic search implementation - checks all string values
         if (enableSearch && searchTerm) {
             const searchStr = searchTerm.toLowerCase();

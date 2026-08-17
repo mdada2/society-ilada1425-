@@ -68,7 +68,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Inventory Reports',
     icon: <Sprout size={24} />,
     color: 'bg-emerald-600',
-    subTabs: ['Paddy Stock', 'Gunny Bags']
+    subTabs: ['Paddy Stock', 'Gunny Bags', 'Paddy Season Report', 'Purchase Storage Report']
   },
   {
     id: 'loan',
@@ -127,6 +127,7 @@ const Reports = () => {
   });
   const [showDemandSummary, setShowDemandSummary] = useState(false);
   const [demandFilter, setDemandFilter] = useState<'all' | 'current_new' | 'current_old' | 'overdue'>('all');
+  const [paddyReportSeasonFilter, setPaddyReportSeasonFilter] = useState<string>('All');
 
   const activeStart = selectedFYRange
     ? selectedFYRange.start
@@ -736,7 +737,7 @@ const Reports = () => {
   };
 
   const renderInventory = () => {
-    const { paddyPurchases, dispatches, inventoryAdjustments } = useApp();
+    const { paddyPurchases, dispatches, inventoryAdjustments, paddySeasons, updatePaddySeason } = useApp();
 
     if (activeSubTab === 'Paddy Stock') {
       const totalPurchaseBags = paddyPurchases.reduce((acc, curr) => acc + (Number(curr.godownBags) || 0) + (Number(curr.shedBags) || 0) + (Number(curr.openBags) || 0), 0);
@@ -848,6 +849,692 @@ const Reports = () => {
           </table>
           <div className="p-8 text-center text-slate-400 italic text-xs">
             Note: Use 'Inventory Entry' to add initial stock/bundles of bags.
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSubTab === 'Paddy Season Report') {
+      const getSeasonOfDate = (dateStr: string) => {
+        const season = paddySeasons.find(s => dateStr >= s.startDate && dateStr <= s.endDate);
+        return season ? season.code : '';
+      };
+
+      const filteredSeasons = paddyReportSeasonFilter === 'All'
+        ? paddySeasons
+        : paddySeasons.filter(s => s.code === paddyReportSeasonFilter);
+
+      // Group purchases, dispatches, adjustments by season
+      const seasonsData = filteredSeasons.map(season => {
+        // Purchases
+        const seasonPurchases = paddyPurchases.filter(p => p.season === season.code);
+        const purchaseBags = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.newBags) || 0) + (Number(curr.oldBags) || 0) + (Number(curr.usedOnceBags) || 0), 0);
+        const purchaseWeight = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.newWeight) || 0) + (Number(curr.oldWeight) || 0) + (Number(curr.usedOnceWeight) || 0), 0);
+
+        // Dispatches
+        const seasonDispatches = dispatches.filter(d => d.season === season.code);
+        const dispatchBags = seasonDispatches.reduce((acc, curr) => acc + (Number(curr.bags) || 0), 0);
+        const dispatchWeight = seasonDispatches.reduce((acc, curr) => acc + (Number(curr.weight) || 0), 0);
+
+        // Stock Book Balance
+        const bookBags = Math.max(0, purchaseBags - dispatchBags);
+        const bookWeight = Math.max(0, purchaseWeight - dispatchWeight);
+
+        // Actual Stock (saved in season)
+        const actualBags = season.actualBags !== undefined ? season.actualBags : bookBags;
+        const actualWeight = season.actualWeight !== undefined ? season.actualWeight : bookWeight;
+
+        // Shortage (Loss)
+        const lossWeight = Math.max(0, bookWeight - actualWeight);
+        const lossPercent = purchaseWeight > 0 ? (lossWeight / purchaseWeight) * 100 : 0;
+
+        // Inward Bags (Empty bags received)
+        const inwardNew = inventoryAdjustments.filter(a => a.item === 'NewBags' && a.type === 'NewStock' && getSeasonOfDate(a.date) === season.code).reduce((sum, a) => sum + a.quantity, 0);
+        const inwardOld = inventoryAdjustments.filter(a => (a.item === 'OldBags' || a.item === 'UsedOnceBags') && a.type === 'NewStock' && getSeasonOfDate(a.date) === season.code).reduce((sum, a) => sum + a.quantity, 0);
+        const inwardTotal = inwardNew + inwardOld;
+
+        // Outward Bags (Empty bags used for dispatch)
+        const outwardNew = seasonDispatches.reduce((acc, curr) => acc + (Number(curr.newBagsUsed) || 0), 0);
+        const outwardOld = seasonDispatches.reduce((acc, curr) => acc + (Number(curr.oldBagsUsed) || 0) + (Number(curr.usedOnceBagsUsed) || 0), 0);
+        const outwardTotal = outwardNew + outwardOld;
+
+        return {
+          season,
+          purchaseBags,
+          purchaseWeight,
+          dispatchBags,
+          dispatchWeight,
+          bookBags,
+          bookWeight,
+          actualBags,
+          actualWeight,
+          lossWeight,
+          lossPercent,
+          inwardNew,
+          inwardOld,
+          inwardTotal,
+          outwardNew,
+          outwardOld,
+          outwardTotal
+        };
+      });
+
+      // Totals
+      const totalPurchaseBags = seasonsData.reduce((sum, s) => sum + s.purchaseBags, 0);
+      const totalPurchaseWeight = seasonsData.reduce((sum, s) => sum + s.purchaseWeight, 0);
+      const totalDispatchBags = seasonsData.reduce((sum, s) => sum + s.dispatchBags, 0);
+      const totalDispatchWeight = seasonsData.reduce((sum, s) => sum + s.dispatchWeight, 0);
+      const totalBookBags = seasonsData.reduce((sum, s) => sum + s.bookBags, 0);
+      const totalBookWeight = seasonsData.reduce((sum, s) => sum + s.bookWeight, 0);
+      const totalActualBags = seasonsData.reduce((sum, s) => sum + s.actualBags, 0);
+      const totalActualWeight = seasonsData.reduce((sum, s) => sum + s.actualWeight, 0);
+      const totalLossWeight = seasonsData.reduce((sum, s) => sum + s.lossWeight, 0);
+      const totalLossPercent = totalPurchaseWeight > 0 ? (totalLossWeight / totalPurchaseWeight) * 100 : 0;
+      
+      const totalInwardNew = seasonsData.reduce((sum, s) => sum + s.inwardNew, 0);
+      const totalInwardOld = seasonsData.reduce((sum, s) => sum + s.inwardOld, 0);
+      const totalInwardTotal = totalInwardNew + totalInwardOld;
+      
+      const totalOutwardNew = seasonsData.reduce((sum, s) => sum + s.outwardNew, 0);
+      const totalOutwardOld = seasonsData.reduce((sum, s) => sum + s.outwardOld, 0);
+      const totalOutwardTotal = totalOutwardNew + totalOutwardOld;
+
+      const exportPaddySeasonReport = () => {
+        // Double headers matching screen
+        const headers = [
+          [
+            'अ. क्र.', 'हंगाम', 
+            'एकूण खरेदी', '', 
+            'एकूण भरडाईस जावक', '', 
+            'साठापुस्तका प्रमाणे शिल्लक', '', 
+            'प्रत्यक्ष शिल्लक', '', 
+            'घट-तूट वजन क्विं.', 'घटीची टक्केवारी', 
+            'आवक बारदाना प्रकार', '', '', 
+            'जावक बारदाना प्रकार', '', ''
+          ],
+          [
+            '', '', 
+            'पोते', 'वजन क्विं.', 
+            'पोते', 'वजन क्विं.', 
+            'पोते', 'वजन क्विं.', 
+            'पोते', 'वजन क्विं.', 
+            '', '', 
+            'नवीन SBT', 'एक. वाप. बारदाना', 'एकूण बारदाना', 
+            'नवीन SBT', 'एक. वाप. बारदाना', 'एकूण बारदाना'
+          ]
+        ];
+
+        const rows = seasonsData.map((d, index) => [
+          index + 1,
+          d.season.name,
+          d.purchaseBags,
+          d.purchaseWeight,
+          d.dispatchBags,
+          d.dispatchWeight,
+          d.bookBags,
+          d.bookWeight,
+          d.actualBags,
+          d.actualWeight,
+          d.lossWeight,
+          `${d.lossPercent.toFixed(2)}%`,
+          d.inwardNew,
+          d.inwardOld,
+          d.inwardTotal,
+          d.outwardNew,
+          d.outwardOld,
+          d.outwardTotal
+        ]);
+
+        const totalRow = [
+          'एकूण (Total)',
+          '',
+          totalPurchaseBags,
+          totalPurchaseWeight,
+          totalDispatchBags,
+          totalDispatchWeight,
+          totalBookBags,
+          totalBookWeight,
+          totalActualBags,
+          totalActualWeight,
+          totalLossWeight,
+          `${totalLossPercent.toFixed(2)}%`,
+          totalInwardNew,
+          totalInwardOld,
+          totalInwardTotal,
+          totalOutwardNew,
+          totalOutwardOld,
+          totalOutwardTotal
+        ];
+
+        rows.push(totalRow as any);
+
+        const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+
+        // Merging settings
+        ws['!merges'] = [
+          { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // Sr No A1:A2
+          { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Season B1:B2
+          { s: { r: 0, c: 2 }, e: { r: 0, c: 3 } }, // Purchase C1:D1
+          { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } }, // Dispatch E1:F1
+          { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } }, // Book Balance G1:H1
+          { s: { r: 0, c: 8 }, e: { r: 0, c: 9 } }, // Actual Stock I1:J1
+          { s: { r: 0, c: 10 }, e: { r: 1, c: 10 } }, // Loss weight K1:K2
+          { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } }, // Loss percent L1:L2
+          { s: { r: 0, c: 12 }, e: { r: 0, c: 14 } }, // Inward bags M1:O1
+          { s: { r: 0, c: 15 }, e: { r: 0, c: 17 } }  // Outward bags P1:R1
+        ];
+
+        // Format and align styles (Center & Middle)
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cell_address = { c: C, r: R };
+            const cell_ref = XLSX.utils.encode_cell(cell_address);
+            if (!ws[cell_ref]) continue;
+
+            const isHeader = R < 2;
+            const isTotal = R === range.e.r;
+
+            ws[cell_ref].s = {
+              alignment: {
+                vertical: 'center',
+                horizontal: 'center',
+                wrapText: true
+              },
+              font: {
+                bold: isHeader || isTotal,
+                name: 'Calibri',
+                size: isHeader ? 10 : 9
+              },
+              fill: isHeader 
+                ? { fgColor: { rgb: "EAEAEA" } } 
+                : isTotal 
+                ? { fgColor: { rgb: "F3F3F3" } } 
+                : undefined,
+              border: {
+                top: { style: 'thin', color: { rgb: "D3D3D3" } },
+                bottom: { style: 'thin', color: { rgb: "D3D3D3" } },
+                left: { style: 'thin', color: { rgb: "D3D3D3" } },
+                right: { style: 'thin', color: { rgb: "D3D3D3" } }
+              }
+            };
+          }
+        }
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Paddy Season Report");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Paddy_Season_Report_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+      };
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full animate-fade-in">
+          <div className="p-4 md:p-6 border-b dark:border-slate-700 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg md:text-xl font-bold">पणन हंगाम २०२५-२६ मधील एकूण खरेदी, शिल्लक साठा व जावक घट / तुट अहवाल</h2>
+              <p className="text-xs text-slate-300 mt-1">आदिवासी विविध कार्यकारी सहकारी संस्था मर्यादित ईळदा र. नं. १४२५ खरेदी केंद्र - ईळदा</p>
+            </div>
+            <div className="shrink-0 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-slate-300">हंगाम निवडा (Season):</label>
+                <select
+                  value={paddyReportSeasonFilter}
+                  onChange={e => setPaddyReportSeasonFilter(e.target.value)}
+                  className="p-1.5 border dark:border-slate-700 rounded bg-slate-800 text-white font-bold text-xs outline-none"
+                >
+                  <option value="All">सर्व हंगाम (All)</option>
+                  {paddySeasons.map(s => (
+                    <option key={s.id} value={s.code}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={exportPaddySeasonReport}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-xs transition"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-xs border-collapse border dark:border-slate-700 min-w-[1250px] text-center">
+              <thead className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-bold">
+                {/* Header Row 1 */}
+                <tr className="border-b dark:border-slate-700">
+                  <th rowSpan={2} className="p-2 border-r dark:border-slate-700">अ. क्र.</th>
+                  <th rowSpan={2} className="p-2 border-r dark:border-slate-700">हंगाम</th>
+                  <th colSpan={2} className="p-2 border-r dark:border-slate-700">एकूण खरेदी</th>
+                  <th colSpan={2} className="p-2 border-r dark:border-slate-700">एकूण भरडाईस जावक</th>
+                  <th colSpan={2} className="p-2 border-r dark:border-slate-700">साठापुस्तका प्रमाणे शिल्लक</th>
+                  <th colSpan={2} className="p-2 border-r dark:border-slate-700">प्रत्यक्ष शिल्लक</th>
+                  <th rowSpan={2} className="p-2 border-r dark:border-slate-700">घट-तूट वजन क्विं.</th>
+                  <th rowSpan={2} className="p-2 border-r dark:border-slate-700">घटीची टक्केवारी</th>
+                  <th colSpan={3} className="p-2 border-r dark:border-slate-700">आवक बारदाना प्रकार</th>
+                  <th colSpan={3} className="p-2">जावक बारदाना प्रकार</th>
+                </tr>
+                {/* Header Row 2 */}
+                <tr className="border-b dark:border-slate-700">
+                  <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                  <th className="p-2 border-r dark:border-slate-700">वजन क्विं.</th>
+                  <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                  <th className="p-2 border-r dark:border-slate-700">वजन क्विं.</th>
+                  <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                  <th className="p-2 border-r dark:border-slate-700">वजन क्विं.</th>
+                  <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                  <th className="p-2 border-r dark:border-slate-700">वजन क्विं.</th>
+                  
+                  <th className="p-2 border-r dark:border-slate-700">नवीन SBT</th>
+                  <th className="p-2 border-r dark:border-slate-700">एक. वाप. बारदाना</th>
+                  <th className="p-2 border-r dark:border-slate-700">एकूण बारदाना</th>
+                  
+                  <th className="p-2 border-r dark:border-slate-700">नवीन SBT</th>
+                  <th className="p-2 border-r dark:border-slate-700">एक. वाप. बारदाना</th>
+                  <th className="p-2">एकूण बारदाना</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y dark:divide-slate-700 text-slate-700 dark:text-slate-300">
+                {seasonsData.map((d, index) => (
+                  <tr key={d.season.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                    <td className="p-2 border-r dark:border-slate-700 font-bold">{index + 1}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-bold capitalize">{d.season.name}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-semibold">{d.purchaseBags.toLocaleString()}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-semibold">{d.purchaseWeight.toFixed(2)}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-semibold">{d.dispatchBags.toLocaleString()}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-semibold">{d.dispatchWeight.toFixed(2)}</td>
+                    <td className="p-2 border-r dark:border-slate-700 text-slate-500">{d.bookBags.toLocaleString()}</td>
+                    <td className="p-2 border-r dark:border-slate-700 text-slate-500">{d.bookWeight.toFixed(2)}</td>
+                    
+                    {/* Actual Stock inputs */}
+                    <td className="p-1 border-r dark:border-slate-700">
+                      <input
+                        type="number"
+                        value={d.season.actualBags !== undefined ? d.season.actualBags : ''}
+                        placeholder={d.bookBags.toString()}
+                        onChange={e => {
+                          const val = e.target.value !== '' ? parseInt(e.target.value) : undefined;
+                          updatePaddySeason({ ...d.season, actualBags: val });
+                        }}
+                        className="w-16 p-1 text-center border dark:border-slate-700 rounded bg-white dark:bg-slate-900 font-bold text-xs"
+                      />
+                    </td>
+                    <td className="p-1 border-r dark:border-slate-700">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={d.season.actualWeight !== undefined ? d.season.actualWeight : ''}
+                        placeholder={d.bookWeight.toFixed(2)}
+                        onChange={e => {
+                          const val = e.target.value !== '' ? parseFloat(e.target.value) : undefined;
+                          updatePaddySeason({ ...d.season, actualWeight: val });
+                        }}
+                        className="w-20 p-1 text-center border dark:border-slate-700 rounded bg-white dark:bg-slate-900 font-bold text-xs"
+                      />
+                    </td>
+                    
+                    <td className="p-2 border-r dark:border-slate-700 font-bold text-red-600 dark:text-red-400">{d.lossWeight.toFixed(2)}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-bold text-red-600 dark:text-red-400">{d.lossPercent.toFixed(2)}%</td>
+                    
+                    <td className="p-2 border-r dark:border-slate-700">{d.inwardNew.toLocaleString()}</td>
+                    <td className="p-2 border-r dark:border-slate-700">{d.inwardOld.toLocaleString()}</td>
+                    <td className="p-2 border-r dark:border-slate-700 font-semibold">{d.inwardTotal.toLocaleString()}</td>
+                    
+                    <td className="p-2 border-r dark:border-slate-700">{d.outwardNew.toLocaleString()}</td>
+                    <td className="p-2 border-r dark:border-slate-700">{d.outwardOld.toLocaleString()}</td>
+                    <td className="p-2 font-semibold">{d.outwardTotal.toLocaleString()}</td>
+                  </tr>
+                ))}
+                {/* Grand Total Row */}
+                <tr className="bg-slate-100 dark:bg-slate-900 font-black border-t-2 dark:border-slate-700 text-slate-800 dark:text-white">
+                  <td colSpan={2} className="p-2.5 border-r dark:border-slate-700 text-left pl-4">एकूण (Total)</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalPurchaseBags.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalPurchaseWeight.toFixed(2)}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalDispatchBags.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalDispatchWeight.toFixed(2)}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalBookBags.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalBookWeight.toFixed(2)}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalActualBags.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalActualWeight.toFixed(2)}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700 text-red-600 dark:text-red-400">{totalLossWeight.toFixed(2)}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700 text-red-600 dark:text-red-400">{totalLossPercent.toFixed(2)}%</td>
+                  
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalInwardNew.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalInwardOld.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalInwardTotal.toLocaleString()}</td>
+                  
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalOutwardNew.toLocaleString()}</td>
+                  <td className="p-2.5 border-r dark:border-slate-700">{totalOutwardOld.toLocaleString()}</td>
+                  <td className="p-2.5">{totalOutwardTotal.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t dark:border-slate-700 text-[10px] text-slate-500 font-bold space-y-1">
+            <p>* प्रत्यक्ष शिल्लक (Actual Balance) चे रकाने एडिटेबल (Editable) आहेत. आपण तिथे प्रत्यक्ष शिल्लक टाईप केल्यास घट-तूट आणि घटीची टक्केवारी आपोआप मोजली जाईल आणि सेव्ह होईल.</p>
+            <p>* आवक बारदाना (नवीन SBT) ची आकडेवारी ही 'Inventory Entry' मधील नोंदींवरून काढली जाते.</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSubTab === 'Purchase Storage Report') {
+      const filteredSeasons = paddyReportSeasonFilter === 'All'
+        ? paddySeasons
+        : paddySeasons.filter(s => s.code === paddyReportSeasonFilter);
+
+      const seasonsData = filteredSeasons.map(season => {
+        const seasonPurchases = paddyPurchases.filter(p => p.season === season.code);
+
+        const tribal = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.tribalMembers) || 0), 0);
+        const nonTribal = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.nonTribalMembers) || 0), 0);
+        const totalFarmers = tribal + nonTribal;
+
+        const godownBags = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.godownBags) || 0), 0);
+        const godownWeight = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.godownWeight) || 0), 0);
+
+        const shedBags = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.shedBags) || 0), 0);
+        const shedWeight = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.shedWeight) || 0), 0);
+
+        const openBags = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.openBags) || 0), 0);
+        const openWeight = seasonPurchases.reduce((acc, curr) => acc + (Number(curr.openWeight) || 0), 0);
+
+        const totalBags = godownBags + shedBags + openBags;
+        const totalWeight = godownWeight + shedWeight + openWeight;
+
+        return {
+          season,
+          tribal,
+          nonTribal,
+          totalFarmers,
+          godownBags,
+          godownWeight,
+          shedBags,
+          shedWeight,
+          openBags,
+          openWeight,
+          totalBags,
+          totalWeight
+        };
+      });
+
+      // Totals
+      const totalTribal = seasonsData.reduce((sum, s) => sum + s.tribal, 0);
+      const totalNonTribal = seasonsData.reduce((sum, s) => sum + s.nonTribal, 0);
+      const grandTotalFarmers = totalTribal + totalNonTribal;
+
+      const totalGodownBags = seasonsData.reduce((sum, s) => sum + s.godownBags, 0);
+      const totalGodownWeight = seasonsData.reduce((sum, s) => sum + s.godownWeight, 0);
+      
+      const totalShedBags = seasonsData.reduce((sum, s) => sum + s.shedBags, 0);
+      const totalShedWeight = seasonsData.reduce((sum, s) => sum + s.shedWeight, 0);
+
+      const totalOpenBags = seasonsData.reduce((sum, s) => sum + s.openBags, 0);
+      const totalOpenWeight = seasonsData.reduce((sum, s) => sum + s.openWeight, 0);
+
+      const grandTotalBags = totalGodownBags + totalShedBags + totalOpenBags;
+      const grandTotalWeight = totalGodownWeight + totalShedWeight + totalOpenWeight;
+
+      const exportPurchaseStorageReport = () => {
+        // Double headers matching screen
+        const headers = [
+          [
+            'अ. क्र.', 'हंगाम', 
+            'धान खरेदी केलेले शेतकरी संख्या', '', '', 
+            'गोदामात खरेदी', '', 
+            'शेडमध्ये खरेदी', '', 
+            'उघड्यावर खरेदी', '', 
+            'एकूण खरेदी साठा', ''
+          ],
+          [
+            '', '', 
+            'आदिवासी', 'गैर-आदिवासी', 'एकूण शेतकरी', 
+            'पोते', 'वजन (क्विं.)', 
+            'पोते', 'वजन (क्विं.)', 
+            'पोते', 'वजन (क्विं.)', 
+            'पोते', 'वजन (क्विं.)'
+          ]
+        ];
+
+        const rows = seasonsData.map((s, index) => [
+          index + 1,
+          s.season.name,
+          s.tribal,
+          s.nonTribal,
+          s.totalFarmers,
+          s.godownBags,
+          s.godownWeight,
+          s.shedBags,
+          s.shedWeight,
+          s.openBags,
+          s.openWeight,
+          s.totalBags,
+          s.totalWeight
+        ]);
+
+        const totalRow = [
+          'एकूण (Total)',
+          '',
+          totalTribal,
+          totalNonTribal,
+          grandTotalFarmers,
+          totalGodownBags,
+          totalGodownWeight,
+          totalShedBags,
+          totalShedWeight,
+          totalOpenBags,
+          totalOpenWeight,
+          grandTotalBags,
+          grandTotalWeight
+        ];
+
+        rows.push(totalRow as any);
+
+        const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+
+        // Merging settings
+        ws['!merges'] = [
+          { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // Sr No A1:A2
+          { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Season B1:B2
+          { s: { r: 0, c: 2 }, e: { r: 0, c: 4 } }, // Farmers C1:E1
+          { s: { r: 0, c: 5 }, e: { r: 0, c: 6 } }, // Godown F1:G1
+          { s: { r: 0, c: 7 }, e: { r: 0, c: 8 } }, // Shed H1:I1
+          { s: { r: 0, c: 9 }, e: { r: 0, c: 10 } }, // Open J1:K1
+          { s: { r: 0, c: 11 }, e: { r: 0, c: 12 } } // Total L1:M1
+        ];
+
+        // Format and align styles (Center & Middle)
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cell_address = { c: C, r: R };
+            const cell_ref = XLSX.utils.encode_cell(cell_address);
+            if (!ws[cell_ref]) continue;
+
+            const isHeader = R < 2;
+            const isTotal = R === range.e.r;
+
+            ws[cell_ref].s = {
+              alignment: {
+                vertical: 'center',
+                horizontal: 'center',
+                wrapText: true
+              },
+              font: {
+                bold: isHeader || isTotal,
+                name: 'Calibri',
+                size: isHeader ? 10 : 9
+              },
+              fill: isHeader 
+                ? { fgColor: { rgb: "EAEAEA" } } 
+                : isTotal 
+                ? { fgColor: { rgb: "F3F3F3" } } 
+                : undefined,
+              border: {
+                top: { style: 'thin', color: { rgb: "D3D3D3" } },
+                bottom: { style: 'thin', color: { rgb: "D3D3D3" } },
+                left: { style: 'thin', color: { rgb: "D3D3D3" } },
+                right: { style: 'thin', color: { rgb: "D3D3D3" } }
+              }
+            };
+          }
+        }
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Purchase Storage Report");
+        const excelBuffer = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlob(blob, `Purchase_Storage_Report_${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+      };
+
+      return (
+        <div className="space-y-6 animate-fade-in">
+          {/* Summary Table */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col">
+            <div className="p-4 md:p-6 border-b dark:border-slate-700 bg-emerald-600 text-white flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg md:text-xl font-bold">धान खरेदी शेतकरी संख्या व साठा विभागणी अहवाल</h2>
+                <p className="text-xs text-emerald-100 mt-1">हंगाम निहाय शेतकरी वर्गवारी आणि साठवणूक ठिकाण (गोदाम, शेड, उघड्यावर) गोषवारा</p>
+              </div>
+              <div className="shrink-0 flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-emerald-100">हंगाम निवडा (Season):</label>
+                  <select
+                    value={paddyReportSeasonFilter}
+                    onChange={e => setPaddyReportSeasonFilter(e.target.value)}
+                    className="p-1.5 border border-emerald-500 rounded bg-emerald-700 text-white font-bold text-xs outline-none"
+                  >
+                    <option value="All">सर्व हंगाम (All)</option>
+                    {paddySeasons.map(s => (
+                      <option key={s.id} value={s.code}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={exportPurchaseStorageReport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-xs transition"
+                >
+                  <Download size={14} /> Excel
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-xs border-collapse border dark:border-slate-700 min-w-[1000px] text-center">
+                <thead className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-bold">
+                  <tr className="border-b dark:border-slate-700">
+                    <th rowSpan={2} className="p-2.5 border-r dark:border-slate-700">अ. क्र.</th>
+                    <th rowSpan={2} className="p-2.5 border-r dark:border-slate-700">हंगाम</th>
+                    <th colSpan={3} className="p-2.5 border-r dark:border-slate-700">धान खरेदी केलेले शेतकरी संख्या</th>
+                    <th colSpan={2} className="p-2.5 border-r dark:border-slate-700">गोदामात खरेदी</th>
+                    <th colSpan={2} className="p-2.5 border-r dark:border-slate-700">शेडमध्ये खरेदी</th>
+                    <th colSpan={2} className="p-2.5 border-r dark:border-slate-700">उघड्यावर खरेदी</th>
+                    <th colSpan={2} className="p-2.5">एकूण खरेदी साठा</th>
+                  </tr>
+                  <tr className="border-b dark:border-slate-700">
+                    <th className="p-2 border-r dark:border-slate-700">आदिवासी</th>
+                    <th className="p-2 border-r dark:border-slate-700">गैर-आदिवासी</th>
+                    <th className="p-2 border-r dark:border-slate-700">एकूण शेतकरी</th>
+
+                    <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                    <th className="p-2 border-r dark:border-slate-700">वजन (क्विं.)</th>
+
+                    <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                    <th className="p-2 border-r dark:border-slate-700">वजन (क्विं.)</th>
+
+                    <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                    <th className="p-2 border-r dark:border-slate-700">वजन (क्विं.)</th>
+
+                    <th className="p-2 border-r dark:border-slate-700">पोते</th>
+                    <th className="p-2">वजन (क्विं.)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y dark:divide-slate-700 text-slate-700 dark:text-slate-300">
+                  {seasonsData.map((s, index) => (
+                    <tr key={s.season.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                      <td className="p-2 border-r dark:border-slate-700 font-bold">{index + 1}</td>
+                      <td className="p-2 border-r dark:border-slate-700 font-bold capitalize">{s.season.name}</td>
+                      <td className="p-2 border-r dark:border-slate-700">{s.tribal.toLocaleString()}</td>
+                      <td className="p-2 border-r dark:border-slate-700">{s.nonTribal.toLocaleString()}</td>
+                      <td className="p-2 border-r dark:border-slate-700 font-semibold text-emerald-600">{s.totalFarmers.toLocaleString()}</td>
+
+                      <td className="p-2 border-r dark:border-slate-700">{s.godownBags.toLocaleString()}</td>
+                      <td className="p-2 border-r dark:border-slate-700">{s.godownWeight.toFixed(2)}</td>
+
+                      <td className="p-2 border-r dark:border-slate-700">{s.shedBags.toLocaleString()}</td>
+                      <td className="p-2 border-r dark:border-slate-700">{s.shedWeight.toFixed(2)}</td>
+
+                      <td className="p-2 border-r dark:border-slate-700">{s.openBags.toLocaleString()}</td>
+                      <td className="p-2 border-r dark:border-slate-700">{s.openWeight.toFixed(2)}</td>
+
+                      <td className="p-2 border-r dark:border-slate-700 font-semibold">{s.totalBags.toLocaleString()}</td>
+                      <td className="p-2 font-semibold">{s.totalWeight.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {/* Total Row */}
+                  <tr className="bg-slate-100 dark:bg-slate-900 font-black border-t-2 dark:border-slate-700 text-slate-800 dark:text-white">
+                    <td colSpan={2} className="p-2.5 border-r dark:border-slate-700 text-left pl-4">एकूण (Total)</td>
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalTribal.toLocaleString()}</td>
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalNonTribal.toLocaleString()}</td>
+                    <td className="p-2.5 border-r dark:border-slate-700 text-emerald-600 dark:text-emerald-400">{grandTotalFarmers.toLocaleString()}</td>
+
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalGodownBags.toLocaleString()}</td>
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalGodownWeight.toFixed(2)}</td>
+
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalShedBags.toLocaleString()}</td>
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalShedWeight.toFixed(2)}</td>
+
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalOpenBags.toLocaleString()}</td>
+                    <td className="p-2.5 border-r dark:border-slate-700">{totalOpenWeight.toFixed(2)}</td>
+
+                    <td className="p-2.5 border-r dark:border-slate-700">{grandTotalBags.toLocaleString()}</td>
+                    <td className="p-2.5">{grandTotalWeight.toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Detailed Transaction Ledger */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div className="p-4 bg-slate-900 text-white font-bold text-sm">खरेदी नोंदींचा तपशील (Detailed Purchase Records)</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 uppercase text-[10px] font-bold border-b dark:border-slate-700">
+                  <tr>
+                    <th className="p-3">दिनांक</th>
+                    <th className="p-3">खरेदी केंद्र</th>
+                    <th className="p-3 text-center">आदिवासी शेतकरी</th>
+                    <th className="p-3 text-center">गैर-आदिवासी</th>
+                    <th className="p-3 text-right">गोदाम (पोते/वजन)</th>
+                    <th className="p-3 text-right">शेड (पोते/वजन)</th>
+                    <th className="p-3 text-right">उघड्यावर (पोते/वजन)</th>
+                    <th className="p-3 text-right font-bold">एकूण (पोते/वजन)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y dark:divide-slate-700">
+                  {[...paddyPurchases]
+                    .filter(p => paddyReportSeasonFilter === 'All' || p.season === paddyReportSeasonFilter)
+                    .sort((a,b) => b.date.localeCompare(a.date))
+                    .map(p => {
+                    const totalB = (p.godownBags || 0) + (p.shedBags || 0) + (p.openBags || 0);
+                    const totalW = (p.godownWeight || 0) + (p.shedWeight || 0) + (p.openWeight || 0);
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/20">
+                        <td className="p-3 font-semibold">{fmtDateDMY(p.date)}</td>
+                        <td className="p-3">{p.centerName}</td>
+                        <td className="p-3 text-center">{p.tribalMembers}</td>
+                        <td className="p-3 text-center">{p.nonTribalMembers}</td>
+                        <td className="p-3 text-right text-slate-500">{p.godownBags} / {p.godownWeight.toFixed(2)}</td>
+                        <td className="p-3 text-right text-slate-500">{p.shedBags} / {p.shedWeight.toFixed(2)}</td>
+                        <td className="p-3 text-right text-slate-500">{p.openBags} / {p.openWeight.toFixed(2)}</td>
+                        <td className="p-3 text-right font-bold text-emerald-600">{totalB} / {totalW.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       );

@@ -95,6 +95,8 @@ export interface PaddySeason {
   endDate: string;       // ISO date
   isActive: boolean;     // Only one season can be active
   createdAt: number;
+  actualBags?: number;
+  actualWeight?: number;
 }
 
 export interface PaddyDO {
