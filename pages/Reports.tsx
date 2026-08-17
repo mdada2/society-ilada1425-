@@ -126,6 +126,7 @@ const Reports = () => {
     return `${fyYear}-10-31`;
   });
   const [showDemandSummary, setShowDemandSummary] = useState(false);
+  const [demandFilter, setDemandFilter] = useState<'all' | 'current_new' | 'current_old' | 'overdue'>('all');
 
   const activeStart = selectedFYRange
     ? selectedFYRange.start
@@ -2748,9 +2749,17 @@ const Reports = () => {
           mtCurrentPrin,
           mtOverdueInt,
           totalDemand,
+          isCurrentFY: isCurrentFYLoan,
           remarks: lastRepayDate !== '-' ? `मागील भरणा: ${lastRepayDate.split('-').reverse().join('-')}` : '-'
         };
       }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      const filteredDemandData = demandData.filter(d => {
+        if (demandFilter === 'current_new') return d.overdueYears === 'चालु' && d.isCurrentFY;
+        if (demandFilter === 'current_old') return d.overdueYears === 'चालु' && !d.isCurrentFY;
+        if (demandFilter === 'overdue') return d.overdueYears !== 'चालु';
+        return true;
+      });
 
       const demandColumns = [
         { header: 'अ. क्र.', accessorKey: 'memberNo', width: '60px' },
@@ -3482,14 +3491,29 @@ const Reports = () => {
       return (
         <div className="flex flex-col gap-4 h-full min-h-0">
           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">मागणी यादी तारीख (Report Date):</span>
-              <input 
-                type="date" 
-                value={demandDate} 
-                onChange={(e) => setDemandDate(e.target.value)} 
-                className="p-1.5 border dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-              />
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">मागणी यादी तारीख (Report Date):</span>
+                <input 
+                  type="date" 
+                  value={demandDate} 
+                  onChange={(e) => setDemandDate(e.target.value)} 
+                  className="p-1.5 border dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">सभासद प्रकार (Filter):</span>
+                <select
+                  value={demandFilter}
+                  onChange={(e) => setDemandFilter(e.target.value as 'all' | 'current_new' | 'current_old' | 'overdue')}
+                  className="p-1.5 border dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="all">सर्व कर्जदार सभासद (All)</option>
+                  <option value="current_new">चालू सभासद - या वर्षी कर्ज घेतलेले (Current - New)</option>
+                  <option value="current_old">चालू सभासद - मागील वर्षी कर्ज घेतलेले (Current - Old)</option>
+                  <option value="overdue">फक्त थकीत सभासद (Overdue Only)</option>
+                </select>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -3518,7 +3542,7 @@ const Reports = () => {
               <ReportTable
                 title={`अमु/ममु/चालू/थकीत कर्ज बाकी व कर्ज मागणी यादी (सन ${targetYear}-${String(targetYear + 1).substring(2)})`}
                 columns={demandColumns}
-                data={demandData}
+                data={filteredDemandData}
                 onRowClick={(item) => handleMemberClick(item.id)}
                 enableDateFilter={false}
               />

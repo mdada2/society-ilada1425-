@@ -434,8 +434,8 @@ const Transactions = () => {
         .sort((a, b) => (parseInt(a.memberNo) || 0) - (parseInt(b.memberNo) || 0));
 
     const totalInterestDisplay = selectedMember ? selectedMember.loanInterestDue + newPeriodInterest : 0;
-    const bFundPreview = (includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
-    const jFundPreview = (includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
+    const bFundPreview = (!isGovtWaiver && includeBuildingFund && selectedMember) ? BUILDING_FUND_FIXED : 0;
+    const jFundPreview = (!isGovtWaiver && includeJointFund && selectedMember) ? getJointFundAmt(selectedMember.loanPrincipal) : 0;
     const grandTotalPending = selectedMember ? (selectedMember.loanPrincipal + totalInterestDisplay + bFundPreview + jFundPreview) : 0;
 
     // कर्ज माफी: भरणा केल्यानंतर किती बाकी शिल्लक राहील?
@@ -645,7 +645,7 @@ const Transactions = () => {
                             )}
 
                             {/* Funds Section for Loan Credit */}
-                            {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && !isGovtWaiver && paymentMode === 'Cash' && (
+                            {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && !isGovtWaiver && (
                                 <div className="p-2 md:p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 space-y-2 animate-fade-in">
                                     <h4 className="font-bold text-indigo-800 dark:text-indigo-400 text-[11px] md:text-sm flex items-center gap-2 mb-1">
                                         <FundIcon size={14} /> वार्षिक निधी कपात (FY Fund Collection)
@@ -864,7 +864,7 @@ const Transactions = () => {
                                 </div>
                             )}
 
-                            {!isGovtWaiver && (
+                            {true && (
                                 <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border dark:border-slate-700 space-y-3">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 mb-1">व्यवहार माध्यम (Transaction Mode)</label>
