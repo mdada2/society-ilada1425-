@@ -1608,8 +1608,39 @@ const Members = () => {
 
             const updatedMember: Member = {
               ...existing,
-              name: getNewValue(idxName, v => v, existing.name) as string,
-              nameEn: getNewValue(idxNameEn, v => v, existing.nameEn) as string | undefined,
+              name: (() => {
+                if (idxName !== -1) {
+                  const val = values[idxName];
+                  if (val && val.trim() !== '') {
+                    // Check if new name is English and existing name is Marathi (contains Devanagari)
+                    const isEnglish = /^[A-Za-z\s.,'-]+$/.test(val);
+                    const isExistingMarathi = /[\u0900-\u097F]/.test(existing.name);
+                    if (isEnglish && isExistingMarathi) {
+                      return existing.name; // Keep existing Marathi name
+                    }
+                    return val;
+                  }
+                }
+                return existing.name;
+              })() as string,
+              nameEn: (() => {
+                if (idxNameEn !== -1) {
+                  const val = values[idxNameEn];
+                  if (val && val.trim() !== '') return val;
+                }
+                // Smart fallback: if the Name column contains an English name, and existing name is Marathi
+                if (idxName !== -1) {
+                  const val = values[idxName];
+                  if (val && val.trim() !== '') {
+                    const isEnglish = /^[A-Za-z\s.,'-]+$/.test(val);
+                    const isExistingMarathi = /[\u0900-\u097F]/.test(existing.name);
+                    if (isEnglish && isExistingMarathi) {
+                      return val; // Save imported English name into nameEn
+                    }
+                  }
+                }
+                return existing.nameEn;
+              })() as string | undefined,
               gender: getNewValue(idxGender, v => (v === 'Female' || v === 'Other') ? v : 'Male', existing.gender) as any,
               designation: getNewValue(idxDesignation, v => v || 'शेतकरी', existing.designation) as string,
               village: getNewValue(idxVillage, v => v, existing.village) as string,
