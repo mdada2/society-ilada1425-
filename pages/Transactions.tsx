@@ -115,7 +115,7 @@ const Transactions = () => {
     const [isGovtWaiver, setIsGovtWaiver] = useState(false);
     const [waivedPrincipal, setWaivedPrincipal] = useState<number>(0);
     const [waivedInterest, setWaivedInterest] = useState<number>(0);
-    const [schemeName, setSchemeName] = useState('महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
+    const [schemeName, setSchemeName] = useState(() => localStorage.getItem('lastGovtWaiverSchemeName') || 'महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
     
     const receiptRef = useRef<HTMLDivElement>(null);
     const datePickerRef = useRef<HTMLInputElement>(null); // Calendar picker साठी
@@ -418,7 +418,7 @@ const Transactions = () => {
             setIsGovtWaiver(false);
             setWaivedPrincipal(0);
             setWaivedInterest(0);
-            setSchemeName('महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
+            setSchemeName(localStorage.getItem('lastGovtWaiverSchemeName') || 'महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
             setPaymentMode('Cash');
             setSelectedBankId('');
 
@@ -864,7 +864,10 @@ const Transactions = () => {
                                         <input
                                             type="text"
                                             value={schemeName}
-                                            onChange={e => handleInputChange(setSchemeName, e.target.value)}
+                                            onChange={e => {
+                                                handleInputChange(setSchemeName, e.target.value);
+                                                localStorage.setItem('lastGovtWaiverSchemeName', e.target.value);
+                                            }}
                                             placeholder="उदा. महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना"
                                             className="w-full p-2 border dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
                                         />
