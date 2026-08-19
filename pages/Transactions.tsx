@@ -260,6 +260,13 @@ const Transactions = () => {
     }, [includeBuildingFund, includeJointFund]);
 
     useEffect(() => {
+        if (isGovtWaiver && selectedMember) {
+            setWaivedPrincipal(selectedMember.loanPrincipal || 0);
+            setWaivedInterest(selectedMember.loanInterestDue + newPeriodInterest);
+        }
+    }, [isGovtWaiver, selectedMember?.id]);
+
+    useEffect(() => {
         if (isGovtWaiver) {
             setAmount((waivedPrincipal || 0) + (waivedInterest || 0));
         }
@@ -408,6 +415,7 @@ const Transactions = () => {
             setIncludeBuildingFund(false);
             setIncludeJointFund(false);
             setApplyWaiver(false);
+            setIsGovtWaiver(false);
             setWaivedPrincipal(0);
             setWaivedInterest(0);
             setSchemeName('महात्मा जोतीराव फुले शेतकरी कर्जमुक्ती योजना');
