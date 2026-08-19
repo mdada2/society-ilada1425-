@@ -457,7 +457,11 @@ const Transactions = () => {
     };
 
     const recentTransactions = useMemo(() => {
-        return [...transactions].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+        return [...transactions].sort((a, b) => {
+            const timeA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0) || 0;
+            const timeB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0) || 0;
+            return timeB - timeA;
+        }).slice(0, 10);
     }, [transactions]);
 
     const formatDateDisplay = (dateStr: string) => {

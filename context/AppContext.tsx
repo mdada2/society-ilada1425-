@@ -321,13 +321,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timeout);
   }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings]);
 
-  // Database Auto-Repair Migration for Negative Loan Principal
+  // Database Auto-Repair Migration for Negative Loan Principal or Interest
   useEffect(() => {
     if (members && members.length > 0 && transactions && transactions.length > 0) {
       let needsUpdate = false;
       const repairedMembers = members.map(m => {
+        let updated = false;
+        let loanPrincipal = m.loanPrincipal;
+        let loanInterestDue = m.loanInterestDue;
+
         if (m.loanPrincipal < 0) {
           needsUpdate = true;
+          updated = true;
           const loanTxns = transactions.filter(t => t.memberId === m.id && t.accountType === AccountType.LOAN);
           let calculatedPrincipal = 0;
           loanTxns.forEach(t => {
@@ -337,12 +342,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               calculatedPrincipal -= (t.principalPaid || t.amount);
             }
           });
-          if (calculatedPrincipal < 0) {
-            calculatedPrincipal = 0;
-          }
+          loanPrincipal = Math.max(0, calculatedPrincipal);
+        }
+
+        if (m.loanInterestDue < 0) {
+          needsUpdate = true;
+          updated = true;
+          loanInterestDue = 0;
+        }
+
+        if (updated) {
           return {
             ...m,
-            loanPrincipal: calculatedPrincipal
+            loanPrincipal,
+            loanInterestDue
           };
         }
         return m;
@@ -412,6 +425,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (transaction.accountType === AccountType.LOAN) {
               if (transaction.interestAccrued) updatedMember.loanInterestDue += transaction.interestAccrued;
               if (transaction.interestPaid) updatedMember.loanInterestDue -= transaction.interestPaid;
+              if (updatedMember.loanInterestDue < 0) {
+                updatedMember.loanInterestDue = 0;
+              }
               if (transaction.principalPaid) updatedMember.loanPrincipal -= transaction.principalPaid;
               if (updatedMember.loanPrincipal < 0) {
                 updatedMember.loanPrincipal = 0;
@@ -468,6 +484,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               updatedMember.loanPrincipal += (transaction.principalPaid || 0);
               updatedMember.loanInterestDue += (transaction.interestPaid || 0);
               if (transaction.interestAccrued) updatedMember.loanInterestDue -= transaction.interestAccrued;
+              if (updatedMember.loanInterestDue < 0) {
+                updatedMember.loanInterestDue = 0;
+              }
               if (transaction.previousLoanCalculationDate) updatedMember.lastLoanCalculationDate = transaction.previousLoanCalculationDate;
             }
           } else {
