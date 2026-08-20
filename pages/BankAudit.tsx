@@ -96,8 +96,12 @@ const BankAudit = () => {
     const bankStatementTransactions = useMemo(() => {
         if (!selectedBankForStatement) return [];
         return transactions.filter(t =>
-            (t.accountType === 'BankTransfer' && t.bankId === selectedBankForStatement.id)
-        ).sort((a, b) => b.timestamp - a.timestamp);
+            t.bankId === selectedBankForStatement.id
+        ).sort((a, b) => {
+            const timeA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0) || 0;
+            const timeB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0) || 0;
+            return timeB - timeA;
+        });
     }, [selectedBankForStatement, transactions]);
 
     const handleOpenAddBank = () => {
