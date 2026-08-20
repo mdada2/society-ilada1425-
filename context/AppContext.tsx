@@ -180,12 +180,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     let retryCount = 0;
     const maxRetries = 3;
-    const retryDelay = 2000; // 2 seconds
+    const retryDelay = 2000;
 
     const setupListener = () => {
-      const docRef = doc(db, "societies", "ilada_main");
-      const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        retryCount = 0; // Reset retry count on successful connection
+      const unsubCore = onSnapshot(doc(db, "societies", "ilada_main"), (docSnap) => {
+        retryCount = 0;
         if (docSnap.exists()) {
           const data = docSnap.data();
           const cloudTS = data.lastUpdated || 0;
@@ -193,17 +192,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             lastCloudTimestamp.current = cloudTS;
             isRestoring.current = true;
             if (data.members) setMembers(data.members);
-            if (data.transactions) setTransactions(data.transactions);
             if (data.meetings) setMeetings(data.meetings);
-            if (data.paddyPurchases) setPaddyPurchases(data.paddyPurchases);
-            if (data.paddySeasons) setPaddySeasons(data.paddySeasons);
-            if (data.dispatches) setDispatches(data.dispatches);
-            if (data.paddyDOs) setPaddyDOs(data.paddyDOs);
-            if (data.inventoryAdjustments) setInventoryAdjustments(data.inventoryAdjustments);
             if (data.societyBanks) setSocietyBanks(data.societyBanks);
             if (data.auditNotes) setAuditNotes(data.auditNotes);
-            if (data.staffSalaries) setStaffSalaries(data.staffSalaries);
-            if (data.nclRecords) setNclRecords(data.nclRecords);
             if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
             setIsCloudSynced(true);
             isInitialized.current = true;
@@ -213,21 +204,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           isInitialized.current = true;
         }
       }, (error) => {
-        console.warn('Firebase connection error:', error.code);
-
+        console.warn('Firebase connection error (core):', error.code);
         if (error.code === 'permission-denied') {
           setCloudPermissionError(true);
           isInitialized.current = true;
         } else if (error.code === 'unavailable' || error.message.includes('ERR_CONNECTION_CLOSED')) {
-          // Connection error - retry with exponential backoff
           if (retryCount < maxRetries) {
             retryCount++;
-            console.log(`Retrying Firebase connection (${retryCount}/${maxRetries})...`);
-            setTimeout(() => {
-              setupListener();
-            }, retryDelay * retryCount);
+            setTimeout(() => { setupListener(); }, retryDelay * retryCount);
           } else {
-            console.error('Max retries reached. Working in offline mode.');
             isInitialized.current = true;
             setIsCloudSynced(false);
           }
@@ -235,7 +220,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           isInitialized.current = true;
         }
       });
-      return unsubscribe;
+
+      const unsubTxn = onSnapshot(doc(db, "societies", "ilada_main_txn"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const cloudTS = data.lastUpdated || 0;
+          if (cloudTS > (lastCloudTimestamp.current - 5000)) {
+            isRestoring.current = true;
+            if (data.transactions) setTransactions(data.transactions);
+            setTimeout(() => { isRestoring.current = false; }, 1000);
+          }
+        }
+      }, (error) => { console.warn('Firebase connection error (txn):', error.code); });
+
+      const unsubPaddy = onSnapshot(doc(db, "societies", "ilada_main_paddy"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const cloudTS = data.lastUpdated || 0;
+          if (cloudTS > (lastCloudTimestamp.current - 5000)) {
+            isRestoring.current = true;
+            if (data.paddyPurchases) setPaddyPurchases(data.paddyPurchases);
+            if (data.paddySeasons) setPaddySeasons(data.paddySeasons);
+            if (data.dispatches) setDispatches(data.dispatches);
+            if (data.paddyDOs) setPaddyDOs(data.paddyDOs);
+            if (data.inventoryAdjustments) setInventoryAdjustments(data.inventoryAdjustments);
+            if (data.staffSalaries) setStaffSalaries(data.staffSalaries);
+            if (data.nclRecords) setNclRecords(data.nclRecords);
+            setTimeout(() => { isRestoring.current = false; }, 1000);
+          }
+        }
+      }, (error) => { console.warn('Firebase connection error (paddy):', error.code); });
+
+      return () => { unsubCore(); unsubTxn(); unsubPaddy(); };
     };
 
     const unsubscribe = setupListener();
@@ -251,17 +267,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // Prepare settings for sync - exclude interest rates if not locked
       let settingsToSync = { ...settings };
       if (!settings.interestRatesLocked) {
-        // Remove interest rate fields from sync if not locked
         const { firstYearInterestRate, subsequentYearInterestRate, ...restSettings } = settingsToSync;
         settingsToSync = restSettings;
       }
 
-      const sanitizedData = JSON.parse(JSON.stringify({
-        members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords,
+      const sanitize = (data: any) => JSON.parse(JSON.stringify(data));
+
+      // Doc 1: Core data - members, settings, banks, meetings, audit notes
+      const coreDoc = sanitize({
+        members,
         settings: settingsToSync,
+        societyBanks,
+        meetings,
+        auditNotes,
         lastUpdated: timestamp
-      }));
-      await setDoc(doc(db, "societies", "ilada_main"), sanitizedData);
+      });
+
+      // Doc 2: Transactions only
+      const txnDoc = sanitize({
+        transactions,
+        lastUpdated: timestamp
+      });
+
+      // Doc 3: Paddy + other data
+      const paddyDoc = sanitize({
+        paddyPurchases,
+        paddySeasons,
+        dispatches,
+        paddyDOs,
+        inventoryAdjustments,
+        staffSalaries,
+        nclRecords,
+        lastUpdated: timestamp
+      });
+
+      await Promise.all([
+        setDoc(doc(db, "societies", "ilada_main"), coreDoc),
+        setDoc(doc(db, "societies", "ilada_main_txn"), txnDoc),
+        setDoc(doc(db, "societies", "ilada_main_paddy"), paddyDoc),
+      ]);
+
       lastCloudTimestamp.current = timestamp;
       setIsCloudSynced(true);
       setCloudPermissionError(false);
@@ -277,29 +322,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const restoreFromCloud = async (): Promise<boolean> => {
     if (!navigator.onLine) { alert("इंटरनेट आवश्यक आहे."); return false; }
     try {
-      const docSnap = await getDoc(doc(db, "societies", "ilada_main"));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        isRestoring.current = true;
+      const [coreSnap, txnSnap, paddySnap] = await Promise.all([
+        getDoc(doc(db, "societies", "ilada_main")),
+        getDoc(doc(db, "societies", "ilada_main_txn")),
+        getDoc(doc(db, "societies", "ilada_main_paddy")),
+      ]);
+      isRestoring.current = true;
+      if (coreSnap.exists()) {
+        const data = coreSnap.data();
         setMembers(data.members || []);
-        setTransactions(data.transactions || []);
+        setSocietyBanks(data.societyBanks || []);
         setMeetings(data.meetings || []);
+        setAuditNotes(data.auditNotes || []);
+        if (data.settings) setSettings(data.settings);
+      }
+      if (txnSnap.exists()) {
+        const data = txnSnap.data();
+        setTransactions(data.transactions || []);
+      }
+      if (paddySnap.exists()) {
+        const data = paddySnap.data();
         setPaddyPurchases(data.paddyPurchases || []);
         setPaddySeasons(data.paddySeasons || []);
         setDispatches(data.dispatches || []);
         setPaddyDOs(data.paddyDOs || []);
         setInventoryAdjustments(data.inventoryAdjustments || []);
-        setSocietyBanks(data.societyBanks || []);
-        setAuditNotes(data.auditNotes || []);
         setStaffSalaries(data.staffSalaries || []);
         setNclRecords(data.nclRecords || []);
-        if (data.settings) setSettings(data.settings);
-        isRestoring.current = false;
-        setIsCloudSynced(true);
-        return true;
       }
-      return false;
-    } catch (e) { return false; }
+      isRestoring.current = false;
+      setIsCloudSynced(true);
+      return coreSnap.exists() || txnSnap.exists() || paddySnap.exists();
+    } catch (e) { console.error("Restore from cloud failed:", e); return false; }
   };
 
   useEffect(() => {
