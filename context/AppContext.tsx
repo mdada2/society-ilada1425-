@@ -266,6 +266,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsCloudSynced(true);
       setCloudPermissionError(false);
     } catch (e: any) {
+      console.error("Cloud Sync Failed: ", e);
       if (e.code === 'permission-denied') setCloudPermissionError(true);
       setIsCloudSynced(false);
     } finally {
