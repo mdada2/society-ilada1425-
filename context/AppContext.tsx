@@ -130,17 +130,50 @@ export const defaultLocalSettings: LocalSettings = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [paddyPurchases, setPaddyPurchases] = useState<PaddyPurchaseRecord[]>([]);
-  const [paddySeasons, setPaddySeasons] = useState<PaddySeason[]>([]);
-  const [dispatches, setDispatches] = useState<DispatchRecord[]>([]);
-  const [paddyDOs, setPaddyDOs] = useState<PaddyDO[]>([]);
-  const [inventoryAdjustments, setInventoryAdjustments] = useState<InventoryAdjustment[]>([]);
-  const [societyBanks, setSocietyBanks] = useState<SocietyBank[]>([]);
-  const [auditNotes, setAuditNotes] = useState<AuditNote[]>([]);
-  const [staffSalaries, setStaffSalaries] = useState<StaffSalary[]>([]);
+  const [members, setMembers] = useState<Member[]>(() => {
+    const saved = localStorage.getItem('members');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [meetings, setMeetings] = useState<Meeting[]>(() => {
+    const saved = localStorage.getItem('meetings');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [paddyPurchases, setPaddyPurchases] = useState<PaddyPurchaseRecord[]>(() => {
+    const saved = localStorage.getItem('paddyPurchases');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [paddySeasons, setPaddySeasons] = useState<PaddySeason[]>(() => {
+    const saved = localStorage.getItem('paddySeasons');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [dispatches, setDispatches] = useState<DispatchRecord[]>(() => {
+    const saved = localStorage.getItem('dispatches');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [paddyDOs, setPaddyDOs] = useState<PaddyDO[]>(() => {
+    const saved = localStorage.getItem('paddyDOs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [inventoryAdjustments, setInventoryAdjustments] = useState<InventoryAdjustment[]>(() => {
+    const saved = localStorage.getItem('inventoryAdjustments');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [societyBanks, setSocietyBanks] = useState<SocietyBank[]>(() => {
+    const saved = localStorage.getItem('societyBanks');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [auditNotes, setAuditNotes] = useState<AuditNote[]>(() => {
+    const saved = localStorage.getItem('auditNotes');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [staffSalaries, setStaffSalaries] = useState<StaffSalary[]>(() => {
+    const saved = localStorage.getItem('staffSalaries');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [nclRecords, setNclRecords] = useState<NclRecord[]>(() => {
     const saved = localStorage.getItem('nclRecords');
     return saved ? JSON.parse(saved) : [];
