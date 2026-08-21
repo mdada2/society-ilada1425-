@@ -8,7 +8,7 @@ import { downloadBlob } from '../utils/downloadUtils';
 import { useGoogleDrive } from '../utils/googleDrive';
 
 const Settings = () => {
-    const { settings, localSettings, updateSettings, updateLocalSettings, restoreFromCloud, cloudPermissionError } = useApp();
+    const { settings, localSettings, updateSettings, updateLocalSettings, restoreFromCloud, cloudPermissionError, getStorageMetrics } = useApp();
     const { showConfirm } = useDialog();
     const [newPin, setNewPin] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -425,6 +425,57 @@ const Settings = () => {
                     {isRestoringCloud ? <RefreshCw size={24} className="animate-spin" /> : <CloudDownload size={24} />}
                     {isRestoringCloud ? 'Restoring...' : 'Restore From Cloud'}
                 </button>
+            </div>
+
+            {/* Cloud Database Storage Usage (Firebase) */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border dark:border-slate-700 mb-2 p-6">
+                <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-slate-800 dark:text-white">
+                    <HardDrive size={20} className="text-emerald-600" /> Cloud Database Space Used
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 italic">
+                    Firebase Firestore मधील प्रत्येक डॉक्युमेंटची कमाल क्षमता 1 MB (1,048,576 bytes) आहे. आपण डेटा ३ स्वतंत्र फाईल्समध्ये विभागला आहे जेणेकरून गती आणि मर्यादा सुरळीत राहील.
+                </p>
+
+                {(() => {
+                    const metrics = getStorageMetrics();
+                    const formatKB = (bytes: number) => `${(bytes / 1024).toFixed(2)} KB`;
+                    
+                    const renderBar = (title: string, size: number, limit: number) => {
+                        const pct = Math.min(100, Math.round((size / limit) * 100));
+                        let barColor = 'bg-emerald-500';
+                        if (pct > 80) barColor = 'bg-red-500';
+                        else if (pct > 50) barColor = 'bg-amber-500';
+
+                        return (
+                            <div className="space-y-1 mb-4">
+                                <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    <span>{title}</span>
+                                    <span>{formatKB(size)} / {formatKB(limit)} ({pct}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                                    <div className={`${barColor} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }}></div>
+                                </div>
+                            </div>
+                        );
+                    };
+
+                    const totalPct = Math.min(100, Math.round((metrics.totalUsed / metrics.totalLimit) * 100));
+
+                    return (
+                        <div className="space-y-4">
+                            {renderBar(metrics.core.name, metrics.core.size, metrics.core.limit)}
+                            {renderBar(metrics.txn.name, metrics.txn.size, metrics.txn.limit)}
+                            {renderBar(metrics.paddy.name, metrics.paddy.size, metrics.paddy.limit)}
+
+                            <div className="border-t dark:border-slate-700 pt-3 flex justify-between items-center text-sm font-bold text-slate-800 dark:text-white">
+                                <span>एकूण साठवलेला डेटा (Total Space Used)</span>
+                                <span className={metrics.totalUsed > 2500000 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>
+                                    {formatKB(metrics.totalUsed)} / {formatKB(metrics.totalLimit)} ({totalPct}%)
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Google Drive Backup Section */}

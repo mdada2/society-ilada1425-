@@ -83,6 +83,13 @@ interface AppContextType {
   importMembers: (newMembers: Member[]) => void;
   syncToCloud: () => Promise<void>;
   restoreFromCloud: () => Promise<boolean>;
+  getStorageMetrics: () => {
+    core: { name: string; size: number; limit: number };
+    txn: { name: string; size: number; limit: number };
+    paddy: { name: string; size: number; limit: number };
+    totalUsed: number;
+    totalLimit: number;
+  };
 }
 
 export const defaultSettings: AppSettings = {
@@ -714,6 +721,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return members;
   }, [members, settings.memberNameLanguage]);
 
+  const getStorageMetrics = () => {
+    const sanitizeSize = (data: any) => {
+      try {
+        return new Blob([JSON.stringify(data)]).size;
+      } catch {
+        return 0;
+      }
+    };
+    
+    const coreSize = sanitizeSize({ members, settings, societyBanks, meetings, auditNotes });
+    const txnSize = sanitizeSize({ transactions });
+    const paddySize = sanitizeSize({ paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, staffSalaries, nclRecords });
+
+    return {
+      core: { name: 'Core Data (सभासद, बँका, बैठका)', size: coreSize, limit: 1048576 },
+      txn: { name: 'Transactions (सर्व कर्ज व बचत व्यवहार)', size: txnSize, limit: 1048576 },
+      paddy: { name: 'Paddy & Operations (धान खरेदी व इतर)', size: paddySize, limit: 1048576 },
+      totalUsed: coreSize + txnSize + paddySize,
+      totalLimit: 3145728
+    };
+  };
+
   const getMember = (id: string) => members.find(m => m.id === id);
  
    return (
@@ -731,7 +760,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addAuditNote, updateAuditNote, deleteAuditNote,
       addStaffSalary, updateStaffSalary, deleteStaffSalary, getStaffSalariesByMonth,
       addNclRecord, updateNclRecord, deleteNclRecord,
-      updateMember, updateMembers, updateSettings, updateLocalSettings, resetData, getMember, importMembers, syncToCloud, restoreFromCloud
+      updateMember, updateMembers, updateSettings, updateLocalSettings, resetData, getMember, importMembers, syncToCloud, restoreFromCloud, getStorageMetrics
     }}>
       {children}
     </AppContext.Provider>
