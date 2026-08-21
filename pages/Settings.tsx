@@ -8,11 +8,12 @@ import { downloadBlob } from '../utils/downloadUtils';
 import { useGoogleDrive } from '../utils/googleDrive';
 
 const Settings = () => {
-    const { settings, localSettings, updateSettings, updateLocalSettings, restoreFromCloud, cloudPermissionError, getStorageMetrics } = useApp();
+    const { settings, localSettings, updateSettings, updateLocalSettings, restoreFromCloud, cloudPermissionError, getStorageMetrics, transactions, archivedTransactions, archivePastTransactions } = useApp();
     const { showConfirm } = useDialog();
     const [newPin, setNewPin] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isRestoringCloud, setIsRestoringCloud] = useState(false);
+    const [isArchiving, setIsArchiving] = useState(false);
     const [editingProvider, setEditingProvider] = useState<string | null>(null);
 
     // Google Drive Hook
@@ -26,6 +27,42 @@ const Settings = () => {
         updateSettings({ securityPin: newPin });
         alert("Security PIN Updated Successfully");
         setNewPin('');
+    };
+
+    const handleArchiveTransactions = async () => {
+        if (!settings.financialYearStart) {
+            alert("कृपया प्रथम आर्थिक वर्ष सेट करा.");
+            return;
+        }
+        const cutoffDateStr = format(new Date(settings.financialYearStart), 'dd-MM-yyyy');
+        const confirmed = await showConfirm({
+            title: 'Archive Past Transactions?',
+            titleMr: 'मागील व्यवहार आर्काइव्ह करायचे?',
+            message: `This will move all transactions dated before ${cutoffDateStr} to the cloud archive. Active space will be cleared. This action cannot be undone!`,
+            messageMr: `हे ${cutoffDateStr} पूर्वीचे सर्व व्यवहार क्लाउड आर्काइव्हमध्ये हलवेल. चालू व्यवहारांची जागा मोकळी होईल. ही क्रिया पूर्ववत करता येणार नाही!`,
+            icon: '📦',
+            confirmText: 'Archive / आर्काइव्ह',
+            confirmTextMr: 'आर्काइव्ह करा',
+            confirmColor: 'amber'
+        });
+
+        if (confirmed) {
+            setIsArchiving(true);
+            try {
+                const result = await archivePastTransactions();
+                if (result.success) {
+                    alert(`यशस्वी! ${result.count} व्यवहार आर्काइव्ह करण्यात आले आहेत.`);
+                    window.location.reload();
+                } else {
+                    alert(result.message || "Failed to archive transactions.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error during archiving.");
+            } finally {
+                setIsArchiving(false);
+            }
+        }
     };
 
     const changeTheme = (theme: ThemeMode) => {
@@ -466,14 +503,47 @@ const Settings = () => {
                             {renderBar(metrics.core.name, metrics.core.size, metrics.core.limit)}
                             {renderBar(metrics.members.name, metrics.members.size, metrics.members.limit)}
                             {renderBar(metrics.txn.name, metrics.txn.size, metrics.txn.limit)}
+                            {renderBar(metrics.archive.name, metrics.archive.size, metrics.archive.limit)}
                             {renderBar(metrics.paddy.name, metrics.paddy.size, metrics.paddy.limit)}
 
                             <div className="border-t dark:border-slate-700 pt-3 flex justify-between items-center text-sm font-bold text-slate-800 dark:text-white">
                                 <span>एकूण साठवलेला डेटा (Total Space Used)</span>
-                                <span className={metrics.totalUsed > 2500000 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>
+                                <span className={metrics.totalUsed > 3500000 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>
                                     {formatKB(metrics.totalUsed)} / {formatKB(metrics.totalLimit)} ({totalPct}%)
                                 </span>
                             </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Archiving Action Trigger Box */}
+                {(() => {
+                    if (!settings.financialYearStart) return null;
+                    const cutoff = new Date(settings.financialYearStart);
+                    
+                    // Filter active transactions to count eligible archive records
+                    const activeTxns = transactions.filter(t => !archivedTransactions.some(art => art.id === t.id));
+                    const eligibleCount = activeTxns.filter(t => new Date(t.date) < cutoff).length;
+
+                    if (eligibleCount === 0) return null;
+
+                    return (
+                        <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4 animate-in fade-in duration-300">
+                            <div className="flex-1">
+                                <h4 className="font-black text-amber-800 dark:text-amber-300 text-sm flex items-center gap-2">
+                                    <span>📦</span> मागील आर्थिक वर्षाचे व्यवहार आर्काइव्ह करा
+                                </h4>
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                                    आर्थिक वर्ष सुरू होण्यापूर्वीचे (Cutoff तारीख: {format(cutoff, 'dd-MM-yyyy')}) एकूण <b>{eligibleCount}</b> व्यवहार शिल्लक आहेत जे वेगळे केले जाऊ शकतात.
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleArchiveTransactions}
+                                disabled={isArchiving}
+                                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-black shadow-md uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 disabled:opacity-50"
+                            >
+                                {isArchiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Archiving / आर्काइव्ह'}
+                            </button>
                         </div>
                     );
                 })()}
