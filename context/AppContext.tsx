@@ -85,6 +85,7 @@ interface AppContextType {
   restoreFromCloud: () => Promise<boolean>;
   getStorageMetrics: () => {
     core: { name: string; size: number; limit: number };
+    members: { name: string; size: number; limit: number };
     txn: { name: string; size: number; limit: number };
     paddy: { name: string; size: number; limit: number };
     totalUsed: number;
@@ -198,7 +199,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (cloudTS > lastCloudTimestamp.current) {
             lastCloudTimestamp.current = cloudTS;
             isRestoring.current = true;
-            if (data.members) setMembers(data.members);
             if (data.meetings) setMeetings(data.meetings);
             if (data.societyBanks) setSocietyBanks(data.societyBanks);
             if (data.auditNotes) setAuditNotes(data.auditNotes);
@@ -227,6 +227,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           isInitialized.current = true;
         }
       });
+
+      const unsubMembers = onSnapshot(doc(db, "societies", "ilada_main_members"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const cloudTS = data.lastUpdated || 0;
+          if (cloudTS > (lastCloudTimestamp.current - 5000)) {
+            isRestoring.current = true;
+            if (data.members) setMembers(data.members);
+            setTimeout(() => { isRestoring.current = false; }, 1000);
+          }
+        }
+      }, (error) => { console.warn('Firebase connection error (members):', error.code); });
 
       const unsubTxn = onSnapshot(doc(db, "societies", "ilada_main_txn"), (docSnap) => {
         if (docSnap.exists()) {
@@ -258,7 +270,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }, (error) => { console.warn('Firebase connection error (paddy):', error.code); });
 
-      return () => { unsubCore(); unsubTxn(); unsubPaddy(); };
+      return () => { unsubCore(); unsubMembers(); unsubTxn(); unsubPaddy(); };
     };
 
     const unsubscribe = setupListener();
@@ -280,9 +292,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const sanitize = (data: any) => JSON.parse(JSON.stringify(data));
 
-      // Doc 1: Core data - members, settings, banks, meetings, audit notes
+      // Doc 1: Metadata - settings, banks, meetings, audit notes
       const coreDoc = sanitize({
-        members,
         settings: settingsToSync,
         societyBanks,
         meetings,
@@ -290,13 +301,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         lastUpdated: timestamp
       });
 
-      // Doc 2: Transactions only
+      // Doc 2: Members list only
+      const membersDoc = sanitize({
+        members,
+        lastUpdated: timestamp
+      });
+
+      // Doc 3: Transactions only
       const txnDoc = sanitize({
         transactions,
         lastUpdated: timestamp
       });
 
-      // Doc 3: Paddy + other data
+      // Doc 4: Paddy + other data
       const paddyDoc = sanitize({
         paddyPurchases,
         paddySeasons,
@@ -310,6 +327,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       await Promise.all([
         setDoc(doc(db, "societies", "ilada_main"), coreDoc),
+        setDoc(doc(db, "societies", "ilada_main_members"), membersDoc),
         setDoc(doc(db, "societies", "ilada_main_txn"), txnDoc),
         setDoc(doc(db, "societies", "ilada_main_paddy"), paddyDoc),
       ]);
@@ -329,19 +347,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const restoreFromCloud = async (): Promise<boolean> => {
     if (!navigator.onLine) { alert("इंटरनेट आवश्यक आहे."); return false; }
     try {
-      const [coreSnap, txnSnap, paddySnap] = await Promise.all([
+      const [coreSnap, membersSnap, txnSnap, paddySnap] = await Promise.all([
         getDoc(doc(db, "societies", "ilada_main")),
+        getDoc(doc(db, "societies", "ilada_main_members")),
         getDoc(doc(db, "societies", "ilada_main_txn")),
         getDoc(doc(db, "societies", "ilada_main_paddy")),
       ]);
       isRestoring.current = true;
       if (coreSnap.exists()) {
         const data = coreSnap.data();
-        setMembers(data.members || []);
         setSocietyBanks(data.societyBanks || []);
         setMeetings(data.meetings || []);
         setAuditNotes(data.auditNotes || []);
         if (data.settings) setSettings(data.settings);
+      }
+      if (membersSnap.exists()) {
+        const data = membersSnap.data();
+        setMembers(data.members || []);
       }
       if (txnSnap.exists()) {
         const data = txnSnap.data();
@@ -359,7 +381,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       isRestoring.current = false;
       setIsCloudSynced(true);
-      return coreSnap.exists() || txnSnap.exists() || paddySnap.exists();
+      return coreSnap.exists() || membersSnap.exists() || txnSnap.exists() || paddySnap.exists();
     } catch (e) { console.error("Restore from cloud failed:", e); return false; }
   };
 
@@ -730,16 +752,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     };
     
-    const coreSize = sanitizeSize({ members, settings, societyBanks, meetings, auditNotes });
+    const coreSize = sanitizeSize({ settings, societyBanks, meetings, auditNotes });
+    const membersSize = sanitizeSize({ members });
     const txnSize = sanitizeSize({ transactions });
     const paddySize = sanitizeSize({ paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, staffSalaries, nclRecords });
 
     return {
-      core: { name: 'Core Data (सभासद, बँका, बैठका)', size: coreSize, limit: 1048576 },
+      core: { name: 'Core Metadata (बँक माहिती, बैठका, ऑडिट)', size: coreSize, limit: 1048576 },
+      members: { name: 'Members List (सर्व सभासदांची माहिती)', size: membersSize, limit: 1048576 },
       txn: { name: 'Transactions (सर्व कर्ज व बचत व्यवहार)', size: txnSize, limit: 1048576 },
       paddy: { name: 'Paddy & Operations (धान खरेदी व इतर)', size: paddySize, limit: 1048576 },
-      totalUsed: coreSize + txnSize + paddySize,
-      totalLimit: 3145728
+      totalUsed: coreSize + membersSize + txnSize + paddySize,
+      totalLimit: 4194304
     };
   };
 

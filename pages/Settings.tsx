@@ -464,6 +464,7 @@ const Settings = () => {
                     return (
                         <div className="space-y-4">
                             {renderBar(metrics.core.name, metrics.core.size, metrics.core.limit)}
+                            {renderBar(metrics.members.name, metrics.members.size, metrics.members.limit)}
                             {renderBar(metrics.txn.name, metrics.txn.size, metrics.txn.limit)}
                             {renderBar(metrics.paddy.name, metrics.paddy.size, metrics.paddy.limit)}
 
