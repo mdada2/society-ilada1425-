@@ -5764,102 +5764,89 @@ const Reports = () => {
 
     const allResolvedIncentiveData = members
       .map(m => {
-        // 1. Look for a loan debit in the target FY (01-04 to 31-03)
-        const fYLoanDebit = transactions.find(t => 
+        // 1. Find all debit transactions in the target FY (01-04 to 31-03)
+        const fyDebits = transactions.filter(t => 
           t.memberId === m.id && 
           t.type === 'Debit' && 
           t.accountType === 'Loan' && 
           new Date(t.date) >= startDate && 
           new Date(t.date) <= endDate
         );
+        const totalDisbursed = fyDebits.reduce((sum, t) => sum + t.amount, 0);
 
-        // 2. Or look for a loan credit (repayment) in the target FY (01-04 to 30-06-cutoff)
-        const fYLoanCredit = transactions.find(t => 
+        // 2. Find repayments in target FY up to cutoff (01-04 to 30-06 next year)
+        const repaymentsBeforeCutoff = transactions.filter(t => 
           t.memberId === m.id && 
           t.type === 'Credit' && 
           t.accountType === 'Loan' && 
           new Date(t.date) >= startDate && 
           new Date(t.date) <= deshmukCutoff
         );
-
-        // 3. Or fallback to current member loan details if they are in the target FY
-        const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
-        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
-
-        if (!fYLoanDebit && !fYLoanCredit && !currentLoanInFY) {
-          return null;
-        }
-
-        let loanDate = `${startYear}-04-01`;
-        let principal = 0;
-
-        if (fYLoanDebit) {
-          loanDate = fYLoanDebit.date;
-          principal = fYLoanDebit.amount;
-        } else if (fYLoanCredit) {
-          loanDate = fYLoanCredit.previousLoanCalculationDate || (currentLoanInFY ? currentLoanDateStr! : `${startYear}-04-01`);
-          principal = fYLoanCredit.principalPaid || (fYLoanCredit.amount - (fYLoanCredit.interestPaid || 0));
-        } else if (currentLoanInFY) {
-          loanDate = currentLoanDateStr!;
-          principal = Math.max(0, m.loanPrincipal);
-        }
-
-        // Let's determine repayments of this loan. Repayments occur after loanDate and up to deshmukCutoff
-        const repaymentTxns = transactions.filter(t => 
-          t.memberId === m.id && 
-          t.type === 'Credit' && 
-          t.accountType === 'Loan' && 
-          t.date >= loanDate && 
-          new Date(t.date) <= deshmukCutoff
-        );
-
-        // Sum repayments
-        const totalRepaid = repaymentTxns.reduce((sum, t) => 
+        const totalRepaidBeforeCutoff = repaymentsBeforeCutoff.reduce((sum, t) => 
           sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
         );
 
-        // If there is a later debit transaction, this loan MUST have been repaid, or we check if totalRepaid clears it.
-        const hasLaterLoan = transactions.some(t =>
-          t.memberId === m.id &&
-          t.type === 'Debit' &&
-          t.accountType === 'Loan' &&
-          new Date(t.date) > new Date(loanDate)
+        // 3. Find repayments after cutoff (after 30-06 next year)
+        const repaymentsAfterCutoff = transactions.filter(t => 
+          t.memberId === m.id && 
+          t.type === 'Credit' && 
+          t.accountType === 'Loan' && 
+          new Date(t.date) > deshmukCutoff
+        );
+        const totalRepaidAfterCutoff = repaymentsAfterCutoff.reduce((sum, t) => 
+          sum + (t.principalPaid || Math.max(0, t.amount - (t.interestPaid || 0))), 0
         );
 
-        // fully repaid?
-        const isRepaid = totalRepaid >= (principal - 5) || hasLaterLoan || (currentLoanInFY && m.loanPrincipal <= 0);
+        const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
+        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= startDate && new Date(currentLoanDateStr) <= endDate;
 
-        let repaymentDateStr = '-';
-        if (isRepaid) {
-          if (repaymentTxns.length > 0) {
-            const sortedRepayments = [...repaymentTxns].sort((a, b) => a.date.localeCompare(b.date));
-            repaymentDateStr = sortedRepayments[sortedRepayments.length - 1].date;
-          } else if (hasLaterLoan) {
-            const laterLoans = transactions
-              .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) > new Date(loanDate))
-              .sort((a, b) => a.date.localeCompare(b.date));
-            
-            if (laterLoans.length > 0) {
-              const nextLoanDate = new Date(laterLoans[0].date);
-              const repaidDateObj = new Date(nextLoanDate.getTime() - 24 * 60 * 60 * 1000);
-              repaymentDateStr = format(repaidDateObj, 'yyyy-MM-dd');
-            } else {
-              repaymentDateStr = `${endYear}-03-31`;
-            }
-          }
-        }
-
-        const displayRepaymentDate = isRepaid ? repaymentDateStr : 'Ongoing (सुरु)';
-
-        const toDate = isRepaid ? new Date(repaymentDateStr) : new Date();
-        const days = differenceInDays(toDate, new Date(loanDate));
-
-        const productValue = principal * days;
-
-        const repaidBeforeCutoff = isRepaid && new Date(repaymentDateStr) <= deshmukCutoff;
-        if (!repaidBeforeCutoff) {
+        if (totalDisbursed === 0 && repaymentsBeforeCutoff.length === 0 && repaymentsAfterCutoff.length === 0 && !currentLoanInFY) {
           return null;
         }
+
+        // Determine original loan date
+        let loanDate = `${startYear}-04-01`;
+        if (fyDebits.length > 0) {
+          const sortedDebits = [...fyDebits].sort((a, b) => a.date.localeCompare(b.date));
+          loanDate = sortedDebits[0].date;
+        } else if (currentLoanInFY) {
+          loanDate = currentLoanDateStr!;
+        } else if (repaymentsBeforeCutoff.length > 0) {
+          const sortedCredits = [...repaymentsBeforeCutoff].sort((a, b) => a.date.localeCompare(b.date));
+          loanDate = sortedCredits[0].previousLoanCalculationDate || `${startYear}-04-01`;
+        }
+
+        // Determine principal loan amount
+        let principal = totalDisbursed;
+        if (principal === 0) {
+          principal = totalRepaidBeforeCutoff + totalRepaidAfterCutoff;
+        }
+        if (principal === 0 && currentLoanInFY) {
+          principal = m.loanPrincipal;
+        }
+        if (principal <= 0) {
+          return null;
+        }
+
+        // Check if fully repaid strictly before or on cutoff date (30-06 of next year)
+        // If they repaid some before and some after, they are excluded because totalRepaidAfterCutoff > 0
+        // If they have not paid fully, remaining is > 0, so they are excluded
+        const isRepaid = totalRepaidBeforeCutoff >= (principal - 5) && totalRepaidAfterCutoff === 0;
+
+        if (!isRepaid) {
+          return null;
+        }
+
+        let repaymentDateStr = '-';
+        if (repaymentsBeforeCutoff.length > 0) {
+          const sortedRepayments = [...repaymentsBeforeCutoff].sort((a, b) => a.date.localeCompare(b.date));
+          repaymentDateStr = sortedRepayments[sortedRepayments.length - 1].date;
+        } else {
+          repaymentDateStr = `${endYear}-06-30`;
+        }
+
+        const days = differenceInDays(new Date(repaymentDateStr), new Date(loanDate));
+        const productValue = principal * days;
         const incentive = Math.round((principal * days * 0.03) / 365);
 
         return {
@@ -5868,7 +5855,7 @@ const Reports = () => {
           category: m.category,
           village: m.village,
           loanDate: loanDate,
-          repaymentDate: displayRepaymentDate,
+          repaymentDate: repaymentDateStr,
           days: days,
           principal: principal,
           product: productValue,
@@ -5879,7 +5866,6 @@ const Reports = () => {
       })
       .filter((item): item is NonNullable<typeof item> => {
         if (!item) return false;
-        // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
         const parsedLoanDate = new Date(item.loanDate);
         if (parsedLoanDate < startDate || parsedLoanDate > endDate) {
           return false;
