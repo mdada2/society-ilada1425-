@@ -83,10 +83,12 @@ interface AppContextType {
   importMembers: (newMembers: Member[]) => void;
   syncToCloud: () => Promise<void>;
   restoreFromCloud: () => Promise<boolean>;
+  archivePastTransactions: () => Promise<{ success: boolean; count?: number; message?: string }>;
   getStorageMetrics: () => {
     core: { name: string; size: number; limit: number };
     members: { name: string; size: number; limit: number };
     txn: { name: string; size: number; limit: number };
+    archive: { name: string; size: number; limit: number };
     paddy: { name: string; size: number; limit: number };
     totalUsed: number;
     totalLimit: number;
@@ -134,10 +136,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem('members');
     return saved ? JSON.parse(saved) : [];
   });
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+  const [activeTransactions, setActiveTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('transactions');
     return saved ? JSON.parse(saved) : [];
   });
+  const [archivedTransactions, setArchivedTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('archived_transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const setTransactions = setActiveTransactions;
   const [meetings, setMeetings] = useState<Meeting[]>(() => {
     const saved = localStorage.getItem('meetings');
     return saved ? JSON.parse(saved) : [];
@@ -197,6 +204,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const isRestoring = useRef(false);
   const isInitialized = useRef(false);
   const lastCloudTimestamp = useRef<number>(0);
+
+  const transactions = useMemo(() => {
+    return [...activeTransactions, ...archivedTransactions];
+  }, [activeTransactions, archivedTransactions]);
 
   // Firebase Auth State Listener
   useEffect(() => {
@@ -279,11 +290,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const cloudTS = data.lastUpdated || 0;
           if (cloudTS > (lastCloudTimestamp.current - 5000)) {
             isRestoring.current = true;
-            if (data.transactions) setTransactions(data.transactions);
+            if (data.transactions) setActiveTransactions(data.transactions);
             setTimeout(() => { isRestoring.current = false; }, 1000);
           }
         }
       }, (error) => { console.warn('Firebase connection error (txn):', error.code); });
+
+      const unsubArchive = onSnapshot(doc(db, "societies", "ilada_main_txn_archive"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const cloudTS = data.lastUpdated || 0;
+          if (cloudTS > (lastCloudTimestamp.current - 5000)) {
+            isRestoring.current = true;
+            if (data.archivedTransactions) setArchivedTransactions(data.archivedTransactions);
+            setTimeout(() => { isRestoring.current = false; }, 1000);
+          }
+        }
+      }, (error) => { console.warn('Firebase connection error (archive):', error.code); });
 
       const unsubPaddy = onSnapshot(doc(db, "societies", "ilada_main_paddy"), (docSnap) => {
         if (docSnap.exists()) {
@@ -303,7 +326,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }, (error) => { console.warn('Firebase connection error (paddy):', error.code); });
 
-      return () => { unsubCore(); unsubMembers(); unsubTxn(); unsubPaddy(); };
+      return () => { unsubCore(); unsubMembers(); unsubTxn(); unsubArchive(); unsubPaddy(); };
     };
 
     const unsubscribe = setupListener();
@@ -340,9 +363,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         lastUpdated: timestamp
       });
 
-      // Doc 3: Transactions only
+      // Doc 3: Transactions only (active ones)
       const txnDoc = sanitize({
-        transactions,
+        transactions: activeTransactions,
         lastUpdated: timestamp
       });
 
@@ -380,10 +403,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const restoreFromCloud = async (): Promise<boolean> => {
     if (!navigator.onLine) { alert("इंटरनेट आवश्यक आहे."); return false; }
     try {
-      const [coreSnap, membersSnap, txnSnap, paddySnap] = await Promise.all([
+      const [coreSnap, membersSnap, txnSnap, archiveSnap, paddySnap] = await Promise.all([
         getDoc(doc(db, "societies", "ilada_main")),
         getDoc(doc(db, "societies", "ilada_main_members")),
         getDoc(doc(db, "societies", "ilada_main_txn")),
+        getDoc(doc(db, "societies", "ilada_main_txn_archive")),
         getDoc(doc(db, "societies", "ilada_main_paddy")),
       ]);
       isRestoring.current = true;
@@ -400,7 +424,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       if (txnSnap.exists()) {
         const data = txnSnap.data();
-        setTransactions(data.transactions || []);
+        setActiveTransactions(data.transactions || []);
+      }
+      if (archiveSnap.exists()) {
+        const data = archiveSnap.data();
+        setArchivedTransactions(data.archivedTransactions || []);
       }
       if (paddySnap.exists()) {
         const data = paddySnap.data();
@@ -414,14 +442,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       isRestoring.current = false;
       setIsCloudSynced(true);
-      return coreSnap.exists() || membersSnap.exists() || txnSnap.exists() || paddySnap.exists();
+      return coreSnap.exists() || membersSnap.exists() || txnSnap.exists() || archiveSnap.exists() || paddySnap.exists();
     } catch (e) { console.error("Restore from cloud failed:", e); return false; }
   };
 
   useEffect(() => {
     if (!isInitialized.current || isRestoring.current) return;
     localStorage.setItem('members', JSON.stringify(members));
-    localStorage.setItem('transactions', JSON.stringify(transactions));
+    localStorage.setItem('transactions', JSON.stringify(activeTransactions));
+    localStorage.setItem('archived_transactions', JSON.stringify(archivedTransactions));
     localStorage.setItem('meetings', JSON.stringify(meetings));
     localStorage.setItem('paddyPurchases', JSON.stringify(paddyPurchases));
     localStorage.setItem('paddySeasons', JSON.stringify(paddySeasons));
@@ -436,7 +465,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsCloudSynced(false);
     const timeout = setTimeout(syncToCloud, 3000);
     return () => clearTimeout(timeout);
-  }, [members, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings]);
+  }, [members, activeTransactions, archivedTransactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings]);
 
   // Database Auto-Repair Migration for Negative Loan Principal or Interest
   useEffect(() => {
@@ -746,10 +775,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const deleteStaffSalary = (id: string) => setStaffSalaries(prev => prev.filter(s => s.id !== id));
   const getStaffSalariesByMonth = (month: string): StaffSalary[] => staffSalaries.filter(s => s.month === month);
 
+  const archivePastTransactions = async (): Promise<{ success: boolean; count?: number; message?: string }> => {
+    if (!settings.financialYearStart) return { success: false, message: "Financial year settings not found." };
+    const cutoff = new Date(settings.financialYearStart);
+    
+    const toArchive = activeTransactions.filter(t => new Date(t.date) < cutoff);
+    const toKeepActive = activeTransactions.filter(t => new Date(t.date) >= cutoff);
+    
+    if (toArchive.length === 0) {
+      return { success: false, message: "आर्काइव्ह करण्यासाठी जुने व्यवहार आढळले नाहीत." };
+    }
+    
+    const newArchive = [...archivedTransactions, ...toArchive];
+    
+    // Update local state
+    setActiveTransactions(toKeepActive);
+    setArchivedTransactions(newArchive);
+    
+    // Save to LocalStorage
+    localStorage.setItem('transactions', JSON.stringify(toKeepActive));
+    localStorage.setItem('archived_transactions', JSON.stringify(newArchive));
+    
+    // Sync to Cloud immediately
+    try {
+      const timestamp = Date.now();
+      await Promise.all([
+        setDoc(doc(db, "societies", "ilada_main_txn"), { transactions: toKeepActive, lastUpdated: timestamp }),
+        setDoc(doc(db, "societies", "ilada_main_txn_archive"), { archivedTransactions: newArchive, lastUpdated: timestamp })
+      ]);
+      return { success: true, count: toArchive.length };
+    } catch (e: any) {
+      console.error("Archive sync failed:", e);
+      return { success: false, message: "Cloud sync failed, but archived locally." };
+    }
+  };
+
   const resetData = (data: any) => {
     isRestoring.current = true;
     setMembers(data.members || []);
-    setTransactions(data.transactions || []);
+    setActiveTransactions(data.transactions || []);
+    setArchivedTransactions(data.archivedTransactions || []);
     setMeetings(data.meetings || []);
     setPaddyPurchases(data.paddyPurchases || []);
     setPaddySeasons(data.paddySeasons || []);
@@ -787,16 +852,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     const coreSize = sanitizeSize({ settings, societyBanks, meetings, auditNotes });
     const membersSize = sanitizeSize({ members });
-    const txnSize = sanitizeSize({ transactions });
+    const txnSize = sanitizeSize({ transactions: activeTransactions });
+    const archiveSize = sanitizeSize({ archivedTransactions });
     const paddySize = sanitizeSize({ paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, staffSalaries, nclRecords });
 
     return {
       core: { name: 'Core Metadata (बँक माहिती, बैठका, ऑडिट)', size: coreSize, limit: 1048576 },
       members: { name: 'Members List (सर्व सभासदांची माहिती)', size: membersSize, limit: 1048576 },
-      txn: { name: 'Transactions (सर्व कर्ज व बचत व्यवहार)', size: txnSize, limit: 1048576 },
+      txn: { name: 'Transactions (चालू वर्षाचे व्यवहार)', size: txnSize, limit: 1048576 },
+      archive: { name: 'Archived Transactions (मागील वर्षांचे व्यवहार)', size: archiveSize, limit: 1048576 },
       paddy: { name: 'Paddy & Operations (धान खरेदी व इतर)', size: paddySize, limit: 1048576 },
-      totalUsed: coreSize + membersSize + txnSize + paddySize,
-      totalLimit: 4194304
+      totalUsed: coreSize + membersSize + txnSize + archiveSize + paddySize,
+      totalLimit: 5242880
     };
   };
 
@@ -804,8 +871,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
  
    return (
      <AppContext.Provider value={{
-       members: displayedMembers, transactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
-      setTransactions, setSocietyBanks,
+       members: displayedMembers, transactions: transactions, archivedTransactions, meetings, paddyPurchases, paddySeasons, dispatches, paddyDOs, inventoryAdjustments, societyBanks, auditNotes, staffSalaries, nclRecords, settings, localSettings, isAuthenticated, currentUser, isCloudSynced, isSyncing, cloudPermissionError,
+      setTransactions: setActiveTransactions as React.Dispatch<React.SetStateAction<Transaction[]>>, setSocietyBanks,
       login, signup, logout, resetPassword, loginWithPhone, verifyPhoneOTP, setupPhoneAuth, clearPhoneAuth, addMember, deleteMember, addTransaction, deleteTransaction,
       addMeeting, updateMeeting, deleteMeeting,
       addPaddyPurchase, updatePaddyPurchase, deletePaddyPurchase,
@@ -817,7 +884,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addAuditNote, updateAuditNote, deleteAuditNote,
       addStaffSalary, updateStaffSalary, deleteStaffSalary, getStaffSalariesByMonth,
       addNclRecord, updateNclRecord, deleteNclRecord,
-      updateMember, updateMembers, updateSettings, updateLocalSettings, resetData, getMember, importMembers, syncToCloud, restoreFromCloud, getStorageMetrics
+      updateMember, updateMembers, updateSettings, updateLocalSettings, resetData, getMember, importMembers, syncToCloud, restoreFromCloud, getStorageMetrics, archivePastTransactions
     }}>
       {children}
     </AppContext.Provider>
