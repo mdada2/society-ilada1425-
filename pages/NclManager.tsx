@@ -32,7 +32,8 @@ export default function NclManager() {
     updateNclRecord,
     deleteNclRecord,
     settings,
-    updateSettings
+    updateSettings,
+    updateMember
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'manage' | 'print'>('manage');
@@ -158,6 +159,7 @@ export default function NclManager() {
 
     addNclRecord(newRecord);
     setSearchQuery('');
+    setEditingRecord(newRecord);
   };
 
   // NCL list stats
@@ -858,6 +860,47 @@ export default function NclManager() {
                   गाव: {members.find(m => m.id === editingRecord.memberId)?.village}
                 </p>
               </div>
+
+              {(() => {
+                const editingMember = members.find(m => m.id === editingRecord.memberId);
+                return (
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border dark:border-slate-700/60 rounded-xl space-y-2">
+                    <label className="block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">कृषक प्रकार शॉर्टकट (Farmer Type)</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingMember) {
+                            updateMember({ ...editingMember, farmerType: 'Small Farmer' });
+                          }
+                        }}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                          editingMember?.farmerType !== 'Large Farmer'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                            : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        🌾 लघु कृषक (Small)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingMember) {
+                            updateMember({ ...editingMember, farmerType: 'Large Farmer' });
+                          }
+                        }}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                          editingMember?.farmerType === 'Large Farmer'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                            : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        🚜 मोठे कृषक (Large)
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
