@@ -67,6 +67,7 @@ export default function NclManager() {
       if (!memberA) return 1;
       if (!memberB) return -1;
 
+      // 1. Group by Village custom sort order (गावनिहाय वर्गीकरण)
       const idxA = VILLAGE_SORT_ORDER.findIndex(v => 
         memberA.village.toLowerCase().includes(v.toLowerCase()) || 
         v.toLowerCase().includes(memberA.village.toLowerCase())
@@ -81,7 +82,22 @@ export default function NclManager() {
 
       if (valA !== valB) return valA - valB;
 
-      // Secondary sorting by member number
+      // 2. Put Big Farmers (मोठे कृषक / Large Farmer) on top of each village group
+      const typeA = memberA.farmerType === 'Large Farmer' ? 0 : 1;
+      const typeB = memberB.farmerType === 'Large Farmer' ? 0 : 1;
+      if (typeA !== typeB) return typeA - typeB;
+
+      // 3. Keep addition order (first added -> on top)
+      const parseTimestamp = (idStr: string) => {
+        const parts = idStr.split('_');
+        const ts = parseInt(parts[2]);
+        return isNaN(ts) ? 0 : ts;
+      };
+      const tsA = parseTimestamp(a.id);
+      const tsB = parseTimestamp(b.id);
+      if (tsA !== tsB) return tsA - tsB;
+
+      // Fallback to member number comparison
       return memberA.memberNo.localeCompare(memberB.memberNo);
     });
   }, [nclRecords, members]);
