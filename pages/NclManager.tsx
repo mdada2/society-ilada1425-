@@ -42,6 +42,21 @@ export default function NclManager() {
   const [nclSearchQuery, setNclSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Form input string states to prevent React number formatting / leading zero issues
+  const [formLandArea, setFormLandArea] = useState('');
+  const [formWetPaddy, setFormWetPaddy] = useState('');
+  const [formDryPaddy, setFormDryPaddy] = useState('');
+  const [formSummerCrop, setFormSummerCrop] = useState('');
+
+  React.useEffect(() => {
+    if (editingRecord) {
+      setFormLandArea(editingRecord.landArea === 0 ? '' : String(editingRecord.landArea));
+      setFormWetPaddy(editingRecord.wetPaddyAcres === 0 ? '' : String(editingRecord.wetPaddyAcres));
+      setFormDryPaddy(editingRecord.dryPaddyAcres === 0 ? '' : String(editingRecord.dryPaddyAcres));
+      setFormSummerCrop(editingRecord.summerCropAcres === 0 ? '' : String(editingRecord.summerCropAcres));
+    }
+  }, [editingRecord?.id]);
+
   // Global NCL Configuration variables
   const ratePerAcre = settings.nclRatePerAcre || 32000;
   const defaultRevenueCircle = settings.nclRevenueCircleDefault || 'कनेरी';
@@ -183,11 +198,20 @@ export default function NclManager() {
     e.preventDefault();
     if (!editingRecord) return;
 
-    const totalAcres = editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres;
+    const land = parseFloat(formLandArea) || 0;
+    const wet = parseFloat(formWetPaddy) || 0;
+    const dry = parseFloat(formDryPaddy) || 0;
+    const summer = parseFloat(formSummerCrop) || 0;
+
+    const totalAcres = wet + dry + summer;
     const totalCash = totalAcres * ratePerAcre;
 
     const updated = {
       ...editingRecord,
+      landArea: land,
+      wetPaddyAcres: wet,
+      dryPaddyAcres: dry,
+      summerCropAcres: summer,
       recommendedAcres: totalAcres,
       recommendedCash: totalCash,
       inspectorAcres: totalAcres,
@@ -909,8 +933,8 @@ export default function NclManager() {
                     type="number"
                     step="0.01"
                     required
-                    value={editingRecord.landArea}
-                    onChange={e => setEditingRecord({ ...editingRecord, landArea: parseFloat(e.target.value) || 0 })}
+                    value={formLandArea}
+                    onChange={e => setFormLandArea(e.target.value)}
                     className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
                   />
                 </div>
@@ -934,67 +958,73 @@ export default function NclManager() {
                     <input
                       type="number"
                       step="0.01"
-                      value={editingRecord.wetPaddyAcres}
-                      onChange={e => setEditingRecord({ ...editingRecord, wetPaddyAcres: parseFloat(e.target.value) || 0 })}
+                      value={formWetPaddy}
+                      onChange={e => setFormWetPaddy(e.target.value)}
                       className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1 font-mono">₹{(editingRecord.wetPaddyAcres * ratePerAcre).toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-mono">₹{((parseFloat(formWetPaddy) || 0) * ratePerAcre).toLocaleString()}</p>
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 font-bold mb-1">धान कोरडवाहू</label>
                     <input
                       type="number"
                       step="0.01"
-                      value={editingRecord.dryPaddyAcres}
-                      onChange={e => setEditingRecord({ ...editingRecord, dryPaddyAcres: parseFloat(e.target.value) || 0 })}
+                      value={formDryPaddy}
+                      onChange={e => setFormDryPaddy(e.target.value)}
                       className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1 font-mono">₹{(editingRecord.dryPaddyAcres * ratePerAcre).toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-mono">₹{((parseFloat(formDryPaddy) || 0) * ratePerAcre).toLocaleString()}</p>
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 font-bold mb-1">बागायती/उन्हाळी</label>
                     <input
                       type="number"
                       step="0.01"
-                      value={editingRecord.summerCropAcres}
-                      onChange={e => setEditingRecord({ ...editingRecord, summerCropAcres: parseFloat(e.target.value) || 0 })}
+                      value={formSummerCrop}
+                      onChange={e => setFormSummerCrop(e.target.value)}
                       className="w-full p-2 border dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1 font-mono">₹{(editingRecord.summerCropAcres * ratePerAcre).toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-mono">₹{((parseFloat(formSummerCrop) || 0) * ratePerAcre).toLocaleString()}</p>
                   </div>
                 </div>
               </div>
 
               {/* Read-only / auto calculated recommendation section to match user request */}
-              <div className="border-t dark:border-slate-700 pt-4 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-slate-500">संस्थेची शिफारस (आराजी):</span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                    {(editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres).toFixed(2)} एकर
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-slate-500">संस्थेची शिफारस नगदी:</span>
-                  <span className="font-mono font-bold text-blue-600">
-                    ₹{((editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres) * ratePerAcre).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs border-t dark:border-slate-700 pt-2">
-                  <span className="font-semibold text-slate-500">शाखा निरीक्षक शिफारस (आराजी):</span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                    {(editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres).toFixed(2)} एकर
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-slate-500">शाखा निरीक्षक शिफारस नगदी:</span>
-                  <span className="font-mono font-bold text-blue-600">
-                    ₹{((editingRecord.wetPaddyAcres + editingRecord.dryPaddyAcres + editingRecord.summerCropAcres) * ratePerAcre).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400 text-center font-bold mt-1">
-                  (धान ओलीत + धान कोरडवाहू + बागायती/उन्हाळी बेरीज नुसार ऑटो-कॅल्क्युलेटेड)
-                </p>
-              </div>
+              {(() => {
+                const totalLocalAcres = (parseFloat(formWetPaddy) || 0) + (parseFloat(formDryPaddy) || 0) + (parseFloat(formSummerCrop) || 0);
+                const totalLocalCash = totalLocalAcres * ratePerAcre;
+                return (
+                  <div className="border-t dark:border-slate-700 pt-4 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-slate-500">संस्थेची शिफारस (आराजी):</span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                        {totalLocalAcres.toFixed(2)} एकर
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-slate-500">संस्थेची शिफारस नगदी:</span>
+                      <span className="font-mono font-bold text-blue-600">
+                        ₹{totalLocalCash.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs border-t dark:border-slate-700 pt-2">
+                      <span className="font-semibold text-slate-500">शाखा निरीक्षक शिफारस (आराजी):</span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                        {totalLocalAcres.toFixed(2)} एकर
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-slate-500">शाखा निरीक्षक शिफारस नगदी:</span>
+                      <span className="font-mono font-bold text-blue-600">
+                        ₹{totalLocalCash.toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center font-bold mt-1">
+                      (धान ओलीत + धान कोरडवाहू + बागायती/उन्हाळी बेरीज नुसार ऑटो-कॅल्क्युलेटेड)
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border-t dark:border-slate-700 flex justify-end gap-2">
