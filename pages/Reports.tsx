@@ -165,10 +165,39 @@ const Reports = () => {
   }, [categoryId, subTab]);
 
   const getFYLoans = (startDateStr: string, endDateStr: string, isNPAMode = false) => {
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    const cutoffDate = new Date(endDateStr);
+    const toYMD = (d?: string | null): string => {
+      if (!d) return '';
+      const s = String(d).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      const parts = s.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 2 && parts[2].length === 4) {
+          return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        if (parts[0].length === 4) {
+          return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
+      }
+      return s;
+    };
+
+    const toDateObj = (d?: string | null): Date => {
+      const ymd = toYMD(d);
+      if (!ymd) return new Date(NaN);
+      const parts = ymd.split('-');
+      if (parts.length === 3) {
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      }
+      return new Date(ymd);
+    };
+
+    const normStartDateStr = toYMD(startDateStr);
+    const normEndDateStr = toYMD(endDateStr);
+    const startDate = toDateObj(normStartDateStr);
+    const endDate = toDateObj(normEndDateStr);
+    const cutoffDate = toDateObj(normEndDateStr);
     const effectiveStartDate = isNPAMode ? new Date('1970-01-01') : startDate;
+    const nextFYCutoff = new Date(endDate.getTime() + 91 * 24 * 60 * 60 * 1000);
 
     return members
       .map(m => {
@@ -177,38 +206,37 @@ const Reports = () => {
           t.memberId === m.id && 
           t.type === 'Debit' && 
           t.accountType === 'Loan' && 
-          new Date(t.date) >= effectiveStartDate && 
-          new Date(t.date) <= endDate
+          toDateObj(t.date) >= effectiveStartDate && 
+          toDateObj(t.date) <= endDate
         );
 
         // 2. Check if they have a Credit transaction (repayment) of type Loan in the FY or early next FY (up to 3 months later)
-        const nextFYCutoff = new Date(endDate.getTime() + 91 * 24 * 60 * 60 * 1000);
         const loanCreditInFY = transactions.find(t => 
           t.memberId === m.id && 
           t.type === 'Credit' && 
           t.accountType === 'Loan' && 
-          new Date(t.date) >= effectiveStartDate && 
-          new Date(t.date) <= nextFYCutoff
+          toDateObj(t.date) >= effectiveStartDate && 
+          toDateObj(t.date) <= nextFYCutoff
         );
 
         // 3. Check if their current active loan is from the FY
-        const currentLoanDateStr = m.originalLoanDate || m.lastLoanCalculationDate;
-        const currentLoanInFY = currentLoanDateStr && new Date(currentLoanDateStr) >= effectiveStartDate && new Date(currentLoanDateStr) <= endDate;
+        const currentLoanDateStr = toYMD(m.originalLoanDate || m.lastLoanCalculationDate);
+        const currentLoanInFY = currentLoanDateStr && toDateObj(currentLoanDateStr) >= effectiveStartDate && toDateObj(currentLoanDateStr) <= endDate;
 
         // If none of these match, this member had no loan in the FY
         if (!loanDebitInFY && !loanCreditInFY && !currentLoanInFY) {
           return null;
         }
 
-        // Determine original loan date
-        let loanDate = startDateStr;
+        // Determine original loan date (normalized to YYYY-MM-DD)
+        let loanDate = normStartDateStr;
         if (loanDebitInFY) {
-          loanDate = loanDebitInFY.date;
+          loanDate = toYMD(loanDebitInFY.date);
         } else if (currentLoanInFY) {
           loanDate = currentLoanDateStr!;
         } else if (loanCreditInFY) {
           if (loanCreditInFY.previousLoanCalculationDate) {
-            loanDate = loanCreditInFY.previousLoanCalculationDate;
+            loanDate = toYMD(loanCreditInFY.previousLoanCalculationDate);
           } else {
             // Reconstruct based on interest formula
             const prin = loanCreditInFY.principalPaid || (loanCreditInFY.amount - (loanCreditInFY.interestPaid || 0)) || 30000;
@@ -216,7 +244,7 @@ const Reports = () => {
             if (intr > 0 && prin > 0) {
               const estDays = Math.round((intr * 365) / (prin * 0.06));
               if (estDays > 30 && estDays < 450) {
-                const repDate = new Date(loanCreditInFY.date);
+                const repDate = toDateObj(loanCreditInFY.date);
                 const estLoanDateObj = new Date(repDate.getTime() - estDays * 24 * 60 * 60 * 1000);
                 loanDate = format(estLoanDateObj, 'yyyy-MM-dd');
               }
@@ -225,7 +253,7 @@ const Reports = () => {
         }
 
         // STRICT CHECK: The loan disbursement date MUST fall within the target Financial Year!
-        const parsedLoanDate = new Date(loanDate);
+        const parsedLoanDate = toDateObj(loanDate);
         if (parsedLoanDate < effectiveStartDate || parsedLoanDate > endDate) {
           return null;
         }
@@ -233,7 +261,7 @@ const Reports = () => {
         // Determine loan amount
         let loanAmount = 0;
         const totalDebitsInFY = transactions
-          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && new Date(t.date) >= effectiveStartDate && new Date(t.date) <= endDate)
+          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && toDateObj(t.date) >= effectiveStartDate && toDateObj(t.date) <= endDate)
           .reduce((sum, t) => sum + t.amount, 0);
 
         if (totalDebitsInFY > 0) {
@@ -244,8 +272,8 @@ const Reports = () => {
             t.memberId === m.id && 
             t.type === 'Credit' && 
             t.accountType === 'Loan' && 
-            new Date(t.date) >= effectiveStartDate && 
-            new Date(t.date) <= nextFYCutoff
+            toDateObj(t.date) >= effectiveStartDate && 
+            toDateObj(t.date) <= nextFYCutoff
           );
           
           const creditNet = creditTxnsInPeriod.reduce((sum, t) => 
@@ -268,12 +296,13 @@ const Reports = () => {
         }
 
         // Determine if they fully repaid this specific loan before cutoffDate (31-03 of that FY)
+        const loanDateObj = toDateObj(loanDate);
         const creditTxnsBeforeCutoff = transactions.filter(t => 
           t.memberId === m.id && 
           t.type === 'Credit' && 
           t.accountType === 'Loan' && 
-          t.date >= loanDate && 
-          new Date(t.date) <= cutoffDate
+          toDateObj(t.date) >= loanDateObj && 
+          toDateObj(t.date) <= cutoffDate
         );
 
         const principalPaidBeforeCutoff = creditTxnsBeforeCutoff.reduce((sum, t) => 
@@ -292,12 +321,12 @@ const Reports = () => {
         const isRepaid = totalRepaidBeforeCutoff >= (loanAmount - 5);
 
         // Repayment date is the date of the last installment/payment that cleared the loan
-        const sortedRepayments = [...creditTxnsBeforeCutoff].sort((a, b) => a.date.localeCompare(b.date));
-        const repaymentDate = isRepaid && sortedRepayments.length > 0 ? sortedRepayments[sortedRepayments.length - 1].date : '-';
+        const sortedRepayments = [...creditTxnsBeforeCutoff].sort((a, b) => toDateObj(a.date).getTime() - toDateObj(b.date).getTime());
+        const repaymentDate = isRepaid && sortedRepayments.length > 0 ? toYMD(sortedRepayments[sortedRepayments.length - 1].date) : '-';
         const repaymentAmount = isRepaid ? loanAmount : 0;
 
-        const days = isRepaid
-          ? differenceInDays(new Date(repaymentDate), new Date(loanDate))
+        const days = isRepaid && repaymentDate !== '-'
+          ? differenceInDays(toDateObj(repaymentDate), toDateObj(loanDate))
           : 0;
 
         const productValue = isRepaid ? (loanAmount * days) : 0;
@@ -314,18 +343,19 @@ const Reports = () => {
             t.type === 'Credit' && 
             t.accountType === 'Loan' && 
             (t.interestPaid && t.interestPaid > 0) && 
-            new Date(t.date) <= cutoffDate
+            toDateObj(t.date) <= cutoffDate
           )
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
+          .sort((a, b) => toDateObj(b.date).getTime() - toDateObj(a.date).getTime())[0];
 
+        const lastLoanCalcDateObj = m.lastLoanCalculationDate ? toDateObj(m.lastLoanCalculationDate) : null;
         const calculationStartDate = lastInterestPaymentTxn 
-          ? lastInterestPaymentTxn.date 
-          : (m.lastLoanCalculationDate && new Date(m.lastLoanCalculationDate) <= cutoffDate 
-              ? m.lastLoanCalculationDate 
+          ? toYMD(lastInterestPaymentTxn.date) 
+          : (lastLoanCalcDateObj && lastLoanCalcDateObj <= cutoffDate 
+              ? toYMD(m.lastLoanCalculationDate) 
               : loanDate);
 
         const daysUpToCutoff = !isRepaid
-          ? Math.max(0, differenceInDays(new Date(cutoffDate), new Date(calculationStartDate)))
+          ? Math.max(0, differenceInDays(cutoffDate, toDateObj(calculationStartDate)))
           : days;
 
         let interest6 = null;
@@ -333,7 +363,7 @@ const Reports = () => {
           const result = calculateLoanInterest(
             remainingPrincipal,
             calculationStartDate,
-            endDateStr,
+            normEndDateStr,
             settings.financialYearStart,
             settings.financialYearEnd,
             false,
