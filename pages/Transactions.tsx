@@ -335,10 +335,15 @@ const Transactions = () => {
                 const memberUpdates: any = {};
 
                 if (type === TransactionType.DEBIT && accountType === AccountType.LOAN) {
-                    // Don't update loanPrincipal here - AppContext.tsx handles it in addTransaction (line 334)
-                    // memberUpdates.loanPrincipal = selectedMember.loanPrincipal + amount; // REMOVED: This was causing double addition
+                    // Don't update loanPrincipal here - AppContext.tsx handles it in addTransaction
                     memberUpdates.lastLoanCalculationDate = date;
-                    transaction.details = `${details} (Loan Disbursed)`.trim();
+                    
+                    let customFarmerDetails = '';
+                    if (farmerType && farmerType !== selectedMember.farmerType) {
+                        customFarmerDetails = ` [नियम लागू: ${farmerType === 'Large Farmer' ? 'मोठे कृषक' : 'लघु कृषक'}]`;
+                    }
+                    
+                    transaction.details = `${details} (Loan Disbursed)${customFarmerDetails}`.trim();
                 }
                 else if (type === TransactionType.CREDIT && accountType === AccountType.LOAN) {
                     if (isGovtWaiver) {
@@ -635,6 +640,40 @@ const Transactions = () => {
                                     <option value="Expense">Expense/Other (इतर खर्च)</option>
                                 </select>
                             </div>
+
+                            {/* Loan Rules Override for Disbursement */}
+                            {type === TransactionType.DEBIT && accountType === AccountType.LOAN && selectedMember && (
+                                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg animate-in fade-in duration-300">
+                                    <label className="block text-sm font-bold mb-2 text-amber-800 dark:text-amber-400">
+                                        कर्ज वाटपाचा नियम (Applied Rules):
+                                    </label>
+                                    <div className="flex gap-4 flex-wrap">
+                                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            <input 
+                                                type="radio" 
+                                                checked={farmerType === 'Large Farmer'} 
+                                                onChange={() => setFarmerType('Large Farmer')}
+                                                className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                                            />
+                                            मोठे कृषक
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            <input 
+                                                type="radio" 
+                                                checked={farmerType === 'Small Farmer'} 
+                                                onChange={() => setFarmerType('Small Farmer')}
+                                                className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                                            />
+                                            लघु कृषक (पीक पेऱ्यानुसार)
+                                        </label>
+                                    </div>
+                                    {farmerType !== (selectedMember.farmerType || 'Small Farmer') && (
+                                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2 font-semibold">
+                                            📌 नोंद: हे बदल फक्त या कर्ज वाटप व्यवहारासाठी (Transaction) लागू होतील. सभासदाचा मूळ NCL रेकॉर्ड '{selectedMember.farmerType === 'Large Farmer' ? 'मोठे कृषक' : 'लघु कृषक'}' असाच स्थिर राहील.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Payment Mode Selector */}
                             {type === TransactionType.CREDIT && accountType === AccountType.LOAN && selectedMember && (
