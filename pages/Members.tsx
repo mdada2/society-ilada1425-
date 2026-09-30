@@ -512,7 +512,14 @@ const Members = () => {
       const netVal = loanVal - sharesVal;
 
       // 1. Farmer Type
-      if (m.farmerType === 'Large Farmer') {
+      let appliedFarmerType = m.farmerType || 'Small Farmer';
+      if (item.details?.includes('[नियम लागू: लघु कृषक]')) {
+        appliedFarmerType = 'Small Farmer';
+      } else if (item.details?.includes('[नियम लागू: मोठे कृषक]')) {
+        appliedFarmerType = 'Large Farmer';
+      }
+
+      if (appliedFarmerType === 'Large Farmer') {
         data.largeFarmer.count++;
         data.largeFarmer.land += landVal;
         data.largeFarmer.loan += loanVal;
