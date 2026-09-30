@@ -204,8 +204,8 @@ const Reports = () => {
         // 1. Check if they have a Debit transaction in the FY
         const loanDebitInFY = transactions.find(t => 
           t.memberId === m.id && 
-          t.type?.toLowerCase() === 'debit' && 
-          t.accountType?.toLowerCase() === 'loan' && 
+          t.type?.toLowerCase().trim() === 'debit' && 
+          t.accountType?.toLowerCase().trim() === 'loan' && 
           toDateObj(t.date) >= effectiveStartDate && 
           toDateObj(t.date) <= endDate
         );
@@ -261,7 +261,7 @@ const Reports = () => {
         // Determine loan amount
         let loanAmount = 0;
         const totalDebitsInFY = transactions
-          .filter(t => t.memberId === m.id && t.type?.toLowerCase() === 'debit' && t.accountType?.toLowerCase() === 'loan' && toDateObj(t.date) >= effectiveStartDate && toDateObj(t.date) <= endDate)
+          .filter(t => t.memberId === m.id && t.type?.toLowerCase().trim() === 'debit' && t.accountType?.toLowerCase().trim() === 'loan' && toDateObj(t.date) >= effectiveStartDate && toDateObj(t.date) <= endDate)
           .reduce((sum, t) => sum + t.amount, 0);
 
         if (totalDebitsInFY > 0) {
@@ -299,8 +299,8 @@ const Reports = () => {
         const loanDateObj = toDateObj(loanDate);
         const creditTxnsBeforeCutoff = transactions.filter(t => 
           t.memberId === m.id && 
-          t.type?.toLowerCase() === 'credit' && 
-          t.accountType?.toLowerCase() === 'loan' && 
+          t.type?.toLowerCase().trim() === 'credit' && 
+          t.accountType?.toLowerCase().trim() === 'loan' && 
           toDateObj(t.date) >= loanDateObj && 
           toDateObj(t.date) <= cutoffDate
         );
@@ -318,10 +318,11 @@ const Reports = () => {
         const totalRepaidBeforeCutoff = principalPaidBeforeCutoff + waivedBeforeCutoff;
 
         // Fully repaid if total repaid is >= loanAmount (allowing a small 5 Rs tolerance for rounding/waivers)
-        const isRepaid = totalRepaidBeforeCutoff >= (loanAmount - 5);
+        const actuallyRepaidAsOfCutoff = m.loanPrincipal <= 0 && m.lastLoanCalculationDate && toDateObj(m.lastLoanCalculationDate) <= cutoffDate;
+        const isRepaid = totalRepaidBeforeCutoff >= (loanAmount - 5) || actuallyRepaidAsOfCutoff;
 
         if (m.name.includes("लोथे") || m.name.includes("Lothe")) {
-          console.log("DEBUG NILESH:", { loanDate, loanAmount, loanDateObj, cutoffDate, creditTxnsBeforeCutoff, principalPaidBeforeCutoff, waivedBeforeCutoff, totalRepaidBeforeCutoff, isRepaid });
+          console.log("DEBUG NILESH/KUNDALIK:", { loanDate, loanAmount, loanDateObj, cutoffDate, creditTxnsBeforeCutoff, principalPaidBeforeCutoff, waivedBeforeCutoff, totalRepaidBeforeCutoff, isRepaid, actuallyRepaidAsOfCutoff });
         }
 
 
@@ -339,7 +340,7 @@ const Reports = () => {
         const interest3 = isRepaid ? Math.round((productValue * 0.03) / 365) : null;
         const interest2_5 = isRepaid ? Math.round((productValue * 0.025) / 365) : null;
 
-        const remainingPrincipal = Math.max(0, loanAmount - totalRepaidBeforeCutoff);
+        const remainingPrincipal = isRepaid ? 0 : Math.max(0, loanAmount - totalRepaidBeforeCutoff);
 
         // Find the last transaction that paid interest before or on cutoffDate
         const lastInterestPaymentTxn = transactions
