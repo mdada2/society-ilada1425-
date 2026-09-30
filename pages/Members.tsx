@@ -2181,6 +2181,7 @@ const Members = () => {
                       <th className="pb-3 w-40">Loan Amount (₹)</th>
                       <th className="pb-3 w-36">Date</th>
                       <th className="pb-3 w-36">Type</th>
+                      <th className="pb-3 w-32">Farmer Rule</th>
                       <th className="pb-3 w-24">Action</th>
                     </tr>
                   </thead>
@@ -2253,6 +2254,17 @@ const Members = () => {
                             >
                               <option>Short Term</option>
                               <option>Medium Term</option>
+                            </select>
+                          </td>
+                          <td className="py-3 pr-2">
+                            <select 
+                              value={data.farmerTypeRule || ''} 
+                              onChange={e => handleDisbursementChange(id, 'farmerTypeRule', e.target.value)}
+                              className="w-full p-2 border rounded bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-amber-500 text-xs text-amber-700 dark:text-amber-400 font-semibold"
+                            >
+                              <option value="">(Default / मूळ)</option>
+                              <option value="Small Farmer">लघु कृषक</option>
+                              <option value="Large Farmer">मोठे कृषक</option>
                             </select>
                           </td>
                           <td className="py-3">
