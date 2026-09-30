@@ -222,7 +222,7 @@ const Members = () => {
     });
   };
 
-  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string, landArea?: string }, bankId?: string) => {
+  const handleSaveDisbursement = (id: string, customData?: { shareAmount: number, loanAmount: number, date: string, loanType: string, landArea?: string, farmerTypeRule?: string }, bankId?: string) => {
     const member = members.find(m => m.id === id);
     if (!member) return;
 
@@ -239,6 +239,11 @@ const Members = () => {
       return;
     }
 
+    let appliedRuleDetail = '';
+    if (data.farmerTypeRule && data.farmerTypeRule !== member.farmerType) {
+      appliedRuleDetail = ` [नियम लागू: ${data.farmerTypeRule === 'Large Farmer' ? 'मोठे कृषक' : 'लघु कृषक'}]`;
+    }
+
     // 1. Add Loan Disbursement Transaction (DEBIT)
     const loanTxn = {
       id: `LN-DISB-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -248,7 +253,7 @@ const Members = () => {
       accountType: AccountType.LOAN,
       type: TransactionType.DEBIT,
       amount: data.loanAmount,
-      details: `Loan Disbursed / कर्ज वाटप करण्यात आले (${data.loanType})`,
+      details: `Loan Disbursed / कर्ज वाटप करण्यात आले (${data.loanType})${appliedRuleDetail}`,
       timestamp: Date.now(),
       bankId: bankId
     };
@@ -1242,8 +1247,8 @@ const Members = () => {
   };
 
   const handleDownloadDisbursementTemplate = () => {
-    const headers = ["MemberNo", "LandArea", "SharesAdded", "LoanAmount", "LoanType"];
-    const sampleRow = ["101", "1.5", "1000", "45000", "Short Term"];
+    const headers = ["MemberNo", "LandArea", "SharesAdded", "LoanAmount", "LoanType", "FarmerTypeRule"];
+    const sampleRow = ["101", "1.5", "1000", "45000", "Short Term", "Small Farmer"];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
     XLSX.utils.book_append_sheet(wb, ws, "New_Loan_Template");
@@ -1321,6 +1326,7 @@ const Members = () => {
         const idxShares = findCol(['sharebalance', 'share', 'shares', 'shares added', 'sharesadd', 'शेअर्स', 'हिस्से']);
         const idxLoanAmount = findCol(['loanprincipal', 'loan principal', 'loan amount', 'principal', 'loan', 'loanamou', 'कर्ज रक्कम', 'कर्ज']);
         const idxLoanType = findCol(['loantype', 'loan type', 'type', 'प्रकार']);
+        const idxFarmerTypeRule = findCol(['farmertyperule', 'farmer type', 'rule', 'applied rule', 'नियम']);
 
         if (idxMemberNo === -1) {
           alert("Import Failed: Could not find 'Member No' column.");
@@ -1339,6 +1345,14 @@ const Members = () => {
           const land = idxLand !== -1 ? values[idxLand] : '0.00';
           const sharesAdded = idxShares !== -1 ? parseNumberSafe(values[idxShares]) : 0;
           const loanAmount = idxLoanAmount !== -1 ? parseNumberSafe(values[idxLoanAmount]) : 0;
+          
+          let farmerTypeRule = '';
+          if (idxFarmerTypeRule !== -1 && values[idxFarmerTypeRule]) {
+            const val = values[idxFarmerTypeRule].toLowerCase();
+            if (val.includes('small') || val.includes('लघु')) farmerTypeRule = 'Small Farmer';
+            else if (val.includes('large') || val.includes('big') || val.includes('मोठे')) farmerTypeRule = 'Large Farmer';
+          }
+
           let loanType = idxLoanType !== -1 ? values[idxLoanType] : 'Short Term';
           if (loanType.toLowerCase().includes('medium') || loanType.toLowerCase().includes('m.t')) {
             loanType = 'Medium Term';
@@ -1373,6 +1387,7 @@ const Members = () => {
             shareAmount: sharesAdded,
             loanAmount,
             loanType,
+            farmerTypeRule,
             activeLoanAmt,
             error
           });
@@ -1469,7 +1484,8 @@ const Members = () => {
         loanAmount: row.loanAmount,
         date: bulkDate || format(new Date(), 'yyyy-MM-dd'),
         loanType: row.loanType,
-        landArea: row.landArea
+        landArea: row.landArea,
+        farmerTypeRule: row.farmerTypeRule
       };
 
       handleSaveDisbursement(row.realId, customData, mode === 'Bank' ? bankId : undefined);
@@ -2745,6 +2761,7 @@ const Members = () => {
                       <th className="p-3">Shares Added (₹)</th>
                       <th className="p-3">Loan Amount (₹)</th>
                       <th className="p-3">Loan Type</th>
+                      <th className="p-3">Farmer Rule</th>
                       <th className="p-3 text-red-600">Active Loan (₹)</th>
                       <th className="p-3">Status / Errors</th>
                       <th className="p-3 text-center">Action</th>
@@ -2799,6 +2816,17 @@ const Members = () => {
                           >
                             <option value="Short Term">Short Term</option>
                             <option value="Medium Term">Medium Term</option>
+                          </select>
+                        </td>
+                        <td className="p-2">
+                          <select 
+                            className="p-1 border dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-xs text-amber-700 dark:text-amber-400 font-semibold"
+                            value={row.farmerTypeRule || ''}
+                            onChange={(e) => handleBulkRowChange(row.id, 'farmerTypeRule', e.target.value)}
+                          >
+                            <option value="">(Default / मूळ)</option>
+                            <option value="Small Farmer">लघु कृषक</option>
+                            <option value="Large Farmer">मोठे कृषक</option>
                           </select>
                         </td>
                         <td className="p-2 text-right font-semibold text-red-600">
