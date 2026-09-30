@@ -204,6 +204,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const isRestoring = useRef(false);
   const isInitialized = useRef(false);
   const lastCloudTimestamp = useRef<number>(0);
+  const membersChunksRef = useRef<Member[][]>([[], [], [], [], [], [], [], [], [], []]);
 
   const transactions = useMemo(() => {
     return [...activeTransactions, ...archivedTransactions];
@@ -272,14 +273,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       });
 
+      const chunkUnsubs = [0, 1, 2, 3, 4].map(chunkIndex => 
+        onSnapshot(doc(db, "societies", `ilada_main_members_${chunkIndex}`), (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const cloudTS = data.lastUpdated || 0;
+            if (cloudTS > (lastCloudTimestamp.current - 5000)) {
+              isRestoring.current = true;
+              membersChunksRef.current[chunkIndex] = data.members || [];
+              
+              const allMembers = membersChunksRef.current.flat();
+              if (allMembers.length > 0) {
+                setMembers(allMembers);
+              }
+              setTimeout(() => { isRestoring.current = false; }, 1000);
+            }
+          }
+        }, (error) => { console.warn(`Firebase error (members chunk ${chunkIndex}):`, error.code); })
+      );
+
+      // Legacy fallback
       const unsubMembers = onSnapshot(doc(db, "societies", "ilada_main_members"), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           const cloudTS = data.lastUpdated || 0;
           if (cloudTS > (lastCloudTimestamp.current - 5000)) {
-            isRestoring.current = true;
-            if (data.members) setMembers(data.members);
-            setTimeout(() => { isRestoring.current = false; }, 1000);
+            // Only use legacy if chunks haven't loaded any members
+            if (membersChunksRef.current.flat().length === 0) {
+              isRestoring.current = true;
+              if (data.members) setMembers(data.members);
+              setTimeout(() => { isRestoring.current = false; }, 1000);
+            }
           }
         }
       }, (error) => { console.warn('Firebase connection error (members):', error.code); });
@@ -357,11 +381,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         lastUpdated: timestamp
       });
 
-      // Doc 2: Members list only
-      const membersDoc = sanitize({
-        members,
-        lastUpdated: timestamp
-      });
+      // Doc 2: Members list only (Legacy full save for fallback, optional, but we skip it to save space)
+      // We will chunk members into arrays of 1000
+      const CHUNK_SIZE = 1000;
+      const memberChunkPromises = [];
+      for (let i = 0; i < 5; i++) {
+        const chunk = members.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        if (chunk.length > 0 || i === 0) { // always write chunk 0 to clear it if empty
+          memberChunkPromises.push(setDoc(doc(db, "societies", `ilada_main_members_${i}`), sanitize({ members: chunk, lastUpdated: timestamp })));
+        } else {
+          // Empty chunk, we could delete it, but writing empty array is fine and clears old data
+          memberChunkPromises.push(setDoc(doc(db, "societies", `ilada_main_members_${i}`), sanitize({ members: [], lastUpdated: timestamp })));
+        }
+      }
 
       // Doc 3: Transactions only (active ones)
       const txnDoc = sanitize({
@@ -383,7 +415,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       await Promise.all([
         setDoc(doc(db, "societies", "ilada_main"), coreDoc),
-        setDoc(doc(db, "societies", "ilada_main_members"), membersDoc),
+        ...memberChunkPromises,
         setDoc(doc(db, "societies", "ilada_main_txn"), txnDoc),
         setDoc(doc(db, "societies", "ilada_main_paddy"), paddyDoc),
       ]);
@@ -403,13 +435,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const restoreFromCloud = async (): Promise<boolean> => {
     if (!navigator.onLine) { alert("इंटरनेट आवश्यक आहे."); return false; }
     try {
-      const [coreSnap, membersSnap, txnSnap, archiveSnap, paddySnap] = await Promise.all([
+      const chunkPromises = [0, 1, 2, 3, 4].map(i => getDoc(doc(db, "societies", `ilada_main_members_${i}`)));
+
+      const [coreSnap, membersSnap, txnSnap, archiveSnap, paddySnap, ...chunkSnaps] = await Promise.all([
         getDoc(doc(db, "societies", "ilada_main")),
-        getDoc(doc(db, "societies", "ilada_main_members")),
+        getDoc(doc(db, "societies", "ilada_main_members")), // legacy
         getDoc(doc(db, "societies", "ilada_main_txn")),
         getDoc(doc(db, "societies", "ilada_main_txn_archive")),
         getDoc(doc(db, "societies", "ilada_main_paddy")),
+        ...chunkPromises
       ]);
+      
       isRestoring.current = true;
       if (coreSnap.exists()) {
         const data = coreSnap.data();
@@ -418,7 +454,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setAuditNotes(data.auditNotes || []);
         if (data.settings) setSettings(data.settings);
       }
-      if (membersSnap.exists()) {
+      
+      let loadedChunkedMembers: Member[] = [];
+      chunkSnaps.forEach(snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.members) loadedChunkedMembers = [...loadedChunkedMembers, ...data.members];
+        }
+      });
+
+      if (loadedChunkedMembers.length > 0) {
+        setMembers(loadedChunkedMembers);
+      } else if (membersSnap.exists()) {
         const data = membersSnap.data();
         setMembers(data.members || []);
       }
@@ -858,12 +905,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return {
       core: { name: 'Core Metadata (बँक माहिती, बैठका, ऑडिट)', size: coreSize, limit: 1048576 },
-      members: { name: 'Members List (सर्व सभासदांची माहिती)', size: membersSize, limit: 1048576 },
+      members: { name: 'Members List (सर्व सभासदांची माहिती)', size: membersSize, limit: 5242880 }, // 5 chunks
       txn: { name: 'Transactions (चालू वर्षाचे व्यवहार)', size: txnSize, limit: 1048576 },
       archive: { name: 'Archived Transactions (मागील वर्षांचे व्यवहार)', size: archiveSize, limit: 1048576 },
       paddy: { name: 'Paddy & Operations (धान खरेदी व इतर)', size: paddySize, limit: 1048576 },
       totalUsed: coreSize + membersSize + txnSize + archiveSize + paddySize,
-      totalLimit: 5242880
+      totalLimit: 9437184 // 9 MB
     };
   };
 
