@@ -204,8 +204,8 @@ const Reports = () => {
         // 1. Check if they have a Debit transaction in the FY
         const loanDebitInFY = transactions.find(t => 
           t.memberId === m.id && 
-          t.type === 'Debit' && 
-          t.accountType === 'Loan' && 
+          t.type?.toLowerCase() === 'debit' && 
+          t.accountType?.toLowerCase() === 'loan' && 
           toDateObj(t.date) >= effectiveStartDate && 
           toDateObj(t.date) <= endDate
         );
@@ -261,7 +261,7 @@ const Reports = () => {
         // Determine loan amount
         let loanAmount = 0;
         const totalDebitsInFY = transactions
-          .filter(t => t.memberId === m.id && t.type === 'Debit' && t.accountType === 'Loan' && toDateObj(t.date) >= effectiveStartDate && toDateObj(t.date) <= endDate)
+          .filter(t => t.memberId === m.id && t.type?.toLowerCase() === 'debit' && t.accountType?.toLowerCase() === 'loan' && toDateObj(t.date) >= effectiveStartDate && toDateObj(t.date) <= endDate)
           .reduce((sum, t) => sum + t.amount, 0);
 
         if (totalDebitsInFY > 0) {
@@ -270,8 +270,8 @@ const Reports = () => {
           // Reconstruct from all repayments in the period + waived + outstanding
           const creditTxnsInPeriod = transactions.filter(t => 
             t.memberId === m.id && 
-            t.type === 'Credit' && 
-            t.accountType === 'Loan' && 
+            t.type?.toLowerCase() === 'credit' && 
+            t.accountType?.toLowerCase() === 'loan' && 
             toDateObj(t.date) >= effectiveStartDate && 
             toDateObj(t.date) <= nextFYCutoff
           );
@@ -299,8 +299,8 @@ const Reports = () => {
         const loanDateObj = toDateObj(loanDate);
         const creditTxnsBeforeCutoff = transactions.filter(t => 
           t.memberId === m.id && 
-          t.type === 'Credit' && 
-          t.accountType === 'Loan' && 
+          t.type?.toLowerCase() === 'credit' && 
+          t.accountType?.toLowerCase() === 'loan' && 
           toDateObj(t.date) >= loanDateObj && 
           toDateObj(t.date) <= cutoffDate
         );
@@ -319,6 +319,11 @@ const Reports = () => {
 
         // Fully repaid if total repaid is >= loanAmount (allowing a small 5 Rs tolerance for rounding/waivers)
         const isRepaid = totalRepaidBeforeCutoff >= (loanAmount - 5);
+
+        if (m.name.includes("लोथे") || m.name.includes("Lothe")) {
+          console.log("DEBUG NILESH:", { loanDate, loanAmount, loanDateObj, cutoffDate, creditTxnsBeforeCutoff, principalPaidBeforeCutoff, waivedBeforeCutoff, totalRepaidBeforeCutoff, isRepaid });
+        }
+
 
         // Repayment date is the date of the last installment/payment that cleared the loan
         const sortedRepayments = [...creditTxnsBeforeCutoff].sort((a, b) => toDateObj(a.date).getTime() - toDateObj(b.date).getTime());
@@ -340,8 +345,8 @@ const Reports = () => {
         const lastInterestPaymentTxn = transactions
           .filter(t => 
             t.memberId === m.id && 
-            t.type === 'Credit' && 
-            t.accountType === 'Loan' && 
+            t.type?.toLowerCase() === 'credit' && 
+            t.accountType?.toLowerCase() === 'loan' && 
             (t.interestPaid && t.interestPaid > 0) && 
             toDateObj(t.date) <= cutoffDate
           )
