@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Download, Share2, Search, Calendar, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Download, Share2, Search, Calendar, ChevronDown, ChevronUp, Trash2, ArrowUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadBlob } from '../utils/downloadUtils';
 import * as XLSX from 'xlsx';
@@ -42,6 +42,16 @@ function ReportTable<T extends { id?: string | number }>({
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+    const [showScroll, setShowScroll] = useState(false);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        setShowScroll(e.currentTarget.scrollTop > 200);
+    };
+
+    const scrollToTop = () => {
+        tableContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     const { members } = useApp();
 
@@ -256,7 +266,7 @@ function ReportTable<T extends { id?: string | number }>({
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col h-full relative">
             {/* Header Controls */}
             <div className="p-3 md:p-4 border-b dark:border-slate-700 flex flex-col gap-2.5">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
@@ -342,7 +352,11 @@ function ReportTable<T extends { id?: string | number }>({
             </div>
 
             {/* Table Content */}
-            <div className="flex-1 overflow-auto custom-scrollbar">
+            <div 
+                ref={tableContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-auto custom-scrollbar relative"
+            >
                 <table className="w-full min-w-max text-left border-collapse">
                     <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10">
                         <tr>
@@ -455,6 +469,17 @@ function ReportTable<T extends { id?: string | number }>({
                 <span>Showing {sortedData.length} entries</span>
                 <span>{title} System Report</span>
             </div>
+            
+            {/* Scroll to Top Button */}
+            {showScroll && (
+                <button
+                    onClick={scrollToTop}
+                    className="absolute bottom-16 right-6 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xl transition-all z-50 animate-fade-in-up"
+                    title="वर जा (Scroll to Top)"
+                >
+                    <ArrowUp size={24} />
+                </button>
+            )}
         </div>
     );
 }
