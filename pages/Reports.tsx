@@ -5852,8 +5852,13 @@ const Reports = () => {
     }
     
     if (activeSubTab === 'Voter List') {
+      // Fetch all loans exactly ONCE to avoid O(N^2) heavy calculations inside the map
+      const allActiveLoans = getFYLoans(activeStart, activeEnd, true);
+      const loanLookup = new Map();
+      allActiveLoans.forEach(l => loanLookup.set(l.member.id, l));
+
       const displayData = members.filter(m => m.isActive).map((m, idx) => {
-        const currentLoan = getFYLoans(activeStart, activeEnd, true).find(l => l.member.id === m.id);
+        const currentLoan = loanLookup.get(m.id);
         const hasOverdue = currentLoan && !currentLoan.isRepaid && currentLoan.interest6 && currentLoan.interest6 > 0;
         
         return {
