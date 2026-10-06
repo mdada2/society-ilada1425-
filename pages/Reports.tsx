@@ -5839,14 +5839,16 @@ const Reports = () => {
       ];
 
       return (
-        <div className="space-y-4">
-          <ReportTable 
-            title="KYC आणि डॉक्युमेंट्स तपासणी अहवाल" 
-            columns={columns} 
-            data={displayData} 
-            onRowClick={(item) => handleMemberClick(item.id)} 
-            enableDateFilter={false} 
-          />
+        <div className="flex flex-col gap-4 h-full min-h-0">
+          <div className="flex-1 min-h-0">
+            <ReportTable 
+              title="KYC आणि डॉक्युमेंट्स तपासणी अहवाल" 
+              columns={columns} 
+              data={displayData} 
+              onRowClick={(item) => handleMemberClick(item.id)} 
+              enableDateFilter={false} 
+            />
+          </div>
         </div>
       );
     }
@@ -5891,24 +5893,26 @@ const Reports = () => {
       ];
 
       return (
-        <div className="space-y-4">
-          <div className="flex gap-4 mb-4">
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm flex-1">
-              <p className="text-sm font-bold text-emerald-800">एकूण पात्र मतदार</p>
-              <p className="text-3xl font-black text-emerald-600">{displayData.filter(d => d.isEligible).length}</p>
+        <div className="flex flex-col gap-4 h-full min-h-0">
+          <div className="flex gap-4 p-1">
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg shadow-sm flex-1">
+              <p className="text-sm font-bold text-emerald-800 dark:text-emerald-400">एकूण पात्र मतदार</p>
+              <p className="text-3xl font-black text-emerald-600 dark:text-emerald-500">{displayData.filter(d => d.isEligible).length}</p>
             </div>
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm flex-1">
-              <p className="text-sm font-bold text-red-800">एकूण अपात्र मतदार (थकबाकीदार)</p>
-              <p className="text-3xl font-black text-red-600">{displayData.filter(d => !d.isEligible).length}</p>
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg shadow-sm flex-1">
+              <p className="text-sm font-bold text-red-800 dark:text-red-400">एकूण अपात्र मतदार (थकबाकीदार)</p>
+              <p className="text-3xl font-black text-red-600 dark:text-red-500">{displayData.filter(d => !d.isEligible).length}</p>
             </div>
           </div>
-          <ReportTable 
-            title="पात्र मतदार यादी (Voter List)" 
-            columns={columns} 
-            data={displayData} 
-            onRowClick={(item) => handleMemberClick(item.id)} 
-            enableDateFilter={false} 
-          />
+          <div className="flex-1 min-h-0">
+            <ReportTable 
+              title="पात्र मतदार यादी (Voter List)" 
+              columns={columns} 
+              data={displayData} 
+              onRowClick={(item) => handleMemberClick(item.id)} 
+              enableDateFilter={false} 
+            />
+          </div>
         </div>
       );
     }
@@ -5940,8 +5944,8 @@ const Reports = () => {
       ];
 
       return (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-sm items-center">
+        <div className="flex flex-col gap-4 h-full min-h-0">
+          <div className="flex flex-col sm:flex-row gap-4 p-4 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-sm items-center shrink-0">
             <div className="flex items-center gap-3 flex-1">
               <label className="font-bold text-slate-700 dark:text-slate-300">लाभांश दर (Dividend %):</label>
               <input 
@@ -5966,13 +5970,15 @@ const Reports = () => {
               </div>
             </div>
           </div>
-          <ReportTable 
-            title={`लाभांश वाटप पत्रक (${dividendRate}% दराने)`}
-            columns={columns} 
-            data={displayData} 
-            onRowClick={(item) => handleMemberClick(item.id)} 
-            enableDateFilter={false} 
-          />
+          <div className="flex-1 min-h-0">
+            <ReportTable 
+              title={`लाभांश वाटप पत्रक (${dividendRate}% दराने)`}
+              columns={columns} 
+              data={displayData} 
+              onRowClick={(item) => handleMemberClick(item.id)} 
+              enableDateFilter={false} 
+            />
+          </div>
         </div>
       );
     }
