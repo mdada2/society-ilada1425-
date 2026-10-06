@@ -75,14 +75,14 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Loan Reports',
     icon: <Wallet size={24} />,
     color: 'bg-amber-500',
-    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary', 'Loan Recovery Analysis', 'Demand Register']
+    subTabs: ['All Outstanding', 'Regular (FY)', 'Recovery Report', 'Repaid (FY)', 'Overdue Recoveries', 'NPA List', 'Summary', 'Loan Recovery Analysis', 'Demand Register', 'Crop-wise 7/12']
   },
   {
     id: 'membership',
     title: 'Membership Reports',
     icon: <Users size={24} />,
     color: 'bg-emerald-500',
-    subTabs: ['Shares Capital', 'Shares Summary', 'Caste Summary', 'Gender Summary', 'Gender + Category', 'Gender + Village', 'Gender Financial', 'Land Holding']
+    subTabs: ['Shares Capital', 'Shares Summary', 'Caste Summary', 'Gender Summary', 'Gender + Category', 'Gender + Village', 'Gender Financial', 'Land Holding', 'KYC & Documents', 'Voter List', 'Dividend Distribution']
   },
   {
     id: 'schemes',
@@ -128,6 +128,7 @@ const Reports = () => {
   const [showDemandSummary, setShowDemandSummary] = useState(false);
   const [demandFilter, setDemandFilter] = useState<'all' | 'current_new' | 'current_old' | 'overdue'>('all');
   const [paddyReportSeasonFilter, setPaddyReportSeasonFilter] = useState<string>('All');
+  const [dividendRate, setDividendRate] = useState<number>(10);
 
   const activeStart = selectedFYRange
     ? selectedFYRange.start
@@ -4275,6 +4276,53 @@ const Reports = () => {
       );
     }
 
+    if (activeSubTab === 'Crop-wise 7/12') {
+      const displayData = members.map((m, idx) => {
+        const ratePerAcre = settings.nclRatePerAcre || 32000;
+        const landVal = parseFloat(m.landArea || '0') || 0;
+        const limit = landVal * ratePerAcre;
+        
+        return {
+          id: m.id,
+          idx: idx + 1,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          landArea: landVal.toFixed(2),
+          cropSown: 'धान (Paddy) / सोयाबीन',
+          limit: limit
+        };
+      });
+
+      const columns = [
+        { header: 'अ.क्र.', accessorKey: 'idx', width: '60px' },
+        { header: 'सभासद क्र.', accessorKey: 'memberNo' },
+        { header: 'नाव', accessorKey: 'name' },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'आराजी / क्षेत्र (Ha.R)', accessorKey: 'landArea' },
+        { header: 'पीक पेरा (Crop Sown)', accessorKey: 'cropSown' },
+        { header: 'कर्ज मर्यादा (₹)', accessorKey: 'limit', render: (i: any) => i.limit.toLocaleString() }
+      ];
+
+      return (
+        <div className="flex flex-col gap-4 h-full min-h-0">
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <h3 className="font-bold text-amber-800 dark:text-amber-400 text-lg mb-1">७/१२ आणि ८-अ नुसार पीक पेरा अहवाल</h3>
+            <p className="text-sm text-amber-700 dark:text-amber-500">सभासदांचे शेती क्षेत्र आणि त्यानुसार त्यांची पिके व कर्जमर्यादा.</p>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ReportTable 
+              title="पीक पेरा अहवाल" 
+              columns={columns} 
+              data={displayData} 
+              onRowClick={(item) => handleMemberClick(item.id)} 
+              enableDateFilter={false} 
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col gap-4 h-full min-h-0">
         {renderTabInfo(activeSubTab === 'Recovery Report' ? 'Recovery Report' : activeSubTab)}
@@ -5747,6 +5795,181 @@ const Reports = () => {
         { header: 'Share Bal', accessorKey: 'shareBalance', render: (i: any) => `₹${i.shareBalance}` },
       ];
       return <ReportTable title="Land Holding Report" columns={columns} data={memberReportData} onRowClick={(item) => handleMemberClick(item.realId)} />;
+    }
+
+    if (activeSubTab === 'KYC & Documents') {
+      const displayData = members.map((m, idx) => {
+        const missing = [];
+        if (!m.aadhar || m.aadhar.length < 12) missing.push('आधार कार्ड');
+        if (!m.bankAccountNo) missing.push('बँक खाते');
+        if (!m.mobile || m.mobile.length < 10) missing.push('मोबाईल क्र.');
+        if (!m.photoUrl) missing.push('फोटो');
+        
+        return {
+          id: m.id,
+          idx: idx + 1,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          aadhar: m.aadhar || '-',
+          bankAccountNo: m.bankAccountNo || '-',
+          mobile: m.mobile || '-',
+          missingDocs: missing.length > 0 ? missing.join(', ') : 'सर्व पूर्ण (All OK)',
+          isPending: missing.length > 0
+        };
+      });
+      
+      const columns = [
+        { header: 'अ.क्र.', accessorKey: 'idx' },
+        { header: 'सभासद क्र.', accessorKey: 'memberNo' },
+        { header: 'नाव', accessorKey: 'name' },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'आधार क्र.', accessorKey: 'aadhar' },
+        { header: 'बँक खाते', accessorKey: 'bankAccountNo' },
+        { header: 'मोबाईल', accessorKey: 'mobile' },
+        { 
+          header: 'अपूर्ण कागदपत्रे / माहिती', 
+          accessorKey: 'missingDocs', 
+          render: (item: any) => (
+            <span className={item.isPending ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>
+              {item.missingDocs}
+            </span>
+          ) 
+        }
+      ];
+
+      return (
+        <div className="space-y-4">
+          <ReportTable 
+            title="KYC आणि डॉक्युमेंट्स तपासणी अहवाल" 
+            columns={columns} 
+            data={displayData} 
+            onRowClick={(item) => handleMemberClick(item.id)} 
+            enableDateFilter={false} 
+          />
+        </div>
+      );
+    }
+    
+    if (activeSubTab === 'Voter List') {
+      const displayData = members.filter(m => m.isActive).map((m, idx) => {
+        const currentLoan = getFYLoans(activeStart, activeEnd, true).find(l => l.member.id === m.id);
+        const hasOverdue = currentLoan && !currentLoan.isRepaid && currentLoan.interest6 && currentLoan.interest6 > 0;
+        
+        return {
+          id: m.id,
+          idx: idx + 1,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          shares: m.shareBalance,
+          status: hasOverdue ? 'थकबाकीदार (अपात्र)' : 'पात्र (Eligible)',
+          isEligible: !hasOverdue
+        };
+      });
+
+      const columns = [
+        { header: 'अ.क्र.', accessorKey: 'idx' },
+        { header: 'सभासद क्र.', accessorKey: 'memberNo' },
+        { header: 'नाव', accessorKey: 'name' },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'शेअर्स (₹)', accessorKey: 'shares', render: (i: any) => i.shares.toLocaleString() },
+        { 
+          header: 'मतदान पात्रता', 
+          accessorKey: 'status', 
+          render: (item: any) => (
+            <span className={item.isEligible ? 'text-emerald-600 font-bold px-2 py-1 bg-emerald-50 rounded border border-emerald-200' : 'text-red-600 font-bold px-2 py-1 bg-red-50 rounded border border-red-200'}>
+              {item.status}
+            </span>
+          ) 
+        }
+      ];
+
+      return (
+        <div className="space-y-4">
+          <div className="flex gap-4 mb-4">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm flex-1">
+              <p className="text-sm font-bold text-emerald-800">एकूण पात्र मतदार</p>
+              <p className="text-3xl font-black text-emerald-600">{displayData.filter(d => d.isEligible).length}</p>
+            </div>
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm flex-1">
+              <p className="text-sm font-bold text-red-800">एकूण अपात्र मतदार (थकबाकीदार)</p>
+              <p className="text-3xl font-black text-red-600">{displayData.filter(d => !d.isEligible).length}</p>
+            </div>
+          </div>
+          <ReportTable 
+            title="पात्र मतदार यादी (Voter List)" 
+            columns={columns} 
+            data={displayData} 
+            onRowClick={(item) => handleMemberClick(item.id)} 
+            enableDateFilter={false} 
+          />
+        </div>
+      );
+    }
+
+    if (activeSubTab === 'Dividend Distribution') {
+      const displayData = members.filter(m => m.shareBalance > 0).map((m, idx) => {
+        const dividendAmount = Math.round(m.shareBalance * (dividendRate / 100));
+        return {
+          id: m.id,
+          idx: idx + 1,
+          memberNo: m.memberNo,
+          name: m.name,
+          village: m.village,
+          shares: m.shareBalance,
+          dividend: dividendAmount
+        };
+      });
+
+      const totalShares = displayData.reduce((sum, d) => sum + d.shares, 0);
+      const totalDividend = displayData.reduce((sum, d) => sum + d.dividend, 0);
+
+      const columns = [
+        { header: 'अ.क्र.', accessorKey: 'idx' },
+        { header: 'सभासद क्र.', accessorKey: 'memberNo' },
+        { header: 'नाव', accessorKey: 'name' },
+        { header: 'गाव', accessorKey: 'village' },
+        { header: 'शेअर्स (₹)', accessorKey: 'shares', render: (i: any) => i.shares.toLocaleString() },
+        { header: 'लाभांश रक्कम (₹)', accessorKey: 'dividend', render: (i: any) => i.dividend.toLocaleString(), className: 'font-bold text-emerald-600' }
+      ];
+
+      return (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-sm items-center">
+            <div className="flex items-center gap-3 flex-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300">लाभांश दर (Dividend %):</label>
+              <input 
+                type="number" 
+                value={dividendRate} 
+                onChange={e => setDividendRate(parseFloat(e.target.value) || 0)} 
+                className="w-24 p-2 border dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-700 text-lg font-bold text-blue-600 focus:ring-2 focus:ring-blue-500 outline-none"
+                step="0.1"
+                min="0"
+                max="100"
+              />
+              <span className="font-bold text-slate-500">%</span>
+            </div>
+            <div className="flex gap-4">
+              <div className="text-right">
+                <p className="text-xs text-slate-500">एकूण शेअर्स</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">₹{totalShares.toLocaleString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-500">वाटप लाभांश</p>
+                <p className="text-lg font-bold text-emerald-600">₹{totalDividend.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <ReportTable 
+            title={`लाभांश वाटप पत्रक (${dividendRate}% दराने)`}
+            columns={columns} 
+            data={displayData} 
+            onRowClick={(item) => handleMemberClick(item.id)} 
+            enableDateFilter={false} 
+          />
+        </div>
+      );
     }
 
     return <div className="p-8 text-center text-slate-500">Feature '{activeSubTab}' is under development.</div>;
